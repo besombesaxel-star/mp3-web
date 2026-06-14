@@ -486,7 +486,7 @@ try {
 
     $server = Start-Process `
         -FilePath $nodePath `
-        -ArgumentList @($nextCli, "start", "-p", [string]$port, "-H", "127.0.0.1") `
+        -ArgumentList "`"$nextCli`" start -p $port -H 127.0.0.1" `
         -WorkingDirectory $appRoot `
         -WindowStyle Hidden `
         -PassThru `

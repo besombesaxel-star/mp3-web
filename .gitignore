@@ -18,6 +18,8 @@
 # next.js
 /.next/
 /out/
+/launcher/
+/.launcher/
 
 # production
 /build

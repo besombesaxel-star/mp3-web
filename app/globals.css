@@ -1,0 +1,248 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0b0b0f;
+  --foreground: #f5f5f7;
+  --mp3-bg-base: #0b0b0f;
+  --mp3-glow-a: rgba(120, 115, 255, 0.14);
+  --mp3-glow-b: rgba(79, 70, 229, 0.11);
+  --mp3-surface-1: #15151c;
+  --mp3-surface-2: #121218;
+  --mp3-surface-3: #111118;
+  --mp3-surface-4: #1a1a22;
+  --mp3-surface-5: #0d0d12;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(1200px 720px at 16% -12%, var(--mp3-glow-a), transparent 68%),
+    radial-gradient(1200px 760px at 84% -18%, var(--mp3-glow-b), transparent 70%),
+    var(--mp3-bg-base);
+  color: var(--foreground);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  transition: background 280ms ease, color 280ms ease;
+}
+
+body[data-mp3-theme="midnight"] {
+  --background: #0b0b0f;
+  --foreground: #f5f5f7;
+  --mp3-bg-base: #0b0b0f;
+  --mp3-glow-a: rgba(120, 115, 255, 0.14);
+  --mp3-glow-b: rgba(79, 70, 229, 0.11);
+  --mp3-surface-1: #15151c;
+  --mp3-surface-2: #121218;
+  --mp3-surface-3: #111118;
+  --mp3-surface-4: #1a1a22;
+  --mp3-surface-5: #0d0d12;
+}
+
+body[data-mp3-theme="sunset"] {
+  --background: #1b100e;
+  --foreground: #fff5eb;
+  --mp3-bg-base: #1b100e;
+  --mp3-glow-a: rgba(251, 146, 60, 0.2);
+  --mp3-glow-b: rgba(244, 114, 182, 0.14);
+  --mp3-surface-1: #2a1915;
+  --mp3-surface-2: #221410;
+  --mp3-surface-3: #1d120f;
+  --mp3-surface-4: #33201b;
+  --mp3-surface-5: #251612;
+}
+
+body[data-mp3-theme="ocean"] {
+  --background: #09131b;
+  --foreground: #eaf7ff;
+  --mp3-bg-base: #09131b;
+  --mp3-glow-a: rgba(14, 165, 233, 0.2);
+  --mp3-glow-b: rgba(45, 212, 191, 0.15);
+  --mp3-surface-1: #10222f;
+  --mp3-surface-2: #0e1d29;
+  --mp3-surface-3: #0b1a24;
+  --mp3-surface-4: #173140;
+  --mp3-surface-5: #0b1a24;
+}
+
+body[data-mp3-theme] [class*="bg-[#15151C]"] {
+  background-color: var(--mp3-surface-1) !important;
+}
+
+body[data-mp3-theme] [class*="bg-[#121218]"] {
+  background-color: var(--mp3-surface-2) !important;
+}
+
+body[data-mp3-theme] [class*="bg-[#111118]"] {
+  background-color: var(--mp3-surface-3) !important;
+}
+
+body[data-mp3-theme] [class*="bg-[#1A1A22]"] {
+  background-color: var(--mp3-surface-4) !important;
+}
+
+body[data-mp3-theme] [class*="bg-[#0D0D12]"] {
+  background-color: var(--mp3-surface-5) !important;
+}
+
+:root {
+  --scrollbar-track: rgba(255, 255, 255, 0.06);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.24);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.34);
+}
+
+body[data-mp3-theme="sunset"] {
+  --scrollbar-track: rgba(255, 232, 214, 0.08);
+  --scrollbar-thumb: rgba(255, 210, 175, 0.28);
+  --scrollbar-thumb-hover: rgba(255, 220, 190, 0.4);
+}
+
+body[data-mp3-theme="ocean"] {
+  --scrollbar-track: rgba(210, 240, 255, 0.08);
+  --scrollbar-thumb: rgba(166, 226, 255, 0.28);
+  --scrollbar-thumb-hover: rgba(191, 236, 255, 0.42);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: 1rem;
+  z-index: 10000;
+  transform: translateY(-200%);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: #111118;
+  color: #ffffff;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.875rem;
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+/* Micro animations */
+@keyframes mp3-fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes mp3-coverPop {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.mp3-fade-up {
+  animation: mp3-fadeUp 220ms ease-out both;
+}
+
+.mp3-cover-pop {
+  animation: mp3-coverPop 240ms ease-out both;
+}
+/* micro interactions */
+.btn-press {
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+.btn-press:active {
+  transform: scale(0.96);
+}
+.fade-in {
+  animation: fadeIn 220ms ease-out both;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.scroll-edge-blur {
+  --cover-edge-blur: 0px;
+  --cover-edge-opacity: 0;
+  --cover-global-blur: 0px;
+  filter: blur(var(--cover-global-blur));
+  transition: filter 120ms linear;
+}
+
+.scroll-edge-blur::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: var(--cover-edge-opacity);
+  background: rgba(10, 10, 14, 0.05);
+  backdrop-filter: blur(var(--cover-edge-blur));
+  -webkit-backdrop-filter: blur(var(--cover-edge-blur));
+  transition: opacity 120ms linear, backdrop-filter 120ms linear, -webkit-backdrop-filter 120ms linear;
+}
+
+.scroll-edge-blur[data-edge-side="top"]::after {
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.02) 45%,
+    rgba(0, 0, 0, 0.28) 72%,
+    rgba(0, 0, 0, 0.95) 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.02) 45%,
+    rgba(0, 0, 0, 0.28) 72%,
+    rgba(0, 0, 0, 0.95) 100%
+  );
+}
+
+.scroll-edge-blur[data-edge-side="bottom"]::after {
+  mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(0, 0, 0, 0.28) 28%,
+    rgba(0, 0, 0, 0.02) 55%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.95) 0%,
+    rgba(0, 0, 0, 0.28) 28%,
+    rgba(0, 0, 0, 0.02) 55%,
+    rgba(0, 0, 0, 0) 100%
+  );
+}

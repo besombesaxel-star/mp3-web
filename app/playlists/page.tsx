@@ -1,0 +1,845 @@
+"use client";
+
+import Image from "next/image";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { usePlayer, Track } from "../PlayerContext";
+
+type TrackWithCover = Track & { cover?: string };
+
+type ApiTrack = {
+  title: string;
+  artist: string;
+  src: string;
+  cover: string | null;
+};
+
+type Playlist = {
+  id: string;
+  name: string;
+  trackSrcs: string[];
+};
+
+type TracksResponse = {
+  tracks?: ApiTrack[];
+};
+
+type DynamicPlaylist = {
+  id: string;
+  name: string;
+  subtitle: string;
+  tracks: TrackWithCover[];
+};
+
+type PlaylistBadge = {
+  label: string;
+  tone: "sky" | "emerald" | "amber";
+};
+
+type CloudResponse = {
+  ok?: boolean;
+  error?: string;
+  savedAt?: number;
+  playlists?: Playlist[];
+  favorites?: Track[];
+};
+
+const LS_KEY = "mp3_playlists_v1";
+
+function uid() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function badgeToneClass(tone: PlaylistBadge["tone"]) {
+  if (tone === "sky") return "border-sky-300/35 bg-sky-400/20 text-sky-100";
+  if (tone === "emerald") return "border-emerald-300/35 bg-emerald-400/20 text-emerald-100";
+  return "border-amber-300/35 bg-amber-300/20 text-amber-100";
+}
+
+export default function PlaylistsPage() {
+  const { setQueueAndPlay, markPlaylistCreated, stats, favorites } = usePlayer();
+
+  const [library, setLibrary] = useState<TrackWithCover[]>([]);
+  const [libLoading, setLibLoading] = useState(true);
+  const [libError, setLibError] = useState("");
+
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [activeId, setActiveId] = useState("");
+
+  const [newName, setNewName] = useState("");
+  const [renameValue, setRenameValue] = useState("");
+  const [search, setSearch] = useState("");
+  const [activeTracksSearch, setActiveTracksSearch] = useState("");
+  const [deletedSnapshot, setDeletedSnapshot] = useState<{ playlist: Playlist; index: number } | null>(null);
+  const [cloudLoading, setCloudLoading] = useState<null | "save" | "restore">(null);
+  const [cloudMessage, setCloudMessage] = useState("");
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  async function loadLibrary() {
+    try {
+      setLibLoading(true);
+      setLibError("");
+
+      const res = await fetch("/api/tracks", { cache: "no-store" });
+      if (!res.ok) throw new Error("Impossible de charger /api/tracks");
+
+      const json: TracksResponse = await res.json();
+      const list = Array.isArray(json.tracks) ? json.tracks : [];
+
+      setLibrary(
+        list.map((track) => ({
+          title: track.title,
+          artist: track.artist,
+          src: track.src,
+          cover: track.cover ?? undefined,
+        }))
+      );
+    } catch (errorValue: unknown) {
+      setLibError(getErrorMessage(errorValue, "Erreur lors du chargement"));
+      setLibrary([]);
+    } finally {
+      setLibLoading(false);
+    }
+  }
+
+  function clearUndoTimer() {
+    if (undoTimerRef.current) {
+      clearTimeout(undoTimerRef.current);
+      undoTimerRef.current = null;
+    }
+  }
+
+  function queueDeletedSnapshot(snapshot: { playlist: Playlist; index: number }) {
+    clearUndoTimer();
+    setDeletedSnapshot(snapshot);
+    undoTimerRef.current = setTimeout(() => {
+      setDeletedSnapshot(null);
+      undoTimerRef.current = null;
+    }, 7000);
+  }
+
+  useEffect(() => {
+    loadLibrary();
+  }, []);
+
+  useEffect(() => {
+    return () => clearUndoTimer();
+  }, []);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed)) return;
+
+      const valid = parsed.filter((item): item is Playlist => {
+        if (!item || typeof item !== "object") return false;
+        const obj = item as Record<string, unknown>;
+        return (
+          typeof obj.id === "string" &&
+          typeof obj.name === "string" &&
+          Array.isArray(obj.trackSrcs) &&
+          obj.trackSrcs.every((src) => typeof src === "string")
+        );
+      });
+
+      setPlaylists(valid);
+      setActiveId(valid[0]?.id ?? "");
+    } catch {
+      setPlaylists([]);
+      setActiveId("");
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(playlists));
+    } catch {}
+  }, [playlists]);
+
+  useEffect(() => {
+    if (libLoading) return;
+    if (playlists.length > 0) return;
+
+    const def: Playlist = {
+      id: uid(),
+      name: "Tout",
+      trackSrcs: library.map((track) => track.src),
+    };
+    setPlaylists([def]);
+    setActiveId(def.id);
+    setRenameValue("");
+  }, [libLoading, library, playlists.length]);
+
+  const libraryBySrc = useMemo(() => {
+    const map = new Map<string, TrackWithCover>();
+    for (const track of library) map.set(track.src, track);
+    return map;
+  }, [library]);
+
+  const active = playlists.find((playlist) => playlist.id === activeId) ?? playlists[0] ?? null;
+
+  const activeTracks = useMemo(() => {
+    if (!active) return [];
+    return active.trackSrcs
+      .map((src) => libraryBySrc.get(src))
+      .filter((track): track is TrackWithCover => Boolean(track));
+  }, [active, libraryBySrc]);
+
+  const filteredActiveTracks = useMemo(() => {
+    const value = activeTracksSearch.trim().toLowerCase();
+    if (!value) return activeTracks;
+    return activeTracks.filter((track) =>
+      `${track.title} ${track.artist ?? ""}`.toLowerCase().includes(value)
+    );
+  }, [activeTracks, activeTracksSearch]);
+
+  const filteredLibrary = useMemo(() => {
+    const value = search.trim().toLowerCase();
+    if (!value) return library;
+    return library.filter((track) => `${track.title} ${track.artist ?? ""}`.toLowerCase().includes(value));
+  }, [library, search]);
+
+  const dynamicPlaylists = useMemo<DynamicPlaylist[]>(() => {
+    const now = Date.now();
+    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+
+    const latestPlayedAtBySrc = new Map<string, number>();
+    for (const event of stats.recentPlays) {
+      const previous = latestPlayedAtBySrc.get(event.src) ?? 0;
+      if (event.playedAt > previous) latestPlayedAtBySrc.set(event.src, event.playedAt);
+    }
+
+    const unplayed30 = library.filter((track) => {
+      const lastPlayedAt = latestPlayedAtBySrc.get(track.src) ?? 0;
+      return lastPlayedAt === 0 || lastPlayedAt < thirtyDaysAgo;
+    });
+
+    const discoveriesMonth = library
+      .filter((track) => (stats.firstPlayedAtByTrack[track.src] ?? 0) >= thirtyDaysAgo)
+      .sort((a, b) => (stats.firstPlayedAtByTrack[b.src] ?? 0) - (stats.firstPlayedAtByTrack[a.src] ?? 0));
+
+    const weekCountBySrc = new Map<string, number>();
+    for (const event of stats.recentPlays) {
+      if (event.playedAt < sevenDaysAgo) continue;
+      weekCountBySrc.set(event.src, (weekCountBySrc.get(event.src) ?? 0) + 1);
+    }
+
+    const topWeek = [...weekCountBySrc.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([src]) => libraryBySrc.get(src))
+      .filter((track): track is TrackWithCover => Boolean(track));
+
+    return [
+      {
+        id: "dyn-unplayed-30",
+        name: "Pas ecoutes depuis 30 jours",
+        subtitle: "Redecouvre les oublies",
+        tracks: unplayed30,
+      },
+      {
+        id: "dyn-discoveries-month",
+        name: "Decouvertes du mois",
+        subtitle: "Ce que tu as trouve recemment",
+        tracks: discoveriesMonth,
+      },
+      {
+        id: "dyn-top-week",
+        name: "Top de la semaine",
+        subtitle: "Selon tes lectures des 7 derniers jours",
+        tracks: topWeek,
+      },
+    ];
+  }, [library, libraryBySrc, stats.firstPlayedAtByTrack, stats.recentPlays]);
+
+  const dynamicPlaylistBadgesById = useMemo(() => {
+    const now = Date.now();
+    const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const freshAgo = now - 14 * 24 * 60 * 60 * 1000;
+    const favoriteSrcSet = new Set(favorites.map((item) => item.src));
+    const weekPlaysBySrc = new Map<string, number>();
+
+    for (const event of stats.recentPlays) {
+      if (event.playedAt < weekAgo) continue;
+      weekPlaysBySrc.set(event.src, (weekPlaysBySrc.get(event.src) ?? 0) + 1);
+    }
+
+    const byId: Record<string, PlaylistBadge[]> = {};
+
+    for (const playlist of dynamicPlaylists) {
+      const total = playlist.tracks.length;
+      if (total === 0) {
+        byId[playlist.id] = [];
+        continue;
+      }
+
+      let weekHits = 0;
+      let freshCount = 0;
+      let favoriteCount = 0;
+
+      for (const item of playlist.tracks) {
+        weekHits += weekPlaysBySrc.get(item.src) ?? 0;
+        if ((stats.firstPlayedAtByTrack[item.src] ?? 0) >= freshAgo) freshCount += 1;
+        if (favoriteSrcSet.has(item.src)) favoriteCount += 1;
+      }
+
+      const badges: PlaylistBadge[] = [];
+
+      if (playlist.id.includes("top-week") || weekHits >= Math.max(6, Math.ceil(total * 1.4))) {
+        badges.push({ label: "Top semaine", tone: "sky" });
+      }
+
+      if (playlist.id.includes("discoveries") || freshCount >= Math.max(2, Math.ceil(total * 0.22))) {
+        badges.push({ label: "Nouveau", tone: "emerald" });
+      }
+
+      if (favoriteCount >= Math.max(2, Math.ceil(total * 0.3))) {
+        badges.push({ label: "Favori", tone: "amber" });
+      }
+
+      byId[playlist.id] = badges.slice(0, 2);
+    }
+
+    return byId;
+  }, [dynamicPlaylists, favorites, stats.firstPlayedAtByTrack, stats.recentPlays]);
+
+  function selectPlaylist(id: string) {
+    setActiveId(id);
+    setRenameValue("");
+  }
+
+  function createPlaylist() {
+    const name = newName.trim();
+    if (!name) return;
+
+    const playlist: Playlist = { id: uid(), name, trackSrcs: [] };
+    setPlaylists((prev) => [playlist, ...prev]);
+    setActiveId(playlist.id);
+    setNewName("");
+    setRenameValue("");
+    markPlaylistCreated();
+  }
+
+  function deletePlaylist(id: string) {
+    const deleteIndex = playlists.findIndex((playlist) => playlist.id === id);
+    if (deleteIndex < 0) return;
+
+    const removed = playlists[deleteIndex];
+    const remaining = playlists.filter((playlist) => playlist.id !== id);
+    setPlaylists(remaining);
+
+    if (activeId === id) {
+      setActiveId(remaining[0]?.id ?? "");
+    }
+
+    queueDeletedSnapshot({ playlist: removed, index: deleteIndex });
+  }
+
+  function undoDeletePlaylist() {
+    if (!deletedSnapshot) return;
+
+    const { playlist, index } = deletedSnapshot;
+    setPlaylists((prev) => {
+      if (prev.some((item) => item.id === playlist.id)) return prev;
+      const next = [...prev];
+      const insertAt = Math.max(0, Math.min(index, next.length));
+      next.splice(insertAt, 0, playlist);
+      return next;
+    });
+    setActiveId(playlist.id);
+    clearUndoTimer();
+    setDeletedSnapshot(null);
+  }
+
+  function renamePlaylist(id: string) {
+    const name = renameValue.trim();
+    if (!name) return;
+    setPlaylists((prev) => prev.map((playlist) => (playlist.id === id ? { ...playlist, name } : playlist)));
+    setRenameValue("");
+  }
+
+  function toggleTrackInActive(src: string) {
+    if (!active) return;
+    setPlaylists((prev) =>
+      prev.map((playlist) => {
+        if (playlist.id !== active.id) return playlist;
+        const exists = playlist.trackSrcs.includes(src);
+        return {
+          ...playlist,
+          trackSrcs: exists
+            ? playlist.trackSrcs.filter((value) => value !== src)
+            : [...playlist.trackSrcs, src],
+        };
+      })
+    );
+  }
+
+  function playActive(startIndex: number) {
+    if (!activeTracks.length) return;
+    setQueueAndPlay(activeTracks, startIndex);
+  }
+
+  function playActiveTrack(src: string) {
+    const startIndex = activeTracks.findIndex((item) => item.src === src);
+    if (startIndex < 0) return;
+    setQueueAndPlay(activeTracks, startIndex);
+  }
+
+  function playDynamic(playlist: DynamicPlaylist, startIndex = 0) {
+    if (!playlist.tracks.length) return;
+    setQueueAndPlay(playlist.tracks, startIndex);
+  }
+
+  function saveDynamicAsPlaylist(playlist: DynamicPlaylist) {
+    if (!playlist.tracks.length) return;
+
+    const existing = playlists.find((item) => item.name.toLowerCase() === playlist.name.toLowerCase());
+    if (existing) {
+      setPlaylists((prev) =>
+        prev.map((item) =>
+          item.id === existing.id ? { ...item, trackSrcs: playlist.tracks.map((track) => track.src) } : item
+        )
+      );
+      setActiveId(existing.id);
+      return;
+    }
+
+    const created: Playlist = {
+      id: uid(),
+      name: playlist.name,
+      trackSrcs: playlist.tracks.map((track) => track.src),
+    };
+
+    setPlaylists((prev) => [created, ...prev]);
+    setActiveId(created.id);
+    markPlaylistCreated();
+  }
+
+  async function backupToCloud() {
+    try {
+      setCloudLoading("save");
+      setCloudMessage("");
+
+      const res = await fetch("/api/cloud", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "backup",
+          playlists,
+          favorites,
+        }),
+      });
+
+      const json = (await res.json().catch(() => ({}))) as CloudResponse;
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error ?? `Backup cloud impossible (HTTP ${res.status})`);
+      }
+
+      setCloudMessage("Cloud sauvegarde.");
+    } catch (errorValue: unknown) {
+      setCloudMessage(getErrorMessage(errorValue, "Echec de sauvegarde cloud"));
+    } finally {
+      setCloudLoading(null);
+    }
+  }
+
+  async function restoreFromCloud() {
+    try {
+      setCloudLoading("restore");
+      setCloudMessage("");
+
+      const res = await fetch("/api/cloud", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "restore" }),
+      });
+      const json = (await res.json().catch(() => ({}))) as CloudResponse;
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error ?? `Restauration cloud impossible (HTTP ${res.status})`);
+      }
+
+      const restoredPlaylists = Array.isArray(json.playlists) ? json.playlists : [];
+      const restoredFavorites = Array.isArray(json.favorites) ? json.favorites : [];
+      const favoritesMap = Object.fromEntries(restoredFavorites.map((track) => [track.src, track]));
+
+      localStorage.setItem(LS_KEY, JSON.stringify(restoredPlaylists));
+      localStorage.setItem("mp3:favorites:v1", JSON.stringify(favoritesMap));
+
+      setCloudMessage("Cloud restaure. Rechargement...");
+      window.location.reload();
+    } catch (errorValue: unknown) {
+      setCloudMessage(getErrorMessage(errorValue, "Echec de restauration cloud"));
+      setCloudLoading(null);
+    }
+  }
+
+  useEffect(() => {
+    setActiveTracksSearch("");
+  }, [activeId]);
+
+  return (
+    <div className="pb-28">
+      <div className="flex items-end justify-between mb-8">
+        <h2 className="text-3xl font-light">Playlists</h2>
+        <span className="text-sm text-white/35">Sauvegarde locale</span>
+      </div>
+
+      <section className="mb-6 rounded-3xl border border-white/10 bg-[#121218] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs text-white/45">Cloud</p>
+            <p className="text-sm text-white/85">Sauvegarde playlists, favoris et metadata.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={backupToCloud}
+              disabled={cloudLoading !== null}
+              className="h-9 px-3 rounded-xl bg-white text-black text-sm font-medium hover:opacity-90 transition disabled:opacity-60"
+            >
+              {cloudLoading === "save" ? "Sauvegarde..." : "Sauvegarder cloud"}
+            </button>
+            <button
+              type="button"
+              onClick={restoreFromCloud}
+              disabled={cloudLoading !== null}
+              className="h-9 px-3 rounded-xl bg-white/10 text-white text-sm hover:bg-white/15 transition disabled:opacity-60"
+            >
+              {cloudLoading === "restore" ? "Restauration..." : "Restaurer cloud"}
+            </button>
+          </div>
+        </div>
+        {cloudMessage ? <p className="mt-3 text-xs text-white/60">{cloudMessage}</p> : null}
+      </section>
+
+      <section className="mb-6 rounded-3xl border border-white/10 bg-[#121218] p-4">
+        <div className="flex items-end justify-between mb-3">
+          <div>
+            <p className="text-xs text-white/45">Playlists dynamiques</p>
+            <p className="text-sm text-white/85">Mises a jour a partir de ton historique.</p>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {dynamicPlaylists.map((playlist) => {
+            const badges = dynamicPlaylistBadgesById[playlist.id] ?? [];
+
+            return (
+            <div key={playlist.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm text-white/90">{playlist.name}</p>
+                {badges.length > 0 ? (
+                  <div className="flex flex-wrap items-center justify-end gap-1">
+                    {badges.map((badge) => (
+                      <span
+                        key={`${playlist.id}-${badge.label}`}
+                        className={`rounded-full border px-2 py-1 text-[10px] font-medium tracking-wide ${badgeToneClass(
+                          badge.tone
+                        )}`}
+                      >
+                        {badge.label}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <p className="mt-1 text-xs text-white/45">{playlist.subtitle}</p>
+              <p className="mt-2 text-xs text-white/35">{playlist.tracks.length} morceau(x)</p>
+
+              <div className="mt-3 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => playDynamic(playlist)}
+                  disabled={playlist.tracks.length === 0}
+                  className="h-8 px-3 rounded-lg bg-white text-black text-xs font-medium hover:opacity-90 transition disabled:opacity-60"
+                >
+                  Lire
+                </button>
+                <button
+                  type="button"
+                  onClick={() => saveDynamicAsPlaylist(playlist)}
+                  disabled={playlist.tracks.length === 0}
+                  className="h-8 px-3 rounded-lg bg-white/10 text-white text-xs hover:bg-white/15 transition disabled:opacity-60"
+                >
+                  Sauver
+                </button>
+              </div>
+            </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
+        <section className="rounded-3xl bg-[#15151C] border border-white/5 p-4">
+          <p className="text-xs text-white/45 px-2 mb-3">Mes playlists</p>
+
+          <div className="flex gap-2 mb-3">
+            <input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Nouvelle playlist..."
+              className="flex-1 rounded-2xl bg-[#111118] border border-white/5 px-3 py-2 text-sm text-white/90 outline-none placeholder:text-white/35"
+            />
+            <button
+              onClick={createPlaylist}
+              className="rounded-2xl bg-white text-black text-sm font-medium px-4 hover:opacity-90 transition"
+              type="button"
+            >
+              +
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            {playlists.map((playlist) => {
+              const isActive = playlist.id === (active?.id ?? "");
+
+              return (
+                <div
+                  key={playlist.id}
+                  className={[
+                    "rounded-2xl border transition",
+                    isActive ? "bg-white/8 border-white/10" : "bg-transparent border-white/5",
+                  ].join(" ")}
+                >
+                  <div className="flex items-stretch gap-1 p-1">
+                    <button
+                      type="button"
+                      onClick={() => selectPlaylist(playlist.id)}
+                      className={[
+                        "flex-1 text-left rounded-xl px-3 py-2",
+                        isActive ? "text-white" : "text-white/85 hover:bg-white/5",
+                      ].join(" ")}
+                      aria-current={isActive ? "true" : undefined}
+                    >
+                      <p className="text-sm truncate">{playlist.name}</p>
+                      <p className="text-xs text-white/40 truncate">{playlist.trackSrcs.length} morceau(x)</p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => deletePlaylist(playlist.id)}
+                      className="shrink-0 h-10 px-3 rounded-xl text-xs text-white/45 hover:text-white hover:bg-white/5"
+                      title="Supprimer"
+                      aria-label={`Supprimer ${playlist.name}`}
+                    >
+                      Suppr.
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="rounded-3xl bg-[#15151C] border border-white/5 p-4">
+          {!active ? (
+            <div className="px-3 py-10 text-sm text-white/45">Cree une playlist pour commencer.</div>
+          ) : (
+            <>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5 px-2">
+                <div className="min-w-0">
+                  <p className="text-xs text-white/45">Playlist</p>
+                  <p className="text-xl text-white/90 font-light truncate">{active.name}</p>
+                  <p className="text-sm text-white/45 mt-1">{activeTracks.length} morceau(x)</p>
+                </div>
+
+                <button
+                  onClick={() => playActive(0)}
+                  className="h-11 px-5 rounded-full bg-white text-black text-sm font-medium hover:opacity-90 transition disabled:opacity-60"
+                  disabled={activeTracks.length === 0}
+                  type="button"
+                >
+                  Lecture
+                </button>
+              </div>
+
+              <div className="flex gap-2 mb-6 px-2">
+                <input
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  placeholder="Renommer..."
+                  className="flex-1 rounded-2xl bg-[#111118] border border-white/5 px-3 py-2 text-sm text-white/90 outline-none placeholder:text-white/35"
+                />
+                <button
+                  onClick={() => renamePlaylist(active.id)}
+                  className="rounded-2xl bg-white/10 text-white/80 text-sm px-4 hover:bg-white/15 transition"
+                  type="button"
+                >
+                  OK
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-xs text-white/45 px-2 mb-2">Morceaux dans la playlist</p>
+
+                {activeTracks.length > 8 ? (
+                  <div className="mb-3 px-2">
+                    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                      <span className="text-white/35" aria-hidden="true">
+                        /
+                      </span>
+                      <input
+                        value={activeTracksSearch}
+                        onChange={(e) => setActiveTracksSearch(e.target.value)}
+                        placeholder="Rechercher dans cette playlist..."
+                        className="w-full bg-transparent outline-none text-sm text-white/90 placeholder:text-white/35"
+                        aria-label="Recherche dans la playlist active"
+                      />
+                      {activeTracksSearch ? (
+                        <button
+                          type="button"
+                          onClick={() => setActiveTracksSearch("")}
+                          className="text-xs text-white/45 hover:text-white/80 transition"
+                          title="Effacer"
+                        >
+                          X
+                        </button>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-xs text-white/40">
+                      {filteredActiveTracks.length}/{activeTracks.length} morceau
+                      {filteredActiveTracks.length > 1 ? "x" : ""}
+                    </p>
+                  </div>
+                ) : null}
+
+                {activeTracks.length === 0 ? (
+                  <div className="px-2 py-6 text-sm text-white/45">Ajoute des morceaux depuis la liste en dessous.</div>
+                ) : filteredActiveTracks.length === 0 ? (
+                  <div className="px-2 py-6 text-sm text-white/45">
+                    Aucun morceau trouve pour &quot;{activeTracksSearch}&quot;.
+                  </div>
+                ) : (
+                  <div className="flex flex-col">
+                    {filteredActiveTracks.map((track, index) => (
+                      <button
+                        key={`${track.src}-${index}`}
+                        type="button"
+                        onClick={() => playActiveTrack(track.src)}
+                        className="group flex items-center justify-between gap-4 rounded-2xl px-2 py-3 hover:bg-white/5 transition text-left"
+                        title="Lire"
+                      >
+                        <div className="min-w-0 flex items-center gap-4">
+                          <div className="relative h-12 w-12 overflow-hidden rounded-xl border border-white/5 bg-[#1A1A22]">
+                            {track.cover ? (
+                              <Image src={track.cover} alt={track.title} fill className="object-cover" sizes="48px" />
+                            ) : null}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm text-white/90 truncate">{track.title}</p>
+                            <p className="text-xs text-white/45 truncate">{track.artist ?? "-"}</p>
+                          </div>
+                        </div>
+
+                        <span className="text-xs text-white/35 group-hover:text-white/70 transition">Play</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <div className="flex items-end justify-between px-2 mb-2">
+                  <p className="text-xs text-white/45">Ajouter / retirer</p>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-white/35">
+                      Bibliotheque ({library.length}) {libLoading ? "- chargement..." : ""}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={loadLibrary}
+                      className="h-8 px-3 rounded-lg bg-white/10 text-white text-xs hover:bg-white/15 transition"
+                    >
+                      Recharger
+                    </button>
+                  </div>
+                </div>
+
+                {libError ? <div className="px-2 mb-3 text-sm text-red-400">{libError}</div> : null}
+
+                <div className="mb-3 px-2">
+                  <div className="flex items-center gap-3 rounded-2xl border border-white/5 bg-[#111118] px-4 py-3">
+                    <span className="text-white/35" aria-hidden="true">
+                      /
+                    </span>
+                    <input
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Rechercher un titre..."
+                      className="w-full bg-transparent outline-none text-sm text-white/90 placeholder:text-white/35"
+                    />
+                    {search ? (
+                      <button
+                        type="button"
+                        onClick={() => setSearch("")}
+                        className="text-xs text-white/45 hover:text-white/80 transition"
+                        title="Effacer"
+                      >
+                        X
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 px-2">
+                  {filteredLibrary.map((track) => {
+                    const inPlaylist = active.trackSrcs.includes(track.src);
+                    return (
+                      <button
+                        key={track.src}
+                        type="button"
+                        onClick={() => toggleTrackInActive(track.src)}
+                        className={[
+                          "flex items-center gap-3 rounded-2xl border px-3 py-2 text-left transition",
+                          inPlaylist ? "border-white/15 bg-white/8" : "border-white/5 hover:bg-white/5",
+                        ].join(" ")}
+                        title={inPlaylist ? "Retirer" : "Ajouter"}
+                        aria-pressed={inPlaylist}
+                      >
+                        <div className="relative h-10 w-10 overflow-hidden rounded-xl border border-white/5 bg-[#1A1A22] shrink-0">
+                          {track.cover ? (
+                            <Image src={track.cover} alt={track.title} fill className="object-cover" sizes="40px" />
+                          ) : null}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm text-white/90 truncate">{track.title}</p>
+                          <p className="text-xs text-white/45 truncate">{track.artist ?? "-"}</p>
+                        </div>
+
+                        <span className="text-xs text-white/35">{inPlaylist ? "-" : "+"}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+      </div>
+
+      {deletedSnapshot ? (
+        <div className="fixed bottom-[94px] left-1/2 -translate-x-1/2 z-[70] w-full max-w-lg px-4">
+          <div className="rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] px-4 py-3 flex items-center justify-between gap-3">
+            <p className="text-sm text-white/85 truncate">
+              Playlist supprimee: <span className="text-white/95">{deletedSnapshot.playlist.name}</span>
+            </p>
+            <button
+              type="button"
+              onClick={undoDeletePlaylist}
+              className="h-9 px-3 rounded-full bg-white text-black text-xs font-medium hover:opacity-90 transition shrink-0"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}

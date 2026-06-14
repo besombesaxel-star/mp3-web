@@ -470,6 +470,11 @@ try {
         Clear-State -StatePath $statePath
     }
 
+    $envPath = Join-Path $appRoot ".env.local"
+    if (-not (Test-Path $envPath)) {
+        throw "Le fichier de configuration est manquant.`n`nDemande le fichier '.env.local' a l'administrateur et place-le ici :`n$envPath`n`nRelance ensuite l'application."
+    }
+
     $nodePath = Get-NodePath
     $npmPath = Get-NpmPath
     $nextCli = Ensure-Dependencies -AppRoot $appRoot -NpmPath $npmPath

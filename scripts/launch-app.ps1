@@ -69,6 +69,37 @@ function Get-NpmPath {
     throw "npm est introuvable. Installe Node.js puis relance l'application."
 }
 
+function Ensure-Dependencies {
+    param(
+        [string]$AppRoot,
+        [string]$NpmPath
+    )
+
+    $nextCliPath = Join-Path $AppRoot "node_modules\next\dist\bin\next"
+    if (Test-Path $nextCliPath) {
+        return $nextCliPath
+    }
+
+    Write-Status "Dependances absentes. Installation en cours..."
+
+    Push-Location $AppRoot
+    try {
+        & $NpmPath "install"
+        if ($LASTEXITCODE -ne 0) {
+            throw "L'installation des dependances a echoue."
+        }
+    }
+    finally {
+        Pop-Location
+    }
+
+    if (-not (Test-Path $nextCliPath)) {
+        throw "Les dependances ont ete installees, mais Next.js reste introuvable."
+    }
+
+    return $nextCliPath
+}
+
 function Test-LocalPort {
     param([int]$Port)
 
@@ -278,7 +309,6 @@ try {
     $statePath = Join-Path $stateDirectory "server.json"
     $stdoutLog = Join-Path $stateDirectory "server.stdout.log"
     $stderrLog = Join-Path $stateDirectory "server.stderr.log"
-    $nextCli = Join-Path $appRoot "node_modules\next\dist\bin\next"
 
     New-Item -ItemType Directory -Path $stateDirectory -Force | Out-Null
 
@@ -295,12 +325,9 @@ try {
         Clear-State -StatePath $statePath
     }
 
-    if (-not (Test-Path $nextCli)) {
-        throw "Les dependances du projet sont absentes. Lance 'npm install' dans le dossier du projet."
-    }
-
     $nodePath = Get-NodePath
     $npmPath = Get-NpmPath
+    $nextCli = Ensure-Dependencies -AppRoot $appRoot -NpmPath $npmPath
 
     if (Test-BuildRequired -AppRoot $appRoot -Force $ForceBuild.IsPresent) {
         Invoke-ProductionBuild -AppRoot $appRoot -NpmPath $npmPath

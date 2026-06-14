@@ -10,11 +10,14 @@ import {
   Home,
   LibraryBig,
   ListMusic,
+  LogOut,
   Menu,
   Search as SearchIcon,
   Upload,
+  UserRound,
   X,
 } from "lucide-react";
+import { useAuth } from "./AuthProvider";
 import { usePlayer } from "./PlayerContext";
 import { useFocusTrap } from "./useFocusTrap";
 
@@ -25,6 +28,7 @@ const nav = [
   { href: "/search", label: "Recherche", Icon: SearchIcon },
   { href: "/favorites", label: "Favoris", Icon: Heart },
   { href: "/stats", label: "Stats", Icon: BarChart3 },
+  { href: "/account", label: "Compte", Icon: UserRound },
 ];
 
 function isActivePath(pathname: string | null, href: string) {
@@ -39,6 +43,7 @@ export default function Sidebar() {
     () => false
   );
   const { favorites, playing, focusMode } = usePlayer();
+  const { isAuthenticated, loading, primaryLabel, signOut, user } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const drawerRef = useRef<HTMLElement | null>(null);
   useFocusTrap(mobileOpen, drawerRef);
@@ -48,6 +53,14 @@ export default function Sidebar() {
 
   function closeMobileMenu() {
     setMobileOpen(false);
+  }
+
+  async function handleSignOut() {
+    try {
+      await signOut();
+    } catch {
+      // noop
+    }
   }
 
   useEffect(() => {
@@ -99,7 +112,7 @@ export default function Sidebar() {
         </div>
 
         <nav className="relative z-10 flex flex-col gap-2" aria-label="Navigation principale">
-          {nav.map(({ href, label, Icon }) => {
+          {nav.map(({ href, label, Icon }, i) => {
             const active = isActivePath(stablePathname, href);
 
             return (
@@ -108,7 +121,8 @@ export default function Sidebar() {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={[
-                  "flex items-center rounded-2xl px-4 py-3 text-sm transition",
+                  "flex items-center rounded-2xl px-4 py-3 text-sm transition mp3-slide-right",
+                  `mp3-d-${i}`,
                   compact ? "justify-center gap-0 px-0" : "gap-3",
                   active
                     ? "bg-white/10 text-white"
@@ -116,7 +130,7 @@ export default function Sidebar() {
                 ].join(" ")}
                 title={label}
               >
-                <span className="w-6 flex items-center justify-center" aria-hidden="true">
+                <span className="w-6 flex items-center justify-center transition-transform duration-150 group-hover:scale-110" aria-hidden="true">
                   <Icon size={18} className={active ? "text-white" : "opacity-80"} />
                 </span>
 
@@ -133,7 +147,7 @@ export default function Sidebar() {
         </nav>
 
         <div className="relative mt-auto pt-6">
-          <div className={["relative", compact ? "h-[90px]" : "h-[240px]"].join(" ")}>
+          <div className={["relative", compact ? "h-[166px]" : "h-[312px]"].join(" ")}>
             {!compact ? (
               <>
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 opacity-60 flex justify-center">
@@ -152,7 +166,42 @@ export default function Sidebar() {
               </>
             ) : null}
 
-            <div className={["absolute inset-x-0 z-20", compact ? "bottom-0" : "bottom-[92px]"].join(" ")}>
+            <div className={["absolute inset-x-0 z-20 space-y-3", compact ? "bottom-0" : "bottom-[92px]"].join(" ")}>
+              {compact ? (
+                <Link
+                  href="/account"
+                  className="flex items-center justify-center rounded-2xl border border-white/10 bg-white/8 p-3 text-white/85 transition hover:bg-white/12"
+                  title={isAuthenticated ? primaryLabel || user?.email || "Compte" : "Se connecter"}
+                >
+                  <UserRound size={18} />
+                </Link>
+              ) : (
+                <div className="rounded-2xl border border-white/10 bg-black/45 backdrop-blur px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <Link href="/account" className="min-w-0 flex-1">
+                      <p className="text-xs text-white/45">Compte</p>
+                      <p className="mt-1 truncate text-sm text-white/90">
+                        {loading ? "Chargement..." : isAuthenticated ? primaryLabel || user?.email || "Connecte" : "Se connecter"}
+                      </p>
+                      <p className="mt-1 truncate text-xs text-white/45">
+                        {isAuthenticated ? user?.email ?? "Session active" : "Email + mot de passe"}
+                      </p>
+                    </Link>
+
+                    {isAuthenticated ? (
+                      <button
+                        type="button"
+                        onClick={handleSignOut}
+                        className="h-9 w-9 rounded-full bg-white/8 text-white/75 transition hover:bg-white/12 hover:text-white"
+                        title="Se deconnecter"
+                      >
+                        <LogOut size={16} className="mx-auto" />
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+
               <Link
                 href="/upload"
                 className={[
@@ -271,6 +320,34 @@ export default function Sidebar() {
                   <span className="font-medium">Ajouter un son</span>
                 </span>
               </Link>
+            </div>
+
+            <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <Link href="/account" onClick={closeMobileMenu} className="min-w-0 flex-1">
+                  <p className="text-xs text-white/45">Compte</p>
+                  <p className="mt-1 truncate text-sm text-white/90">
+                    {loading ? "Chargement..." : isAuthenticated ? primaryLabel || user?.email || "Connecte" : "Se connecter"}
+                  </p>
+                  <p className="mt-1 truncate text-xs text-white/45">
+                    {isAuthenticated ? user?.email ?? "Session active" : "Compte requis pour upload et cloud"}
+                  </p>
+                </Link>
+
+                {isAuthenticated ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      closeMobileMenu();
+                      void handleSignOut();
+                    }}
+                    className="h-9 w-9 rounded-full bg-white/8 text-white/75 transition hover:bg-white/12 hover:text-white"
+                    title="Se deconnecter"
+                  >
+                    <LogOut size={16} className="mx-auto" />
+                  </button>
+                ) : null}
+              </div>
             </div>
           </aside>
         </div>

@@ -139,6 +139,151 @@ function Find-FreePort {
     throw "Aucun port libre trouve entre $StartPort et $($StartPort + $Attempts - 1)."
 }
 
+function Test-SamePath {
+    param(
+        [string]$Left,
+        [string]$Right
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Left) -or [string]::IsNullOrWhiteSpace($Right)) {
+        return $false
+    }
+
+    $trimChars = [char[]]@('\', '/')
+    $normalizedLeft = [System.IO.Path]::GetFullPath($Left).TrimEnd($trimChars)
+    $normalizedRight = [System.IO.Path]::GetFullPath($Right).TrimEnd($trimChars)
+
+    return [string]::Equals(
+        $normalizedLeft,
+        $normalizedRight,
+        [System.StringComparison]::OrdinalIgnoreCase)
+}
+
+function Get-ListenerProcessId {
+    param([int]$Port)
+
+    try {
+        $listener = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction Stop |
+            Select-Object -First 1
+        if ($listener) {
+            return [int]$listener.OwningProcess
+        }
+    }
+    catch {
+        return $null
+    }
+
+    return $null
+}
+
+function Get-AppRootFromNextCliPath {
+    param([string]$NextCliPath)
+
+    if ([string]::IsNullOrWhiteSpace($NextCliPath)) {
+        return $null
+    }
+
+    $candidate = $NextCliPath
+    for ($index = 0; $index -lt 5; $index++) {
+        $candidate = Split-Path -Parent $candidate
+        if ([string]::IsNullOrWhiteSpace($candidate)) {
+            return $null
+        }
+    }
+
+    if (-not (Test-Path (Join-Path $candidate "package.json"))) {
+        return $null
+    }
+
+    return (Resolve-Path $candidate).Path
+}
+
+function Get-AppRootFromProcessId {
+    param([int]$ProcessId)
+
+    try {
+        $processInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $ProcessId" -ErrorAction Stop
+        $commandLine = [string]$processInfo.CommandLine
+        if ([string]::IsNullOrWhiteSpace($commandLine)) {
+            return $null
+        }
+
+        $match = [regex]::Match(
+            $commandLine,
+            '[A-Za-z]:\\[^"]+?\\node_modules\\next\\dist\\bin\\next',
+            [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+
+        if (-not $match.Success) {
+            return $null
+        }
+
+        return Get-AppRootFromNextCliPath -NextCliPath $match.Value
+    }
+    catch {
+        return $null
+    }
+}
+
+function Test-IsMp3WebRoot {
+    param([string]$AppRoot)
+
+    if ([string]::IsNullOrWhiteSpace($AppRoot)) {
+        return $false
+    }
+
+    $packageJsonPath = Join-Path $AppRoot "package.json"
+    if (-not (Test-Path $packageJsonPath)) {
+        return $false
+    }
+
+    try {
+        $packageJson = Get-Content $packageJsonPath -Raw | ConvertFrom-Json
+        return $packageJson.name -eq "mp3-web"
+    }
+    catch {
+        return $false
+    }
+}
+
+function Stop-ForeignMp3WebOnPort {
+    param(
+        [string]$AppRoot,
+        [int]$Port
+    )
+
+    if (-not (Test-LocalPort -Port $Port)) {
+        return $false
+    }
+
+    $listenerProcessId = Get-ListenerProcessId -Port $Port
+    if (-not $listenerProcessId) {
+        return $false
+    }
+
+    $listenerAppRoot = Get-AppRootFromProcessId -ProcessId $listenerProcessId
+    if (-not (Test-IsMp3WebRoot -AppRoot $listenerAppRoot)) {
+        return $false
+    }
+
+    if (Test-SamePath -Left $listenerAppRoot -Right $AppRoot) {
+        return $false
+    }
+
+    Write-Status "Une ancienne copie de MP3 Web occupe le port $Port. Arret automatique..."
+    Stop-Process -Id $listenerProcessId -Force -ErrorAction Stop
+
+    $deadline = (Get-Date).AddSeconds(10)
+    while ((Get-Date) -lt $deadline) {
+        if (-not (Test-LocalPort -Port $Port)) {
+            return $true
+        }
+
+        Start-Sleep -Milliseconds 250
+    }
+
+    throw "Impossible de liberer le port $Port depuis l'ancienne copie de MP3 Web."
+}
+
 function Get-LatestInputTimestamp {
     param([string]$AppRoot)
 
@@ -333,6 +478,7 @@ try {
         Invoke-ProductionBuild -AppRoot $appRoot -NpmPath $npmPath
     }
 
+    [void](Stop-ForeignMp3WebOnPort -AppRoot $appRoot -Port $PreferredPort)
     $port = Find-FreePort -StartPort $PreferredPort
     $url = "http://127.0.0.1:$port"
 

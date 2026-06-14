@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MP3 Web
 
-## Getting Started
+Application Next.js pour lire, uploader et organiser une bibliotheque MP3.
 
-First, run the development server:
+## Lancer l'app
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ensuite ouvre `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Stockage
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+L'app sait fonctionner de 3 facons:
 
-## Learn More
+- mode local: les nouveaux fichiers vont dans `public/audio` et `public/cover`
+- mode Supabase: les nouveaux fichiers vont dans un bucket Storage partage
+- mode Firebase: backend alternatif deja prepare dans le code
 
-To learn more about Next.js, take a look at the following resources:
+Priorite actuelle:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Supabase si configure
+2. sinon Firebase si configure
+3. sinon local
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Si aucun backend cloud n'est configure, l'app continue de fonctionner en local.
 
-## Deploy on Vercel
+## Configuration Supabase
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+C'est le mode cloud le plus simple de cette app car il ne demande pas de table SQL.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Cree un projet Supabase.
+2. Recupere `Project URL`.
+3. Recupere la cle `service_role` dans `Settings > API`.
+4. Copie `.env.example` vers `.env.local`.
+5. Renseigne:
+
+```env
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+SUPABASE_STORAGE_BUCKET=media
+```
+
+Le bucket public sera prepare automatiquement au premier upload.
+
+L'app y stocke:
+
+- les MP3 dans `audio/`
+- les covers dans `cover/`
+- le catalogue partage dans `catalog/tracks.json`
+
+Une fois ces variables presentes, les nouveaux uploads passent automatiquement sur Supabase.
+
+## Migrer la bibliotheque locale vers Supabase
+
+Si tu as deja des morceaux dans `public/audio` et `public/cover`, tu peux les envoyer vers Supabase:
+
+```bash
+npm run supabase:migrate
+```
+
+Pour re-uploader des fichiers deja presents:
+
+```bash
+npm run supabase:migrate -- --force
+```
+
+## Configuration Firebase
+
+Le backend Firebase reste disponible dans le projet si tu veux l'utiliser plus tard.
+
+Variables attendues:
+
+```env
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project-id.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+FIREBASE_STORAGE_BUCKET=your-project-id.firebasestorage.app
+```
+
+Migration locale vers Firebase:
+
+```bash
+npm run firebase:migrate
+```
+
+## Notes utiles
+
+- Les uploads restent limites a `80 MB` par piste dans l'API actuelle.
+- Les playlists et favoris restent locaux au navigateur pour l'instant.
+- Les morceaux et covers deviennent partages entre utilisateurs des que l'app pointe vers le meme projet cloud.

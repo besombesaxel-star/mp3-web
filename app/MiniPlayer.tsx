@@ -70,13 +70,16 @@ export default function MiniPlayer() {
     setMuted,
     setVolume,
     seekTo,
+    expanded,
     setExpanded,
     focusMode,
     toggleFocusMode,
     shuffle,
     repeat,
+    smoothTransitions,
     smartAutoplay,
     toggleSmartAutoplay,
+    toggleSmoothTransitions,
     preloadedTrack,
     toggleShuffle,
     cycleRepeat,
@@ -502,7 +505,15 @@ export default function MiniPlayer() {
                 >
                   {track?.cover ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img key={track.src} src={track.cover} alt={track.title} className="h-full w-full object-cover mp3-cover-pop" />
+                    <img
+                      key={track.src}
+                      src={track.cover}
+                      alt={track.title}
+                      className={[
+                        "h-full w-full object-cover mp3-now-cover",
+                        playing ? "mp3-now-cover--playing" : "mp3-now-cover--idle",
+                      ].join(" ")}
+                    />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-white/5">
                       <Play size={16} className="text-white/30" />
@@ -524,12 +535,12 @@ export default function MiniPlayer() {
                     </span>
                   </div>
 
-                  <p className="mt-1 truncate text-sm font-semibold text-white/94">
+                  <p key={track?.src} className="mt-1 truncate text-sm font-semibold text-white/94 mp3-fade-up">
                     {track?.title ?? "Aucune lecture"}
                   </p>
 
                   <div className="mt-1 flex items-center gap-2 min-w-0">
-                    <p className="min-w-0 flex-1 truncate text-[12px] text-white/50">
+                    <p key={`artist-${track?.src}`} className="min-w-0 flex-1 truncate text-[12px] text-white/50 mp3-fade-up" style={{ animationDelay: "30ms" }}>
                       {track?.artist ?? "Choisis un morceau pour commencer"}
                     </p>
 
@@ -643,15 +654,25 @@ export default function MiniPlayer() {
                     {playing ? <Pause size={18} /> : <Play size={18} />}
                   </button>
 
-                  <button
-                    className="h-9 w-9 rounded-full transition active:scale-95 disabled:opacity-40"
-                    onClick={next}
-                    disabled={!track}
-                    title="Suivant"
-                    type="button"
-                  >
-                    <SkipForward size={17} className="mx-auto opacity-90" />
-                  </button>
+                  <div className="relative group">
+                    <button
+                      className="h-9 w-9 rounded-full transition active:scale-95 disabled:opacity-40"
+                      onClick={next}
+                      disabled={!track}
+                      title="Suivant"
+                      type="button"
+                    >
+                      <SkipForward size={17} className="mx-auto opacity-90" />
+                    </button>
+                    {preloadedTrack && preloadedTrack.src !== track?.src && (
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 scale-95 group-hover:scale-100 transition-all duration-200 ease-out whitespace-nowrap z-20">
+                        <div className="bg-black/80 backdrop-blur-md rounded-lg px-3 py-1.5 text-left ring-1 ring-white/10">
+                          <p className="text-xs text-white/90 font-medium max-w-[160px] truncate">{preloadedTrack.title}</p>
+                          <p className="text-[11px] text-white/50 max-w-[160px] truncate">{preloadedTrack.artist}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-end rounded-full border border-white/10 bg-white/[0.06] p-1">
@@ -690,80 +711,100 @@ export default function MiniPlayer() {
                   >
                     <ListMusic size={15} className="mx-auto opacity-90" />
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={toggleSmoothTransitions}
+                    className={[
+                      "h-8 w-8 rounded-full transition active:scale-95 text-[10px] font-semibold",
+                      smoothTransitions ? "bg-white/12 ring-1 ring-white/20 text-white" : "text-white/75",
+                    ].join(" ")}
+                    title={smoothTransitions ? "Transitions douces actives" : "Transitions douces inactives"}
+                    aria-pressed={smoothTransitions}
+                  >
+                    FX
+                  </button>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="hidden h-[72px] px-6 sm:grid grid-cols-[minmax(0,1fr)_auto_auto_auto_minmax(0,1fr)] items-center gap-4">
-          <button
-            type="button"
-            className="min-w-0 flex items-center gap-4 cursor-pointer text-left disabled:cursor-default disabled:opacity-85"
-            onClick={() => track && setExpanded(true)}
-            title={track ? "Ouvrir le player" : "Choisis un morceau"}
-            aria-label={track ? "Ouvrir le lecteur plein ecran" : "Aucun morceau en lecture"}
-            disabled={!track}
-          >
-            <div className="group relative h-12 w-12">
-              <div
-                className="pointer-events-none absolute -inset-2 rounded-2xl opacity-0 blur-md transition-opacity duration-200 group-hover:opacity-100"
-                style={{
-                  background:
-                    "radial-gradient(circle at center, rgba(255,255,255,0.35), rgba(255,255,255,0) 70%)",
-                }}
-              />
-              <div className="relative h-12 w-12 rounded-2xl overflow-hidden border border-white/10 bg-[#0A0A0A]">
-                {track?.cover ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img key={track.src} src={track.cover} alt={track.title} className="h-full w-full object-cover mp3-cover-pop" />
-                ) : null}
-              </div>
-            </div>
-
-            <div key={track?.src ?? "none"} className="min-w-0 mp3-fade-up">
-              <div className="flex items-center gap-3 min-w-0">
-                <p className="text-sm text-white/90 truncate min-w-0">{track?.title ?? "Aucune lecture"}</p>
-
-                <div className="hidden sm:block shrink-0">
-                  <AudioEqualizer
-                    bars={12}
-                    height={18}
-                    accent={track?.accent}
-                    thinWidth={3}
-                    gap={3}
-                    minBar={3}
-                    smoothing={0.25}
-                    punch={1.9}
-                    className="opacity-90"
-                    idle
-                  />
+        <div className="hidden h-[72px] px-6 sm:grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+          <div className="min-w-0 flex items-center gap-4">
+            <button
+              type="button"
+              className="min-w-0 flex items-center gap-4 cursor-pointer text-left disabled:cursor-default disabled:opacity-85 shrink-0"
+              onClick={() => track && setExpanded(true)}
+              title={track ? "Ouvrir le player" : "Choisis un morceau"}
+              aria-label={track ? "Ouvrir le lecteur plein ecran" : "Aucun morceau en lecture"}
+              disabled={!track}
+            >
+              <div className="group relative h-12 w-12">
+                <div
+                  className="pointer-events-none absolute -inset-2 rounded-2xl opacity-0 blur-md transition-opacity duration-200 group-hover:opacity-100"
+                  style={{
+                    background:
+                      "radial-gradient(circle at center, rgba(255,255,255,0.35), rgba(255,255,255,0) 70%)",
+                  }}
+                />
+                <div className="relative h-12 w-12 rounded-2xl overflow-hidden border border-white/10 bg-[#0A0A0A]">
+                  {track?.cover ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={track.src}
+                      src={track.cover}
+                      alt={track.title}
+                      className={[
+                        "h-full w-full object-cover mp3-now-cover",
+                        playing ? "mp3-now-cover--playing" : "mp3-now-cover--idle",
+                      ].join(" ")}
+                    />
+                  ) : null}
                 </div>
               </div>
 
-              <p className="text-xs text-white/45 truncate">{track?.artist ?? "-"}</p>
-              {preloadedTrack && preloadedTrack.src !== track?.src ? (
-                <p className="text-[11px] text-white/30 truncate"></p>
-              ) : null}
+              <div key={track?.src ?? "none"} className="min-w-0 mp3-fade-up">
+                <div className="flex items-center gap-3 min-w-0">
+                  <p className="text-sm text-white/90 truncate min-w-0">{track?.title ?? "Aucune lecture"}</p>
+
+                  <div className="hidden sm:block shrink-0">
+                    <AudioEqualizer
+                      bars={12}
+                      height={18}
+                      accent={track?.accent}
+                      thinWidth={3}
+                      gap={3}
+                      minBar={3}
+                      smoothing={0.25}
+                      punch={1.9}
+                      className="opacity-90"
+                      idle
+                    />
+                  </div>
+                </div>
+
+                <p className="text-xs text-white/45 truncate">{track?.artist ?? "-"}</p>
+              </div>
+            </button>
+
+            <div className="hidden md:flex items-center gap-3 w-[240px]">
+              <span className="text-[11px] text-white/40 tabular-nums w-[42px] text-right">{formatTime(currentTime)}</span>
+
+              <input
+                type="range"
+                min={0}
+                max={1000}
+                value={Math.round((progress || 0) * 1000)}
+                onChange={(e) => seekTo(Number(e.target.value) / 1000)}
+                className="flex-1 accent-white"
+                aria-label="Progression"
+                disabled={!track}
+                title="Progression"
+              />
+
+              <span className="text-[11px] text-white/40 tabular-nums w-[42px]">{formatTime(duration)}</span>
             </div>
-          </button>
-
-          <div className="hidden sm:flex items-center gap-3 w-[240px]">
-            <span className="text-[11px] text-white/40 tabular-nums w-[42px] text-right">{formatTime(currentTime)}</span>
-
-            <input
-              type="range"
-              min={0}
-              max={1000}
-              value={Math.round((progress || 0) * 1000)}
-              onChange={(e) => seekTo(Number(e.target.value) / 1000)}
-              className="flex-1 accent-white"
-              aria-label="Progression"
-              disabled={!track}
-              title="Progression"
-            />
-
-            <span className="text-[11px] text-white/40 tabular-nums w-[42px]">{formatTime(duration)}</span>
           </div>
 
           <div className="flex items-center justify-center gap-2">
@@ -853,15 +894,25 @@ export default function MiniPlayer() {
               </button>
             </div>
 
-            <button
-              className="h-10 w-10 rounded-full hover:bg-white/5 transition disabled:opacity-40"
-              onClick={next}
-              disabled={!track}
-              title="Suivant"
-              type="button"
-            >
-              <SkipForward size={18} className="mx-auto opacity-90" />
-            </button>
+            <div className="relative group">
+              <button
+                className="h-10 w-10 rounded-full hover:bg-white/5 transition disabled:opacity-40"
+                onClick={next}
+                disabled={!track}
+                title="Suivant"
+                type="button"
+              >
+                <SkipForward size={18} className="mx-auto opacity-90" />
+              </button>
+              {preloadedTrack && preloadedTrack.src !== track?.src && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 scale-95 group-hover:scale-100 transition-all duration-200 ease-out whitespace-nowrap z-20">
+                  <div className="bg-black/80 backdrop-blur-md rounded-lg px-3 py-1.5 text-left ring-1 ring-white/10">
+                    <p className="text-xs text-white/90 font-medium max-w-[160px] truncate">{preloadedTrack.title}</p>
+                    <p className="text-[11px] text-white/50 max-w-[160px] truncate">{preloadedTrack.artist}</p>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <button
               onClick={cycleRepeat}
@@ -912,6 +963,22 @@ export default function MiniPlayer() {
                 aria-label="Volume"
               />
             </div>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleSmoothTransitions();
+              }}
+              className={[
+                "h-10 w-10 rounded-full transition text-[10px] font-semibold",
+                smoothTransitions ? "bg-white/10 ring-1 ring-white/20 text-white" : "hover:bg-white/5 text-white/75",
+              ].join(" ")}
+              title={smoothTransitions ? "Transitions douces actives" : "Transitions douces inactives"}
+              aria-pressed={smoothTransitions}
+            >
+              FX
+            </button>
 
             <button
               type="button"
@@ -989,6 +1056,12 @@ export default function MiniPlayer() {
             >
               <Maximize2 size={18} className="mx-auto opacity-90" />
             </button>
+
+            {!expanded && preloadedTrack && preloadedTrack.src !== track?.src && (
+              <p className="hidden xl:block text-[11px] text-white/30 truncate max-w-[180px] mp3-fade-up border-l border-white/10 pl-3">
+                Suivant : {preloadedTrack.title}
+              </p>
+            )}
           </div>
         </div>
       </div>

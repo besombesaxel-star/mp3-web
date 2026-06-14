@@ -10,6 +10,7 @@ type AlbumCardProps = {
   onEdit?: () => void;
   hoverEffect?: "grow" | "shrink";
   coverTransform?: string;
+  animationDelay?: string;
 };
 
 export default function AlbumCard({
@@ -19,6 +20,7 @@ export default function AlbumCard({
   onEdit,
   hoverEffect = "grow",
   coverTransform,
+  animationDelay,
 }: AlbumCardProps) {
   const { playTrack } = usePlayer();
 
@@ -28,7 +30,10 @@ export default function AlbumCard({
       : "group-hover:scale-[1.02]";
 
   return (
-    <div className="group text-left relative">
+    <div
+      className="group text-left relative mp3-fade-up"
+      style={animationDelay ? { animationDelay } : undefined}
+    >
       <button
         type="button"
         onClick={() => playTrack(track)}
@@ -40,6 +45,7 @@ export default function AlbumCard({
           data-scroll-cover="1"
           className={[
             "scroll-edge-blur relative aspect-square w-full overflow-hidden rounded-3xl border border-white/5 bg-[#1A1A22] shadow-sm will-change-transform",
+            "transition-shadow duration-300 group-hover:shadow-[0_0_32px_rgba(255,255,255,0.07)]",
           ].join(" ")}
           style={coverTransform ? { transform: coverTransform } : undefined}
         >
@@ -84,9 +90,9 @@ export default function AlbumCard({
         </button>
       ) : null}
 
-      <div className="mt-3 pointer-events-none">
-        <p className="text-sm text-white/90 truncate">{title}</p>
-        <p className="text-xs text-white/45 truncate">{subtitle}</p>
+      <div className="mt-3 pointer-events-none transition-transform duration-200 group-hover:-translate-y-0.5">
+        <p className="text-sm text-white/90 truncate transition-colors duration-200 group-hover:text-white">{title}</p>
+        <p className="text-xs text-white/45 truncate transition-colors duration-200 group-hover:text-white/60">{subtitle}</p>
       </div>
     </div>
   );

@@ -8,14 +8,18 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useAuth } from "./AuthProvider";
 import { getOrCreateSharedGraph, type SharedGraph } from "./audioGraph";
+import { createAuthorizedHeaders } from "@/lib/clientAuth";
 
 export type Track = {
   title: string;
   artist?: string;
-  src: string; // ex: "/Audio/Guala.mp3"
-  cover?: string; // ex: "/Covers/Guala.jpg"
+  src: string; // ex: "/audio/Guala.mp3"
+  cover?: string; // ex: "/cover/Guala.jpg"
   accent?: string; // ex: "#8B5CF6"
+  ownerDisplayName?: string;
+  ownerId?: string;
 };
 
 type RepeatMode = "off" | "all" | "one";
@@ -126,7 +130,9 @@ type PlayerCtx = {
 
   shuffle: boolean;
   repeat: RepeatMode;
+  smoothTransitions: boolean;
   smartAutoplay: boolean;
+  toggleSmoothTransitions: () => void;
   toggleSmartAutoplay: () => void;
   preloadedTrack: Track | null;
   toggleShuffle: () => void;
@@ -163,8 +169,8 @@ const LS_STATS = "mp3:stats:v1";
 const LS_SESSION = "mp3:session:v1";
 const LS_PREFS = "mp3:prefs:v1";
 const MAX_RECENT_PLAYS = 600;
-const SOFT_CROSSFADE_MS = 380;
-const SOFT_CROSSFADE_LEAD = 0.34;
+const SOFT_CROSSFADE_MS = 620;
+const SOFT_CROSSFADE_LEAD = 0.48;
 const THEME_ORDER: ThemeMode[] = ["midnight", "sunset", "ocean"];
 const EQ_ORDER: EqPreset[] = ["off", "bass", "vocal", "night"];
 const EQ_BANDS = [90, 250, 1000, 3500, 9000];
@@ -187,6 +193,7 @@ type PlayerSession = {
 
 type PlayerPrefs = {
   focusMode: boolean;
+  smoothTransitions: boolean;
   smartAutoplay: boolean;
   theme: ThemeMode;
   eqPreset: EqPreset;
@@ -197,10 +204,16 @@ type ApiTrack = {
   artist: string;
   src: string;
   cover: string | null;
+  ownerDisplayName?: string | null;
+  ownerId?: string | null;
 };
 
 type TracksResponse = {
   tracks?: ApiTrack[];
+};
+
+type AccountResponse = {
+  favoriteTracks?: ApiTrack[];
 };
 
 function clamp(n: number, a: number, b: number) {
@@ -223,6 +236,8 @@ function safeTrack(value: unknown): Track | null {
   const artist = typeof value.artist === "string" ? value.artist : undefined;
   const cover = typeof value.cover === "string" ? value.cover : undefined;
   const accent = typeof value.accent === "string" ? value.accent : undefined;
+  const ownerDisplayName = typeof value.ownerDisplayName === "string" ? value.ownerDisplayName : undefined;
+  const ownerId = typeof value.ownerId === "string" ? value.ownerId : undefined;
 
   return {
     title: value.title,
@@ -230,7 +245,73 @@ function safeTrack(value: unknown): Track | null {
     src: value.src,
     cover,
     accent,
+    ownerDisplayName,
+    ownerId,
   };
+}
+
+function tracksToFavoritesMap(value: Array<ApiTrack | Track>) {
+  const entries = value
+    .filter((item): item is ApiTrack | Track => Boolean(item?.src && item?.title))
+    .map((item) => [
+      item.src,
+      {
+        title: item.title,
+        artist: item.artist,
+        src: item.src,
+        cover: "cover" in item ? item.cover ?? undefined : undefined,
+        accent: "accent" in item ? item.accent : undefined,
+        ownerDisplayName: "ownerDisplayName" in item ? item.ownerDisplayName ?? undefined : undefined,
+        ownerId: "ownerId" in item ? item.ownerId ?? undefined : undefined,
+      } satisfies Track,
+    ] as const);
+
+  return Object.fromEntries(entries);
+}
+
+function sanitizeFavoritesMap(value: unknown): Record<string, Track> {
+  const entries: Array<readonly [string, Track]> = [];
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const track = safeTrack(item);
+      if (!track) continue;
+      entries.push([track.src, track] as const);
+    }
+
+    return Object.fromEntries(entries) as Record<string, Track>;
+  }
+
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  for (const [src, trackValue] of Object.entries(value)) {
+    const track = safeTrack(trackValue);
+    if (track) {
+      entries.push([track.src, track] as const);
+      continue;
+    }
+
+    if (!src) continue;
+    if (!isRecord(trackValue) || typeof trackValue.title !== "string") continue;
+
+    entries.push([
+      src,
+      {
+        title: trackValue.title,
+        artist: typeof trackValue.artist === "string" ? trackValue.artist : undefined,
+        src,
+        cover: typeof trackValue.cover === "string" ? trackValue.cover : undefined,
+        accent: typeof trackValue.accent === "string" ? trackValue.accent : undefined,
+        ownerDisplayName:
+          typeof trackValue.ownerDisplayName === "string" ? trackValue.ownerDisplayName : undefined,
+        ownerId: typeof trackValue.ownerId === "string" ? trackValue.ownerId : undefined,
+      } satisfies Track,
+    ] as const);
+  }
+
+  return Object.fromEntries(entries) as Record<string, Track>;
 }
 
 function safeSession(parsed: unknown): PlayerSession | null {
@@ -269,11 +350,13 @@ function safeSession(parsed: unknown): PlayerSession | null {
 
 function safePrefs(parsed: unknown): PlayerPrefs {
   if (!isRecord(parsed)) {
-    return { focusMode: false, smartAutoplay: true, theme: "midnight", eqPreset: "off" };
+    return { focusMode: false, smoothTransitions: true, smartAutoplay: true, theme: "midnight", eqPreset: "off" };
   }
 
   return {
     focusMode: Boolean(parsed.focusMode),
+    smoothTransitions:
+      typeof parsed.smoothTransitions === "boolean" ? parsed.smoothTransitions : true,
     smartAutoplay:
       typeof parsed.smartAutoplay === "boolean" ? parsed.smartAutoplay : true,
     theme:
@@ -470,6 +553,7 @@ function buildSmartQueue(
 }
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
+  const { accessToken, isAuthenticated, loading: authLoading } = useAuth();
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [tracks, _setTracks] = useState<Track[]>([]);
@@ -495,6 +579,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState<RepeatMode>("off");
+  const [smoothTransitions, setSmoothTransitions] = useState(true);
   const [smartAutoplay, setSmartAutoplay] = useState(true);
   const [preloadedTrack, setPreloadedTrack] = useState<Track | null>(null);
 
@@ -503,6 +588,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const plannedShuffleNextRef = useRef<number | null>(null);
   const autoAdvanceArmedRef = useRef(false);
   const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeFrameRef = useRef<number | null>(null);
   const fadeInAfterTransitionRef = useRef(false);
   const smartAutoplayBusyRef = useRef(false);
@@ -511,7 +597,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   // âœ… Favoris
   const [favoritesMap, setFavoritesMap] = useState<Record<string, Track>>({});
-  const favorites = useMemo(() => Object.values(favoritesMap), [favoritesMap]);
+  const [favoritesHydrated, setFavoritesHydrated] = useState(false);
+  const favorites = useMemo(
+    () =>
+      Object.values(favoritesMap)
+        .map((item) => safeTrack(item))
+        .filter((item): item is Track => item !== null),
+    [favoritesMap]
+  );
 
   // âœ… Stats
   const [statsState, setStatsState] = useState<PlayerStats>(() => emptyStats());
@@ -529,6 +622,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const undoActionRef = useRef<(() => void) | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shownAchievementIdsRef = useRef<Set<AchievementId>>(new Set());
+  const favoritesRemoteHydratedRef = useRef(false);
+  const lastSyncedFavoritesSignatureRef = useRef("");
 
   function dismissAchievementToast() {
     setAchievementToast(null);
@@ -545,6 +640,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (autoAdvanceTimerRef.current) {
       clearTimeout(autoAdvanceTimerRef.current);
       autoAdvanceTimerRef.current = null;
+    }
+  }
+
+  function clearTransitionTimer() {
+    if (transitionTimerRef.current) {
+      clearTimeout(transitionTimerRef.current);
+      transitionTimerRef.current = null;
     }
   }
 
@@ -704,6 +806,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         artist: item.artist,
         src: item.src,
         cover: item.cover ?? undefined,
+        ownerDisplayName: item.ownerDisplayName ?? undefined,
+        ownerId: item.ownerId ?? undefined,
       }));
 
       const queue = buildSmartQueue(library, statsState, favoritesMap, currentSrc);
@@ -722,6 +826,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     return () => {
       clearUndoTimer();
       clearAutoAdvanceTimer();
+      clearTransitionTimer();
       clearFadeFrame();
       audioRef.current?.pause();
       preloadAudioRef.current?.pause();
@@ -752,6 +857,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (!preloadAudioRef.current) preloadAudioRef.current = new Audio();
     const audio = audioRef.current;
     const preloadAudio = preloadAudioRef.current;
+    audio.crossOrigin = "anonymous";
+    preloadAudio.crossOrigin = "anonymous";
     audio.preload = "metadata";
     preloadAudio.preload = "auto";
     ensureEqGraph(audio);
@@ -832,7 +939,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         return computed;
       });
 
-      if (!playing || !track || repeat === "one") return;
+      if (!smoothTransitions || !playing || !track || repeat === "one") return;
       if (autoAdvanceArmedRef.current) return;
       if (!Number.isFinite(d) || d <= 0) return;
 
@@ -844,6 +951,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
       autoAdvanceArmedRef.current = true;
       clearAutoAdvanceTimer();
+      clearTransitionTimer();
       clearFadeFrame();
 
       const transitionMs = Math.max(140, Math.min(SOFT_CROSSFADE_MS, remaining * 1000));
@@ -970,6 +1078,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       playCountedForSrcRef.current = "";
       autoAdvanceArmedRef.current = false;
       clearAutoAdvanceTimer();
+      clearTransitionTimer();
       clearFadeFrame();
 
       if (repeat === "one") {
@@ -991,10 +1100,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("play", onPlay);
       clearAutoAdvanceTimer();
+      clearTransitionTimer();
       clearFadeFrame();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [repeat, playing, track, volume, muted, index, shuffle, tracks.length]);
+  }, [repeat, playing, smoothTransitions, track, volume, muted, index, shuffle, tracks.length]);
 
   // volume / mute apply
   useEffect(() => {
@@ -1046,20 +1156,113 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   // load favorites
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LS_FAV);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") setFavoritesMap(parsed);
-    } catch {}
-  }, []);
+    let cancelled = false;
+
+    function hydrateLocalFavorites() {
+      try {
+        const raw = localStorage.getItem(LS_FAV);
+        if (!raw) {
+          setFavoritesMap({});
+          setFavoritesHydrated(true);
+          return;
+        }
+
+        const parsed = JSON.parse(raw);
+        setFavoritesMap(sanitizeFavoritesMap(parsed));
+        setFavoritesHydrated(true);
+        return;
+      } catch {}
+
+      setFavoritesMap({});
+      setFavoritesHydrated(true);
+    }
+
+    async function hydrateRemoteFavorites() {
+      try {
+        const res = await fetch("/api/account", {
+          cache: "no-store",
+          headers: createAuthorizedHeaders(accessToken),
+        });
+        if (!res.ok) {
+          favoritesRemoteHydratedRef.current = false;
+          hydrateLocalFavorites();
+          return;
+        }
+
+        const json = (await res.json()) as AccountResponse;
+        const nextFavorites = tracksToFavoritesMap(Array.isArray(json.favoriteTracks) ? json.favoriteTracks : []);
+        if (cancelled) return;
+
+        lastSyncedFavoritesSignatureRef.current = JSON.stringify(Object.keys(nextFavorites).sort());
+        favoritesRemoteHydratedRef.current = true;
+        setFavoritesMap(nextFavorites);
+        setFavoritesHydrated(true);
+      } catch {
+        favoritesRemoteHydratedRef.current = false;
+        if (!cancelled) {
+          hydrateLocalFavorites();
+        }
+      }
+    }
+
+    if (authLoading) return;
+
+    setFavoritesHydrated(false);
+
+    if (!isAuthenticated || !accessToken) {
+      favoritesRemoteHydratedRef.current = false;
+      lastSyncedFavoritesSignatureRef.current = "";
+      hydrateLocalFavorites();
+      return;
+    }
+
+    void hydrateRemoteFavorites();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, authLoading, isAuthenticated]);
 
   // persist favorites
   useEffect(() => {
+    if (!favoritesHydrated) {
+      return;
+    }
+
     try {
       localStorage.setItem(LS_FAV, JSON.stringify(favoritesMap));
     } catch {}
-  }, [favoritesMap]);
+  }, [favoritesHydrated, favoritesMap]);
+
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || !accessToken || !favoritesRemoteHydratedRef.current) {
+      return;
+    }
+
+    const favoriteSrcs = Object.keys(favoritesMap).sort();
+    const signature = JSON.stringify(favoriteSrcs);
+    if (signature === lastSyncedFavoritesSignatureRef.current) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void fetch("/api/account", {
+        method: "PUT",
+        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+        body: JSON.stringify({ favoriteSrcs }),
+      })
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error("favorite sync failed");
+          }
+
+          lastSyncedFavoritesSignatureRef.current = signature;
+        })
+        .catch(() => {});
+    }, 250);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [accessToken, authLoading, favoritesMap, isAuthenticated]);
 
   // load stats
   useEffect(() => {
@@ -1084,6 +1287,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       if (!raw) return;
       const prefs = safePrefs(JSON.parse(raw));
       setFocusMode(prefs.focusMode);
+      setSmoothTransitions(prefs.smoothTransitions);
       setSmartAutoplay(prefs.smartAutoplay);
       setTheme(prefs.theme);
       setEqPreset(prefs.eqPreset);
@@ -1166,11 +1370,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   // persist prefs
   useEffect(() => {
-    const payload: PlayerPrefs = { focusMode, smartAutoplay, theme, eqPreset };
+    const payload: PlayerPrefs = { focusMode, smoothTransitions, smartAutoplay, theme, eqPreset };
     try {
       localStorage.setItem(LS_PREFS, JSON.stringify(payload));
     } catch {}
-  }, [focusMode, smartAutoplay, theme, eqPreset]);
+  }, [focusMode, smoothTransitions, smartAutoplay, theme, eqPreset]);
 
   // persist playback session
   useEffect(() => {
@@ -1199,6 +1403,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     autoAdvanceArmedRef.current = false;
     plannedShuffleNextRef.current = null;
     clearAutoAdvanceTimer();
+    clearTransitionTimer();
     clearFadeFrame();
 
     lastCtRef.current = 0;
@@ -1285,6 +1490,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     plannedShuffleNextRef.current = null;
     autoAdvanceArmedRef.current = false;
     clearAutoAdvanceTimer();
+    clearTransitionTimer();
     clearFadeFrame();
     setIndex((prev) => {
       if (t.length === 0) return -1;
@@ -1294,11 +1500,57 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     });
   }
 
+  function runSoftTransition(action: () => void) {
+    const audio = audioRef.current;
+    const targetVolume = muted ? 0 : clamp(volume, 0, 1);
+
+    if (!smoothTransitions || !playing || !track || !audio || targetVolume <= 0) {
+      fadeInAfterTransitionRef.current = false;
+      clearTransitionTimer();
+      action();
+      return;
+    }
+
+    clearAutoAdvanceTimer();
+    clearTransitionTimer();
+    clearFadeFrame();
+    autoAdvanceArmedRef.current = false;
+    audio.muted = false;
+    audio.volume = targetVolume;
+
+    const transitionMs = 240;
+    const start = performance.now();
+
+    const fadeOut = (now: number) => {
+      const ratio = clamp((now - start) / transitionMs, 0, 1);
+      audio.volume = clamp(targetVolume * (1 - ratio), 0, 1);
+      if (ratio < 1) {
+        fadeFrameRef.current = window.requestAnimationFrame(fadeOut);
+      } else {
+        fadeFrameRef.current = null;
+      }
+    };
+
+    fadeFrameRef.current = window.requestAnimationFrame(fadeOut);
+    transitionTimerRef.current = setTimeout(() => {
+      transitionTimerRef.current = null;
+      fadeInAfterTransitionRef.current = true;
+      action();
+    }, Math.max(100, transitionMs - 20));
+  }
+
   function playIndex(i: number) {
     if (i < 0 || i >= tracks.length) return;
-    plannedShuffleNextRef.current = null;
-    setIndex(i);
-    setPlaying(true);
+    if (i === index) {
+      setPlaying(true);
+      return;
+    }
+
+    runSoftTransition(() => {
+      plannedShuffleNextRef.current = null;
+      setIndex(i);
+      setPlaying(true);
+    });
   }
 
   function playTrack(t: Track) {
@@ -1306,19 +1558,28 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
     const i = tracks.findIndex((x) => x.src === t.src);
     if (i >= 0) {
-      plannedShuffleNextRef.current = null;
-      setIndex(i);
-      setPlaying(true);
+      if (i === index) {
+        setPlaying(true);
+        return;
+      }
+
+      runSoftTransition(() => {
+        plannedShuffleNextRef.current = null;
+        setIndex(i);
+        setPlaying(true);
+      });
       return;
     }
 
-    _setTracks((prev) => {
-      const next = [...prev, t];
-      shuffleHistoryRef.current = [];
-      plannedShuffleNextRef.current = null;
-      setIndex(next.length - 1);
-      setPlaying(true);
-      return next;
+    runSoftTransition(() => {
+      _setTracks((prev) => {
+        const next = [...prev, t];
+        shuffleHistoryRef.current = [];
+        plannedShuffleNextRef.current = null;
+        setIndex(next.length - 1);
+        setPlaying(true);
+        return next;
+      });
     });
   }
 
@@ -1389,8 +1650,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }
 
   function next() {
-    fadeInAfterTransitionRef.current = false;
-    doNext(false);
+    runSoftTransition(() => {
+      doNext(false);
+    });
   }
 
   function prev() {
@@ -1404,26 +1666,31 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (tracks.length === 0 || index < 0) return;
-    fadeInAfterTransitionRef.current = false;
 
     if (shuffle) {
       const hist = shuffleHistoryRef.current;
       const last = hist.pop();
       if (last !== undefined) {
-        setIndex(last);
-        setPlaying(true);
+        runSoftTransition(() => {
+          setIndex(last);
+          setPlaying(true);
+        });
         return;
       }
       const prevIdx = pickRandomIndex(index);
-      setIndex(prevIdx);
-      setPlaying(true);
+      runSoftTransition(() => {
+        setIndex(prevIdx);
+        setPlaying(true);
+      });
       return;
     }
 
     if (index === 0) {
       if (repeat === "all") {
-        setIndex(tracks.length - 1);
-        setPlaying(true);
+        runSoftTransition(() => {
+          setIndex(tracks.length - 1);
+          setPlaying(true);
+        });
       } else {
         audio.currentTime = 0;
         lastCtRef.current = 0;
@@ -1431,8 +1698,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    setIndex(index - 1);
-    setPlaying(true);
+    runSoftTransition(() => {
+      setIndex(index - 1);
+      setPlaying(true);
+    });
   }
 
   function toggleShuffle() {
@@ -1446,6 +1715,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   function toggleSmartAutoplay() {
     setSmartAutoplay((value) => !value);
+  }
+
+  function toggleSmoothTransitions() {
+    setSmoothTransitions((value) => !value);
   }
 
   function toggleFocusMode() {
@@ -1473,11 +1746,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setRepeat((r) => (r === "off" ? "all" : r === "all" ? "one" : "off"));
   }
 
-  function setQueueAndPlay(queue: Track[], start?: number | Track) {
+  function applyQueueAndPlay(queue: Track[], start?: number | Track) {
     _setTracks(queue);
     plannedShuffleNextRef.current = null;
     autoAdvanceArmedRef.current = false;
     clearAutoAdvanceTimer();
+    clearTransitionTimer();
     clearFadeFrame();
 
     let startIndex = 0;
@@ -1499,6 +1773,17 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     shuffleHistoryRef.current = [];
     setIndex(startIndex);
     setPlaying(true);
+  }
+
+  function setQueueAndPlay(queue: Track[], start?: number | Track) {
+    if (queue.length === 0) {
+      applyQueueAndPlay(queue, start);
+      return;
+    }
+
+    runSoftTransition(() => {
+      applyQueueAndPlay(queue, start);
+    });
   }
 
   function addToQueueEnd(t: Track) {
@@ -1589,6 +1874,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     plannedShuffleNextRef.current = null;
     autoAdvanceArmedRef.current = false;
     clearAutoAdvanceTimer();
+    clearTransitionTimer();
     clearFadeFrame();
 
     _setTracks([]);
@@ -1686,7 +1972,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
     shuffle,
     repeat,
+    smoothTransitions,
     smartAutoplay,
+    toggleSmoothTransitions,
     toggleSmartAutoplay,
     preloadedTrack,
     toggleShuffle,

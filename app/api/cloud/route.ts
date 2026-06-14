@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import path from "path";
 import { promises as fs } from "fs";
+import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
 
 export const runtime = "nodejs";
 
@@ -32,8 +33,11 @@ type CloudSnapshot = {
   meta: MetaFile;
 };
 
-const CLOUD_PATH = path.join(process.cwd(), "data", "cloud.json");
 const META_PATH = path.join(process.cwd(), "data", "meta.json");
+
+function getCloudPathForUser(userId: string) {
+  return path.join(process.cwd(), "data", "cloud", `${userId}.json`);
+}
 
 async function ensureDataFile(filePath: string, fallback: unknown) {
   const dir = path.dirname(filePath);
@@ -135,8 +139,13 @@ function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
-export async function GET() {
-  const snapshotRaw = await readJson<unknown>(CLOUD_PATH, null);
+export async function GET(req: Request) {
+  const auth = await readAuthenticatedUser(req);
+  if (!auth.user) {
+    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  }
+
+  const snapshotRaw = await readJson<unknown>(getCloudPathForUser(auth.user.id), null);
   const snapshot = safeSnapshot(snapshotRaw);
   if (!snapshot) {
     return NextResponse.json({ ok: true, exists: false });
@@ -153,8 +162,14 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const auth = await readAuthenticatedUser(req);
+    if (!auth.user) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    }
+
     const body = await req.json().catch(() => null);
     const action = body?.action;
+    const cloudPath = getCloudPathForUser(auth.user.id);
 
     if (action === "backup") {
       const playlistsRaw = Array.isArray(body?.playlists) ? body.playlists : [];
@@ -175,7 +190,7 @@ export async function POST(req: Request) {
         meta,
       };
 
-      await writeJson(CLOUD_PATH, snapshot);
+      await writeJson(cloudPath, snapshot);
 
       return NextResponse.json({
         ok: true,
@@ -186,7 +201,7 @@ export async function POST(req: Request) {
     }
 
     if (action === "restore") {
-      const snapshotRaw = await readJson<unknown>(CLOUD_PATH, null);
+      const snapshotRaw = await readJson<unknown>(cloudPath, null);
       const snapshot = safeSnapshot(snapshotRaw);
       if (!snapshot) {
         return NextResponse.json({ ok: false, error: "Aucune sauvegarde cloud" }, { status: 404 });

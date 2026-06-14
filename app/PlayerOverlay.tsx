@@ -1,8 +1,10 @@
 ﻿"use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePlayer } from "./PlayerContext";
 import { useFocusTrap } from "./useFocusTrap";
+import { getArtistHref, getPublicProfileHref } from "@/lib/publicLinks";
 import {
   Shuffle,
   SkipBack,
@@ -172,12 +174,15 @@ export default function PlayerOverlay() {
     setExpanded,
     shuffle,
     repeat,
+    smoothTransitions,
     toggleShuffle,
     cycleRepeat,
     isFavorite,
     toggleFavorite,
     focusMode,
     toggleFocusMode,
+    toggleSmoothTransitions,
+    preloadedTrack,
   } = usePlayer();
 
   const overlayRef = useRef<HTMLDivElement | null>(null);
@@ -490,14 +495,29 @@ export default function PlayerOverlay() {
               <p className="text-sm font-semibold text-white/92 truncate">{track?.title ?? "Aucune lecture"}</p>
             </div>
 
-            <button
-              onClick={() => setExpanded(false)}
-              className="h-10 w-10 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98]"
-              title="Fermer"
-              type="button"
-            >
-              <X size={18} className="mx-auto opacity-90 text-white/85" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleSmoothTransitions}
+                aria-pressed={smoothTransitions}
+                className={[
+                  "h-10 rounded-full px-3 text-[11px] font-semibold transition",
+                  smoothTransitions ? "bg-white/12 text-white ring-1 ring-white/15" : "bg-white/8 text-white/75 hover:bg-white/12",
+                ].join(" ")}
+                title={smoothTransitions ? "Transitions douces actives" : "Transitions douces inactives"}
+                type="button"
+              >
+                FX
+              </button>
+
+              <button
+                onClick={() => setExpanded(false)}
+                className="h-10 w-10 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98]"
+                title="Fermer"
+                type="button"
+              >
+                <X size={18} className="mx-auto opacity-90 text-white/85" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -518,6 +538,19 @@ export default function PlayerOverlay() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={toggleSmoothTransitions}
+              aria-pressed={smoothTransitions}
+              className={[
+                "h-11 px-4 rounded-full transition flex items-center gap-2 text-sm",
+                smoothTransitions ? "bg-white/12 ring-1 ring-white/15 text-white" : "bg-white/8 hover:bg-white/12 text-white/80",
+              ].join(" ")}
+              title={smoothTransitions ? "Transitions douces actives" : "Transitions douces inactives"}
+              type="button"
+            >
+              <span className="font-semibold">FX</span>
+            </button>
+
             <button
               onClick={toggleFocusMode}
               aria-pressed={focusMode}
@@ -597,7 +630,10 @@ export default function PlayerOverlay() {
                   <img
                     src={track.cover}
                     alt={track.title}
-                    className="h-full w-full object-cover"
+                    className={[
+                      "h-full w-full object-cover mp3-now-cover",
+                      playing ? "mp3-now-cover--playing" : "mp3-now-cover--idle",
+                    ].join(" ")}
                     draggable={false}
                   />
                 ) : (
@@ -613,7 +649,15 @@ export default function PlayerOverlay() {
                   <h1 className="text-2xl font-semibold text-white/95 leading-tight max-h-[4.8rem] overflow-hidden">
                     {track?.title ?? "Aucune lecture"}
                   </h1>
-                  <p className="text-sm text-white/50 mt-1 truncate">{track?.artist ?? "-"}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-white/50">
+                    {track?.artist ? (
+                      <Link href={getArtistHref(track.artist)} className="truncate underline underline-offset-4 hover:text-white/85">
+                        {track.artist}
+                      </Link>
+                    ) : (
+                      <span>-</span>
+                    )}
+                  </div>
                 </>
               ) : null}
 
@@ -712,9 +756,15 @@ export default function PlayerOverlay() {
                   <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white/95 truncate">
                     {track?.title ?? "Aucune lecture"}
                   </h1>
-                  <p className="text-lg md:text-xl text-white/45 mt-3 truncate">
-                    {track?.artist ?? "-"}
-                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-3 text-lg md:text-xl text-white/45">
+                    {track?.artist ? (
+                      <Link href={getArtistHref(track.artist)} className="truncate underline underline-offset-4 hover:text-white/80">
+                        {track.artist}
+                      </Link>
+                    ) : (
+                      <span>-</span>
+                    )}
+                  </div>
                 </>
               ) : null}
 
@@ -815,15 +865,25 @@ export default function PlayerOverlay() {
                   {playing ? <Pause size={28} /> : <Play size={28} />}
                 </button>
 
-                <button
-                  onClick={next}
-                  className="h-[60px] w-[60px] lg:h-16 lg:w-16 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98] disabled:opacity-50"
-                  disabled={!track}
-                  title="Suivant"
-                  type="button"
-                >
-                  <SkipForward size={24} className="mx-auto opacity-90 text-white/85" />
-                </button>
+                <div className="relative group">
+                  <button
+                    onClick={next}
+                    className="h-[60px] w-[60px] lg:h-16 lg:w-16 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98] disabled:opacity-50"
+                    disabled={!track}
+                    title="Suivant"
+                    type="button"
+                  >
+                    <SkipForward size={24} className="mx-auto opacity-90 text-white/85" />
+                  </button>
+                  {preloadedTrack && preloadedTrack.src !== track?.src && (
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 pointer-events-none opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 scale-95 group-hover:scale-100 transition-all duration-200 ease-out whitespace-nowrap z-20">
+                      <div className="bg-black/75 backdrop-blur-md rounded-xl px-3 py-2 text-left ring-1 ring-white/10">
+                        <p className="text-xs text-white/90 font-medium max-w-[200px] truncate">{preloadedTrack.title}</p>
+                        <p className="text-[11px] text-white/50 max-w-[200px] truncate">{preloadedTrack.artist}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <button
                   onClick={cycleRepeat}

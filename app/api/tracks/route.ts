@@ -1,85 +1,64 @@
 import { NextResponse } from "next/server";
-import path from "path";
-import { promises as fs } from "fs";
+import { deleteTrackForApi, getLibraryBackendMode, isValidTrackSrc, listTracksForApi } from "@/lib/libraryRepository";
+import { readAuthenticatedUser, readOptionalAuthenticatedUser } from "@/lib/supabaseAuthServer";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-type MetaEntry = { title?: string; artist?: string };
-type MetaFile = Record<string, MetaEntry>;
+export async function GET(req: Request) {
+  const tracks = await listTracksForApi();
+  const viewer = await readOptionalAuthenticatedUser(req);
+  const viewerId = viewer?.id ?? null;
 
-const META_PATH = path.join(process.cwd(), "data", "meta.json");
-
-async function exists(p: string) {
-  try {
-    await fs.access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function readMeta(): Promise<MetaFile> {
-  try {
-    const raw = await fs.readFile(META_PATH, "utf-8");
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object") return parsed as MetaFile;
-  } catch {}
-  return {};
-}
-
-export async function GET() {
-  const root = process.cwd();
-
-  // ⚠️ tu utilises Audio/Covers avec majuscule (d’après tes captures)
-  const audioDir = path.join(root, "public", "Audio");
-  const coverDir = path.join(root, "public", "Covers");
-
-  const meta = await readMeta();
-
-  let audioFiles: string[] = [];
-  try {
-    audioFiles = (await fs.readdir(audioDir)).filter((f) => f.toLowerCase().endsWith(".mp3"));
-  } catch {
-    audioFiles = [];
-  }
-
-  const tracks: Array<{ title: string; artist: string; src: string; cover: string | null }> = [];
-
-  for (const file of audioFiles) {
-    const base = file.replace(/\.mp3$/i, "");
-
-    // src canonical (majuscule)
-    const src = `/Audio/${file}`;
-
-    // titre par défaut depuis filename
-    const defaultTitle = base.replace(/-\w{8}$/i, "").replace(/-/g, " ");
-    const defaultArtist = "Local library";
-
-    // cover lookup
-    const candidates = [`${base}.jpg`, `${base}.jpeg`, `${base}.png`, `${base}.webp`];
-    let coverUrl: string | null = null;
-
-    for (const c of candidates) {
-      const p = path.join(coverDir, c);
-      if (await exists(p)) {
-        coverUrl = `/Covers/${c}`;
-        break;
-      }
+  return NextResponse.json(
+    {
+      storage: getLibraryBackendMode(),
+      tracks: tracks.map((track) => ({
+        title: track.title,
+        artist: track.artist,
+        src: track.src,
+        cover: track.cover,
+        isLegacyShared: track.backend === "supabase" && !track.ownerId,
+        isOwnedByViewer: Boolean(viewerId && track.ownerId && track.ownerId === viewerId),
+        ownerDisplayName: track.ownerDisplayName ?? null,
+        ownerId: track.ownerId ?? null,
+        ownerLabel: track.ownerDisplayName ?? track.ownerEmail ?? null,
+      })),
+    },
+    {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      },
     }
+  );
+}
 
-    // override meta (supporte aussi /audio/ si jamais)
-    const m = meta[src] ?? meta[src.replace("/Audio/", "/audio/")] ?? null;
-
-    tracks.push({
-      title: (m?.title && m.title.trim()) || defaultTitle,
-      artist: (m?.artist && m.artist.trim()) || defaultArtist,
-      src,
-      cover: coverUrl,
-    });
+export async function DELETE(req: Request) {
+  const auth = await readAuthenticatedUser(req);
+  if (!auth.user) {
+    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
 
-  // tu avais déjà reverse() pour “récemment ajoutés”
-  tracks.reverse();
+  const body = await req.json().catch(() => null);
+  const src = body?.src;
 
-  return NextResponse.json({ tracks });
+  if (typeof src !== "string" || !isValidTrackSrc(src)) {
+    return NextResponse.json({ ok: false, error: "src invalide" }, { status: 400 });
+  }
+
+  const result = await deleteTrackForApi(src, auth.user.id);
+  if (result === "forbidden") {
+    return NextResponse.json({ ok: false, error: "Seul le proprietaire peut supprimer ce son" }, { status: 403 });
+  }
+
+  if (result === "unsupported") {
+    return NextResponse.json({ ok: false, error: "Suppression non disponible pour cette source" }, { status: 400 });
+  }
+
+  if (result !== "ok") {
+    return NextResponse.json({ ok: false, error: "Track introuvable" }, { status: 404 });
+  }
+
+  return NextResponse.json({ ok: true });
 }

@@ -1,16 +1,26 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import AlbumCard from "../AlbumCard";
+import { useAuth } from "../AuthProvider";
+import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { usePlayer } from "../PlayerContext";
+import { dispatchTracksUpdated, subscribeTracksUpdated } from "../tracksSync";
 import { COVER_SCROLL_TRANSFORM, useCoverScrollEffect } from "../useCoverScrollEffect";
 import { useFocusTrap } from "../useFocusTrap";
+import { getArtistHref, getPublicProfileHref } from "@/lib/publicLinks";
 
 type ApiTrack = {
   title: string;
   artist: string;
   src: string;
   cover: string | null;
+  isLegacyShared?: boolean;
+  isOwnedByViewer?: boolean;
+  ownerDisplayName?: string | null;
+  ownerId?: string | null;
+  ownerLabel?: string | null;
 };
 
 type TracksResponse = {
@@ -22,6 +32,11 @@ type MetaSaveResponse = {
   error?: string;
 };
 
+type DeleteTrackResponse = {
+  ok?: boolean;
+  error?: string;
+};
+
 type SortKey = "added_desc" | "title_asc" | "title_desc" | "artist_asc" | "artist_desc";
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -29,6 +44,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 }
 
 export default function LibraryPage() {
+  const { accessToken, isAuthenticated } = useAuth();
   const { isFavorite } = usePlayer();
   const [tracks, setTracks] = useState<ApiTrack[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,18 +58,22 @@ export default function LibraryPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editArtist, setEditArtist] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const pageRef = useRef<HTMLDivElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
   useCoverScrollEffect(pageRef);
   useFocusTrap(Boolean(editing), dialogRef);
 
-  async function loadTracks() {
+  const loadTracks = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
 
-      const res = await fetch("/api/tracks", { cache: "no-store" });
+      const res = await fetch("/api/tracks", {
+        cache: "no-store",
+        headers: createAuthorizedHeaders(accessToken),
+      });
       if (!res.ok) throw new Error("Impossible de charger /api/tracks");
 
       const json: TracksResponse = await res.json();
@@ -64,11 +84,17 @@ export default function LibraryPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [accessToken]);
 
   useEffect(() => {
-    loadTracks();
-  }, []);
+    void loadTracks();
+  }, [isAuthenticated, loadTracks]);
+
+  useEffect(() => {
+    return subscribeTracksUpdated(() => {
+      void loadTracks();
+    });
+  }, [loadTracks]);
 
   useEffect(() => {
     if (!editing) return;
@@ -87,8 +113,8 @@ export default function LibraryPage() {
     setEditArtist(track.artist);
   }
 
-  function closeEdit() {
-    if (saving) return;
+  function closeEdit(force = false) {
+    if (!force && (saving || deleting)) return;
     setEditing(null);
     setEditTitle("");
     setEditArtist("");
@@ -96,6 +122,10 @@ export default function LibraryPage() {
 
   async function saveEdit() {
     if (!editing) return;
+    if (!accessToken) {
+      setError("Connecte-toi pour modifier les metadata.");
+      return;
+    }
 
     const title = editTitle.trim();
     const artist = editArtist.trim();
@@ -111,7 +141,7 @@ export default function LibraryPage() {
 
       const res = await fetch("/api/meta", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
         body: JSON.stringify({
           src: editing.src,
           title,
@@ -130,12 +160,53 @@ export default function LibraryPage() {
         throw new Error(json.error ?? `Sauvegarde impossible (HTTP ${res.status})`);
       }
 
-      closeEdit();
+      closeEdit(true);
+      dispatchTracksUpdated();
       await loadTracks();
     } catch (errorValue: unknown) {
       setError(getErrorMessage(errorValue, "Erreur lors de la sauvegarde"));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function deleteEditingTrack() {
+    if (!editing || !accessToken) {
+      setError("Connecte-toi pour supprimer un son.");
+      return;
+    }
+
+    const confirmed = window.confirm(`Supprimer définitivement "${editing.title}" ?`);
+    if (!confirmed) return;
+
+    try {
+      setDeleting(true);
+      setError("");
+
+      const res = await fetch("/api/tracks", {
+        method: "DELETE",
+        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+        body: JSON.stringify({ src: editing.src }),
+      });
+
+      let json: DeleteTrackResponse = {};
+      try {
+        json = (await res.json()) as DeleteTrackResponse;
+      } catch {
+        json = {};
+      }
+
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error ?? `Suppression impossible (HTTP ${res.status})`);
+      }
+
+      closeEdit();
+      dispatchTracksUpdated();
+      await loadTracks();
+    } catch (errorValue: unknown) {
+      setError(getErrorMessage(errorValue, "Erreur lors de la suppression"));
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -178,7 +249,9 @@ export default function LibraryPage() {
         <div>
           <h1 className="text-2xl font-semibold text-white">Bibliotheque</h1>
           <p className="text-sm text-white/40 mt-1">
-            Survole une cover pour modifier le titre ou l&apos;artiste.
+            {isAuthenticated
+              ? "Survole une cover pour modifier le titre ou l'artiste."
+              : "Connecte-toi pour modifier le titre ou l'artiste."}
           </p>
         </div>
 
@@ -262,6 +335,11 @@ export default function LibraryPage() {
       </div>
 
       {loading ? <p className="text-white/60">Chargement...</p> : null}
+      {!isAuthenticated ? (
+        <p className="mb-4 text-sm text-white/50">
+          Edition protegee: connecte-toi dans <Link href="/account" className="text-white/85 underline underline-offset-4">Compte</Link>.
+        </p>
+      ) : null}
       {!loading && error ? (
         <p className="text-red-400 mb-4" role="alert">
           {error}
@@ -276,20 +354,23 @@ export default function LibraryPage() {
       ) : null}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-        {visibleTracks.map((track) => (
+        {visibleTracks.map((track, i) => (
           <AlbumCard
             key={track.src}
             title={track.title}
-            subtitle={`${track.artist} - MP3`}
+            subtitle={track.ownerLabel ? `${track.artist} - ${track.ownerLabel}` : `${track.artist} - MP3`}
             track={{
               title: track.title,
               artist: track.artist,
               src: track.src,
               cover: track.cover ?? undefined,
+              ownerDisplayName: track.ownerDisplayName ?? undefined,
+              ownerId: track.ownerId ?? undefined,
             }}
-            onEdit={() => openEdit(track)}
+            onEdit={isAuthenticated && track.isOwnedByViewer ? () => openEdit(track) : undefined}
             hoverEffect="shrink"
             coverTransform={COVER_SCROLL_TRANSFORM}
+            animationDelay={`${Math.min(i, 9) * 40}ms`}
           />
         ))}
       </div>
@@ -313,11 +394,32 @@ export default function LibraryPage() {
                 <p id="edit-track-src" className="text-xs text-white/35 truncate">
                   {editing.src}
                 </p>
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-white/55">
+                  <Link href={getArtistHref(editing.artist)} className="underline underline-offset-4 hover:text-white/85">
+                    Artiste: {editing.artist}
+                  </Link>
+                  {editing.ownerId ? (
+                    <Link
+                      href={getPublicProfileHref(editing.ownerId)}
+                      className="underline underline-offset-4 hover:text-white/85"
+                    >
+                      Profil: {editing.ownerLabel ?? "Membre mp3"}
+                    </Link>
+                  ) : (
+                    <span>
+                      {editing.isLegacyShared
+                        ? "Ce son est un ancien partage sans proprietaire assigne."
+                        : editing.ownerLabel
+                          ? `Proprietaire: ${editing.ownerLabel}`
+                          : "Proprietaire non disponible"}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <button
                 type="button"
-                onClick={closeEdit}
+                onClick={() => closeEdit()}
                 className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10 text-white/80"
                 title="Fermer"
                 aria-label="Fermer la fenetre d'edition"
@@ -354,12 +456,22 @@ export default function LibraryPage() {
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-end gap-2">
+            <div className="mt-6 flex items-center justify-between gap-2">
               <button
                 type="button"
-                onClick={closeEdit}
+                onClick={deleteEditingTrack}
+                className="h-10 px-4 rounded-2xl bg-red-500/15 text-red-100 hover:bg-red-500/20 transition disabled:opacity-60"
+                disabled={saving || deleting || !editing.isOwnedByViewer}
+              >
+                {deleting ? "Suppression..." : "Supprimer"}
+              </button>
+
+              <div className="flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => closeEdit()}
                 className="h-10 px-4 rounded-2xl bg-white/10 text-white/85 hover:bg-white/15 transition"
-                disabled={saving}
+                disabled={saving || deleting}
               >
                 Annuler
               </button>
@@ -367,10 +479,11 @@ export default function LibraryPage() {
                 type="button"
                 onClick={saveEdit}
                 className="h-10 px-4 rounded-2xl bg-white text-black font-semibold hover:opacity-90 transition disabled:opacity-60"
-                disabled={saving}
+                disabled={saving || deleting || !editing.isOwnedByViewer}
               >
                 {saving ? "Sauvegarde..." : "Sauvegarder"}
               </button>
+              </div>
             </div>
           </div>
         </div>

@@ -47,6 +47,7 @@ export async function accentFromCover(coverUrl: string): Promise<AccentRGB | nul
   try {
     const img = new Image();
     img.decoding = "async";
+    img.crossOrigin = "anonymous";
     img.src = coverUrl;
 
     await new Promise<void>((resolve, reject) => {

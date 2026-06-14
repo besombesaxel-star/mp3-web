@@ -170,7 +170,8 @@ New-Item -ItemType Directory -Path $buildDirectory -Force | Out-Null
 
 @(
     "Open MP3 Web.exe",
-    "Stop MP3 Web.exe"
+    "Stop MP3 Web.exe",
+    "Arreter MP3 Web.exe"
 ) | ForEach-Object {
     Remove-Item -LiteralPath (Join-Path $outputDirectory $_) -Force -ErrorAction SilentlyContinue
 }

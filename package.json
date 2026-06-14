@@ -9,6 +9,8 @@
     "app:launch": "powershell -ExecutionPolicy Bypass -File scripts/launch-app.ps1",
     "app:stop": "powershell -ExecutionPolicy Bypass -File scripts/stop-app.ps1",
     "app:package": "powershell -ExecutionPolicy Bypass -File scripts/package-launchers.ps1",
+    "firebase:migrate": "node scripts/migrate-library-to-firebase.mjs",
+    "supabase:migrate": "node scripts/migrate-library-to-supabase.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -17,6 +19,8 @@
     "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.108.1",
+    "firebase-admin": "^14.0.0",
     "lucide-react": "^0.575.0",
     "next": "16.1.6",
     "react": "19.2.3",

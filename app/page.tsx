@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import AlbumCard from "./AlbumCard";
 import { Track, usePlayer } from "./PlayerContext";
+import { subscribeTracksUpdated } from "./tracksSync";
 import { COVER_SCROLL_TRANSFORM, useCoverScrollEffect } from "./useCoverScrollEffect";
 import { useFocusTrap } from "./useFocusTrap";
 
@@ -14,6 +15,8 @@ type ApiTrack = {
   artist: string;
   src: string;
   cover: string | null;
+  ownerDisplayName?: string | null;
+  ownerId?: string | null;
 };
 
 type TracksResponse = {
@@ -137,6 +140,12 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    return subscribeTracksUpdated(() => {
+      void loadTracks();
+    });
+  }, []);
+
+  useEffect(() => {
     const tick = () => {
       const now = Date.now();
       setNowMs(now);
@@ -156,6 +165,8 @@ export default function Home() {
         artist: track.artist,
         src: track.src,
         cover: track.cover ?? undefined,
+        ownerDisplayName: track.ownerDisplayName ?? undefined,
+        ownerId: track.ownerId ?? undefined,
       },
     }));
   }, [tracks]);
@@ -167,6 +178,8 @@ export default function Home() {
         artist: track.artist,
         src: track.src,
         cover: track.cover ?? undefined,
+        ownerDisplayName: track.ownerDisplayName ?? undefined,
+        ownerId: track.ownerId ?? undefined,
       })),
     [tracks]
   );
@@ -927,7 +940,7 @@ export default function Home() {
       {!loading && !error && recent.length === 0 ? (
         <div className="rounded-2xl bg-white/5 border border-white/5 p-6 text-white/55">
           Aucun son pour le moment. Ajoute un MP3 via <span className="text-white/80">/upload</span> ou depose-le
-          dans <span className="text-white/80">public/Audio</span>.
+          localement dans <span className="text-white/80">public/audio</span>.
         </div>
       ) : null}
 

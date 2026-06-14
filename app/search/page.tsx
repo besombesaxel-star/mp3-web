@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { Track, usePlayer } from "../PlayerContext";
+import { subscribeTracksUpdated } from "../tracksSync";
 
 type TrackWithCover = Track & { cover?: string };
 
@@ -11,6 +12,8 @@ type ApiTrack = {
   artist: string;
   src: string;
   cover: string | null;
+  ownerDisplayName?: string | null;
+  ownerId?: string | null;
 };
 
 type TracksResponse = {
@@ -148,6 +151,8 @@ export default function SearchPage() {
           artist: track.artist,
           src: track.src,
           cover: track.cover ?? undefined,
+          ownerDisplayName: track.ownerDisplayName ?? undefined,
+          ownerId: track.ownerId ?? undefined,
         }))
       );
     } catch (errorValue: unknown) {
@@ -160,6 +165,12 @@ export default function SearchPage() {
 
   useEffect(() => {
     loadTracks();
+  }, []);
+
+  useEffect(() => {
+    return subscribeTracksUpdated(() => {
+      void loadTracks();
+    });
   }, []);
 
   useEffect(() => {
@@ -457,9 +468,10 @@ export default function SearchPage() {
                   onClick={() => playResult(index)}
                   onMouseEnter={() => setActiveIndex(index)}
                   className={[
-                    "group flex items-center justify-between gap-4 rounded-2xl px-3 py-3 transition text-left",
+                    "group flex items-center justify-between gap-4 rounded-2xl px-3 py-3 transition text-left mp3-fade-up",
                     active ? "bg-white/10" : "hover:bg-white/5",
                   ].join(" ")}
+                  style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
                   title="Lire"
                   type="button"
                 >

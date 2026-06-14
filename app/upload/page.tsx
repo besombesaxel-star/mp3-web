@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useAuth } from "../AuthProvider";
+import { createAuthorizedHeaders } from "@/lib/clientAuth";
+import { dispatchTracksUpdated, subscribeTracksUpdated } from "../tracksSync";
 
 type UploadResponse = {
   ok?: boolean;
@@ -41,10 +45,13 @@ function guessTitleFromFile(name: string) {
     .trim();
 }
 
-function uploadWithProgress(formData: FormData, onProgress: (ratio: number) => void) {
+function uploadWithProgress(formData: FormData, onProgress: (ratio: number) => void, accessToken: string | null) {
   return new Promise<{ status: number; json: UploadResponse }>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/upload");
+    if (accessToken) {
+      xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
+    }
 
     xhr.upload.onprogress = (event) => {
       if (!event.lengthComputable) return;
@@ -69,6 +76,7 @@ function uploadWithProgress(formData: FormData, onProgress: (ratio: number) => v
 }
 
 export default function UploadPage() {
+  const { accessToken, isAuthenticated, loading } = useAuth();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [audio, setAudio] = useState<File | null>(null);
   const [cover, setCover] = useState<File | null>(null);
@@ -80,18 +88,21 @@ export default function UploadPage() {
   const [coverPreview, setCoverPreview] = useState<string>("");
   const [existingNames, setExistingNames] = useState<string[]>([]);
 
+  async function loadExistingNames() {
+    const res = await fetch("/api/tracks", { cache: "no-store" });
+    if (!res.ok) return;
+
+    const json: TracksResponse = await res.json();
+    const names = (json.tracks ?? []).map((track) => normalizeText(track.title));
+    setExistingNames(names);
+  }
+
   useEffect(() => {
     let mounted = true;
-
     (async () => {
       try {
-        const res = await fetch("/api/tracks", { cache: "no-store" });
-        if (!res.ok) return;
-        const json: TracksResponse = await res.json();
         if (!mounted) return;
-
-        const names = (json.tracks ?? []).map((track) => normalizeText(track.title));
-        setExistingNames(names);
+        await loadExistingNames();
       } catch {
         // ignore duplicate-check fetch errors
       }
@@ -100,6 +111,12 @@ export default function UploadPage() {
     return () => {
       mounted = false;
     };
+  }, []);
+
+  useEffect(() => {
+    return subscribeTracksUpdated(() => {
+      void loadExistingNames();
+    });
   }, []);
 
   useEffect(() => {
@@ -131,6 +148,10 @@ export default function UploadPage() {
 
   async function onUpload() {
     if (!audio || busy) return;
+    if (!accessToken) {
+      setMessage("Connecte-toi depuis l'onglet Compte pour uploader un son.");
+      return;
+    }
 
     setBusy(true);
     setMessage("");
@@ -141,7 +162,7 @@ export default function UploadPage() {
       formData.append("audio", audio);
       if (cover) formData.append("cover", cover);
 
-      const { status, json } = await uploadWithProgress(formData, setProgress);
+      const { status, json } = await uploadWithProgress(formData, setProgress, accessToken);
       if (status < 200 || status >= 300 || !json.ok || !json.track?.src) {
         setMessage(`Erreur: ${json.error ?? `Upload impossible (HTTP ${status})`}`);
         return;
@@ -152,7 +173,7 @@ export default function UploadPage() {
       if (cleanTitle || cleanArtist) {
         const metaRes = await fetch("/api/meta", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
           body: JSON.stringify({
             src: json.track.src,
             title: cleanTitle || guessTitleFromFile(audio.name),
@@ -168,12 +189,16 @@ export default function UploadPage() {
         }
 
         if (!metaRes.ok || !metaJson.ok) {
+          await loadExistingNames();
+          dispatchTracksUpdated();
           setMessage(`Upload OK, mais meta non sauvegardee: ${metaJson.error ?? `HTTP ${metaRes.status}`}`);
           setStep(4);
           return;
         }
       }
 
+      await loadExistingNames();
+      dispatchTracksUpdated();
       setMessage("Upload termine. Ton son est disponible dans la bibliotheque.");
       setStep(4);
     } catch (errorValue: unknown) {
@@ -191,6 +216,7 @@ export default function UploadPage() {
     setMessage("");
     setTitle("");
     setArtist("Local upload");
+    void loadExistingNames();
   }
 
   return (
@@ -200,6 +226,12 @@ export default function UploadPage() {
         <p className="text-sm text-white/50 mb-6">
           Wizard: fichier - cover - metadata - confirmation
         </p>
+
+        {!loading && !isAuthenticated ? (
+          <div className="mb-6 rounded-2xl border border-amber-300/20 bg-amber-300/10 px-4 py-3 text-sm text-amber-100">
+            Connecte-toi dans <Link href="/account" className="underline underline-offset-4">Compte</Link> pour uploader un son.
+          </div>
+        ) : null}
 
         <div className="mb-6 grid grid-cols-4 gap-2">
           {[
@@ -232,7 +264,7 @@ export default function UploadPage() {
                 accept=".mp3,audio/mpeg"
                 onChange={(e) => setAudio(e.target.files?.[0] ?? null)}
                 className="block w-full text-sm text-white/70"
-                disabled={busy}
+                disabled={busy || loading || !isAuthenticated}
               />
 
               {audio ? (
@@ -247,7 +279,7 @@ export default function UploadPage() {
                 <button
                   type="button"
                   onClick={() => setStep(2)}
-                  disabled={!audio}
+                  disabled={!audio || loading || !isAuthenticated}
                   className="h-10 px-4 rounded-xl bg-white text-black text-sm font-semibold disabled:opacity-50"
                 >
                   Continuer
@@ -267,7 +299,7 @@ export default function UploadPage() {
                 accept="image/*,.jpg,.jpeg,.png,.webp"
                 onChange={(e) => setCover(e.target.files?.[0] ?? null)}
                 className="block w-full text-sm text-white/70"
-                disabled={busy}
+                disabled={busy || loading || !isAuthenticated}
               />
 
               <div className="mt-4 flex items-start gap-4">
@@ -369,7 +401,7 @@ export default function UploadPage() {
                 <button
                   type="button"
                   onClick={onUpload}
-                  disabled={!audio || busy}
+                  disabled={!audio || busy || loading || !isAuthenticated}
                   className="h-10 px-4 rounded-xl bg-white text-black text-sm font-semibold disabled:opacity-50"
                 >
                   {busy ? "Upload..." : "Lancer l'upload"}
@@ -405,8 +437,8 @@ export default function UploadPage() {
           ) : null}
 
           <div className="text-xs text-white/40">
-            Sauvegarde locale: <code className="text-white/70">public/Audio</code> et{" "}
-            <code className="text-white/70">public/Covers</code>. L&apos;upload reel utilise un <b>POST</b>.
+            Sauvegarde: cloud si configure, sinon local dans <code className="text-white/70">public/audio</code> et{" "}
+            <code className="text-white/70">public/cover</code>. L&apos;upload reel utilise un <b>POST</b> protege par compte.
           </div>
         </div>
       </div>

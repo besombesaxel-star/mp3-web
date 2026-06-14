@@ -1,8 +1,12 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useAuth } from "../AuthProvider";
+import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { usePlayer, Track } from "../PlayerContext";
+import { subscribeTracksUpdated } from "../tracksSync";
 
 type TrackWithCover = Track & { cover?: string };
 
@@ -11,6 +15,8 @@ type ApiTrack = {
   artist: string;
   src: string;
   cover: string | null;
+  ownerDisplayName?: string | null;
+  ownerId?: string | null;
 };
 
 type Playlist = {
@@ -60,6 +66,7 @@ function badgeToneClass(tone: PlaylistBadge["tone"]) {
 }
 
 export default function PlaylistsPage() {
+  const { accessToken, isAuthenticated, loading } = useAuth();
   const { setQueueAndPlay, markPlaylistCreated, stats, favorites } = usePlayer();
 
   const [library, setLibrary] = useState<TrackWithCover[]>([]);
@@ -95,6 +102,8 @@ export default function PlaylistsPage() {
           artist: track.artist,
           src: track.src,
           cover: track.cover ?? undefined,
+          ownerDisplayName: track.ownerDisplayName ?? undefined,
+          ownerId: track.ownerId ?? undefined,
         }))
       );
     } catch (errorValue: unknown) {
@@ -123,6 +132,12 @@ export default function PlaylistsPage() {
 
   useEffect(() => {
     loadLibrary();
+  }, []);
+
+  useEffect(() => {
+    return subscribeTracksUpdated(() => {
+      void loadLibrary();
+    });
   }, []);
 
   useEffect(() => {
@@ -421,13 +436,18 @@ export default function PlaylistsPage() {
   }
 
   async function backupToCloud() {
+    if (!accessToken) {
+      setCloudMessage("Connecte-toi pour sauvegarder dans le cloud.");
+      return;
+    }
+
     try {
       setCloudLoading("save");
       setCloudMessage("");
 
       const res = await fetch("/api/cloud", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
         body: JSON.stringify({
           action: "backup",
           playlists,
@@ -449,13 +469,18 @@ export default function PlaylistsPage() {
   }
 
   async function restoreFromCloud() {
+    if (!accessToken) {
+      setCloudMessage("Connecte-toi pour restaurer le cloud.");
+      return;
+    }
+
     try {
       setCloudLoading("restore");
       setCloudMessage("");
 
       const res = await fetch("/api/cloud", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
         body: JSON.stringify({ action: "restore" }),
       });
       const json = (await res.json().catch(() => ({}))) as CloudResponse;
@@ -486,20 +511,20 @@ export default function PlaylistsPage() {
     <div className="pb-28">
       <div className="flex items-end justify-between mb-8">
         <h2 className="text-3xl font-light">Playlists</h2>
-        <span className="text-sm text-white/35">Sauvegarde locale</span>
+        <span className="text-sm text-white/35">Local + compte</span>
       </div>
 
       <section className="mb-6 rounded-3xl border border-white/10 bg-[#121218] p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs text-white/45">Cloud</p>
-            <p className="text-sm text-white/85">Sauvegarde playlists, favoris et metadata.</p>
+            <p className="text-xs text-white/45">Cloud compte</p>
+            <p className="text-sm text-white/85">Sauvegarde playlists, favoris et metadata par compte.</p>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={backupToCloud}
-              disabled={cloudLoading !== null}
+              disabled={cloudLoading !== null || loading || !isAuthenticated}
               className="h-9 px-3 rounded-xl bg-white text-black text-sm font-medium hover:opacity-90 transition disabled:opacity-60"
             >
               {cloudLoading === "save" ? "Sauvegarde..." : "Sauvegarder cloud"}
@@ -507,13 +532,18 @@ export default function PlaylistsPage() {
             <button
               type="button"
               onClick={restoreFromCloud}
-              disabled={cloudLoading !== null}
+              disabled={cloudLoading !== null || loading || !isAuthenticated}
               className="h-9 px-3 rounded-xl bg-white/10 text-white text-sm hover:bg-white/15 transition disabled:opacity-60"
             >
               {cloudLoading === "restore" ? "Restauration..." : "Restaurer cloud"}
             </button>
           </div>
         </div>
+        {!loading && !isAuthenticated ? (
+          <p className="mt-3 text-xs text-white/55">
+            Connecte-toi dans <Link href="/account" className="text-white/85 underline underline-offset-4">Compte</Link> pour activer la sauvegarde cloud.
+          </p>
+        ) : null}
         {cloudMessage ? <p className="mt-3 text-xs text-white/60">{cloudMessage}</p> : null}
       </section>
 

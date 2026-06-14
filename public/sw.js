@@ -1,5 +1,5 @@
-const STATIC_CACHE = "mp3-static-v1";
-const RUNTIME_CACHE = "mp3-runtime-v1";
+const STATIC_CACHE = "mp3-static-v2";
+const RUNTIME_CACHE = "mp3-runtime-v2";
 const PRECACHE_URLS = ["/", "/manifest.webmanifest", "/favicon.ico"];
 
 self.addEventListener("install", (event) => {
@@ -57,9 +57,15 @@ self.addEventListener("fetch", (event) => {
 
   const path = url.pathname;
   if (path.startsWith("/_next/")) return;
+  if (path.startsWith("/api/")) return;
 
   const isAudioOrCover =
-    path.startsWith("/Audio/") || path.startsWith("/Covers/") || path.startsWith("/audio/") || path.startsWith("/covers/");
+    path.startsWith("/Audio/") ||
+    path.startsWith("/audio/") ||
+    path.startsWith("/Cover/") ||
+    path.startsWith("/cover/") ||
+    path.startsWith("/Covers/") ||
+    path.startsWith("/covers/");
 
   if (isAudioOrCover) {
     event.respondWith(cacheFirst(request));

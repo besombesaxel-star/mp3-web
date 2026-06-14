@@ -3,10 +3,12 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import Sidebar from "../app/Sidebar";
+import DynamicBackdrop from "../app/DynamicBackdrop";
 import MiniPlayer from "../app/MiniPlayer";
 import PlayerOverlay from "../app/PlayerOverlay";
 import KeyboardShortcuts from "../app/KeyboardShortcuts";
 import PwaInstaller from "../app/PwaInstaller";
+import { AuthProvider } from "../app/AuthProvider";
 import { PlayerProvider } from "../app/PlayerContext";
 
 const geistSans = Geist({
@@ -58,19 +60,23 @@ export default function RootLayout({
           Aller au contenu principal
         </a>
 
-        <PlayerProvider>
-          <div className="flex h-screen">
-            <Sidebar />
-            <main id="main-content" className="flex-1 overflow-y-auto p-4 pt-20 md:p-8" tabIndex={-1}>
-              {children}
-            </main>
-          </div>
+        <AuthProvider>
+          <PlayerProvider>
+            <DynamicBackdrop />
 
-          <KeyboardShortcuts />
-          <PwaInstaller />
-          <MiniPlayer />
-          <PlayerOverlay />
-        </PlayerProvider>
+            <div className="relative z-10 flex h-screen">
+              <Sidebar />
+              <main id="main-content" className="flex-1 overflow-y-auto p-4 pt-20 md:p-8" tabIndex={-1}>
+                {children}
+              </main>
+            </div>
+
+            <KeyboardShortcuts />
+            <PwaInstaller />
+            <MiniPlayer />
+            <PlayerOverlay />
+          </PlayerProvider>
+        </AuthProvider>
       </body>
     </html>
   );

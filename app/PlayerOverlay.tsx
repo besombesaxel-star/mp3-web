@@ -299,109 +299,63 @@ export default function PlayerOverlay() {
         }
 
         @keyframes mp3OvEnter {
-          from {
-            opacity: 0;
-            transform: translateY(10px) scale(0.985);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
+          from { opacity: 0; }
+          to   { opacity: 1; }
         }
 
         @keyframes mp3BgDrift {
-          0% {
-            transform: scale(1.06) translateY(0);
-            opacity: 0.22;
-          }
-          50% {
-            transform: scale(1.1) translateY(-6px);
-            opacity: 0.28;
-          }
-          100% {
-            transform: scale(1.06) translateY(0);
-            opacity: 0.22;
-          }
+          0%   { transform: scale(1.06) translateY(0);   opacity: 0.22; }
+          50%  { transform: scale(1.1)  translateY(-6px); opacity: 0.28; }
+          100% { transform: scale(1.06) translateY(0);   opacity: 0.22; }
         }
 
         @keyframes mp3CoverPop {
-          from {
-            opacity: 0;
-            transform: translateY(10px) scale(0.96);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
+          from { opacity: 0; transform: translateY(60px) scale(0.92); }
+          to   { opacity: 1; transform: translateY(0)    scale(1);    }
         }
 
         @keyframes mp3PanelSlide {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(50px); }
+          to   { opacity: 1; transform: translateY(0);    }
         }
 
         @keyframes mp3ControlsRise {
-          from {
-            opacity: 0;
-            transform: translateY(12px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
+          from { opacity: 0; transform: translateY(40px); }
+          to   { opacity: 1; transform: translateY(0);    }
         }
 
         @keyframes mp3ProgressSheen {
-          0% {
-            transform: translateX(-120%);
-            opacity: 0;
-          }
-          35% {
-            opacity: 0.5;
-          }
-          100% {
-            transform: translateX(120%);
-            opacity: 0;
-          }
+          0%   { transform: translateX(-120%); opacity: 0;   }
+          35%  { opacity: 0.5; }
+          100% { transform: translateX(120%);  opacity: 0;   }
         }
 
         @keyframes mp3OvExit {
-          from {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-          to {
-            opacity: 0;
-            transform: translateY(12px) scale(0.982);
-          }
+          from { opacity: 1; transform: translateY(0)   scale(1);     }
+          to   { opacity: 0; transform: translateY(30px) scale(0.97); }
         }
 
         .mp3-ov-enter {
-          animation: mp3OvEnter 260ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+          animation: mp3OvEnter 280ms ease both;
         }
         .mp3-ov-exit {
-          animation: mp3OvExit 200ms cubic-bezier(0.4, 0, 1, 1) both;
+          animation: mp3OvExit 240ms cubic-bezier(0.4, 0, 1, 1) both;
         }
         .mp3-ov-bg {
           animation: mp3BgDrift 9s ease-in-out infinite;
           will-change: transform, opacity;
         }
         .mp3-ov-cover {
-          animation: mp3CoverPop 320ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+          animation: mp3CoverPop 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+          animation-delay: 40ms;
         }
         .mp3-ov-panel {
-          animation: mp3PanelSlide 260ms ease-out both;
-          animation-delay: 60ms;
+          animation: mp3PanelSlide 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+          animation-delay: 100ms;
         }
         .mp3-ov-controls {
-          animation: mp3ControlsRise 260ms ease-out both;
-          animation-delay: 120ms;
+          animation: mp3ControlsRise 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+          animation-delay: 160ms;
         }
 
         .mp3-ov-volume-slider {

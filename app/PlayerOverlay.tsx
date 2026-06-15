@@ -190,7 +190,16 @@ export default function PlayerOverlay() {
   const hideHudTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [focusHudVisible, setFocusHudVisible] = useState(true);
   const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   useFocusTrap(expanded, overlayRef);
+
+  function closeOverlay() {
+    setIsClosing(true);
+    setTimeout(() => {
+      setExpanded(false);
+      setIsClosing(false);
+    }, 220);
+  }
 
   const liked = track ? isFavorite(track.src) : false;
 
@@ -279,6 +288,7 @@ export default function PlayerOverlay() {
       <style jsx global>{`
         @media (prefers-reduced-motion: reduce) {
           .mp3-ov-enter,
+          .mp3-ov-exit,
           .mp3-ov-bg,
           .mp3-ov-cover,
           .mp3-ov-panel,
@@ -361,8 +371,22 @@ export default function PlayerOverlay() {
           }
         }
 
+        @keyframes mp3OvExit {
+          from {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+          to {
+            opacity: 0;
+            transform: translateY(12px) scale(0.982);
+          }
+        }
+
         .mp3-ov-enter {
           animation: mp3OvEnter 260ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
+        }
+        .mp3-ov-exit {
+          animation: mp3OvExit 200ms cubic-bezier(0.4, 0, 1, 1) both;
         }
         .mp3-ov-bg {
           animation: mp3BgDrift 9s ease-in-out infinite;
@@ -420,7 +444,7 @@ export default function PlayerOverlay() {
 
       <div
         ref={overlayRef}
-        className="group fixed inset-0 z-[9999] bg-black mp3-ov-enter"
+        className={`group fixed inset-0 z-[9999] bg-black ${isClosing ? "mp3-ov-exit" : "mp3-ov-enter"}`}
         role="dialog"
         aria-modal="true"
         aria-label="Lecteur plein ecran"
@@ -511,7 +535,7 @@ export default function PlayerOverlay() {
               </button>
 
               <button
-                onClick={() => setExpanded(false)}
+                onClick={closeOverlay}
                 className="h-10 w-10 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98]"
                 title="Fermer"
                 type="button"
@@ -593,7 +617,7 @@ export default function PlayerOverlay() {
             </button>
 
             <button
-              onClick={() => setExpanded(false)}
+              onClick={closeOverlay}
               className="h-11 w-11 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98]"
               title="Fermer"
               type="button"

@@ -865,25 +865,15 @@ export default function PlayerOverlay() {
                   {playing ? <Pause size={28} /> : <Play size={28} />}
                 </button>
 
-                <div className="relative group">
-                  <button
-                    onClick={next}
-                    className="h-[60px] w-[60px] lg:h-16 lg:w-16 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98] disabled:opacity-50"
-                    disabled={!track}
-                    title="Suivant"
-                    type="button"
-                  >
-                    <SkipForward size={24} className="mx-auto opacity-90 text-white/85" />
-                  </button>
-                  {preloadedTrack && preloadedTrack.src !== track?.src && (
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 pointer-events-none opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 scale-95 group-hover:scale-100 transition-all duration-200 ease-out whitespace-nowrap z-20">
-                      <div className="bg-black/75 backdrop-blur-md rounded-xl px-3 py-2 text-left ring-1 ring-white/10">
-                        <p className="text-xs text-white/90 font-medium max-w-[200px] truncate">{preloadedTrack.title}</p>
-                        <p className="text-[11px] text-white/50 max-w-[200px] truncate">{preloadedTrack.artist}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <button
+                  onClick={next}
+                  className="h-[60px] w-[60px] lg:h-16 lg:w-16 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98] disabled:opacity-50"
+                  disabled={!track}
+                  title="Suivant"
+                  type="button"
+                >
+                  <SkipForward size={24} className="mx-auto opacity-90 text-white/85" />
+                </button>
 
                 <button
                   onClick={cycleRepeat}

@@ -10,6 +10,7 @@ import KeyboardShortcuts from "../app/KeyboardShortcuts";
 import PwaInstaller from "../app/PwaInstaller";
 import { AuthProvider } from "../app/AuthProvider";
 import { PlayerProvider } from "../app/PlayerContext";
+import Toast from "../app/Toast";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -75,6 +76,7 @@ export default function RootLayout({
             <PwaInstaller />
             <MiniPlayer />
             <PlayerOverlay />
+            <Toast />
           </PlayerProvider>
         </AuthProvider>
       </body>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "../AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { dispatchTracksUpdated, subscribeTracksUpdated } from "../tracksSync";
+import { toast } from "../Toast";
 
 type UploadResponse = {
   ok?: boolean;
@@ -200,6 +201,7 @@ export default function UploadPage() {
       await loadExistingNames();
       dispatchTracksUpdated();
       setMessage("Upload termine. Ton son est disponible dans la bibliotheque.");
+      toast("Son ajouté à la bibliothèque", "music");
       setStep(4);
     } catch (errorValue: unknown) {
       setMessage(`Erreur: ${getErrorMessage(errorValue, "Echec de l'upload")}`);

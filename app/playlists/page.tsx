@@ -7,6 +7,7 @@ import { useAuth } from "../AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { usePlayer, Track } from "../PlayerContext";
 import { subscribeTracksUpdated } from "../tracksSync";
+import { toast } from "../Toast";
 
 type TrackWithCover = Track & { cover?: string };
 
@@ -380,18 +381,19 @@ export default function PlaylistsPage() {
 
   function toggleTrackInActive(src: string) {
     if (!active) return;
+    const alreadyIn = active.trackSrcs.includes(src);
     setPlaylists((prev) =>
       prev.map((playlist) => {
         if (playlist.id !== active.id) return playlist;
-        const exists = playlist.trackSrcs.includes(src);
         return {
           ...playlist,
-          trackSrcs: exists
+          trackSrcs: alreadyIn
             ? playlist.trackSrcs.filter((value) => value !== src)
             : [...playlist.trackSrcs, src],
         };
       })
     );
+    if (!alreadyIn) toast(`Ajouté à « ${active.name} »`, "check");
   }
 
   function playActive(startIndex: number) {

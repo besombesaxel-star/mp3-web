@@ -9,6 +9,7 @@ import React, {
   useState,
 } from "react";
 import { useAuth } from "./AuthProvider";
+import { toast } from "./Toast";
 import { getOrCreateSharedGraph, type SharedGraph } from "./audioGraph";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 
@@ -1894,18 +1895,18 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   function toggleFavorite(t: Track) {
     if (!t?.src) return;
 
+    const wasFav = !!favoritesMap[t.src];
     setFavoritesMap((prev) => {
       const next = { ...prev };
-      const wasFav = !!next[t.src];
-
       if (wasFav) {
         delete next[t.src];
       } else {
         next[t.src] = t;
       }
-
       return next;
     });
+
+    toast(wasFav ? "Retiré des favoris" : "Ajouté aux favoris", "heart");
   }
 
   function clearFavorites() {

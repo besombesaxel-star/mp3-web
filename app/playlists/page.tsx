@@ -68,7 +68,7 @@ function badgeToneClass(tone: PlaylistBadge["tone"]) {
 
 export default function PlaylistsPage() {
   const { accessToken, isAuthenticated, loading } = useAuth();
-  const { setQueueAndPlay, markPlaylistCreated, stats, favorites } = usePlayer();
+  const { setQueueAndPlay, markPlaylistCreated, stats, favorites, reloadFavoritesFromStorage } = usePlayer();
 
   const [library, setLibrary] = useState<TrackWithCover[]>([]);
   const [libLoading, setLibLoading] = useState(true);
@@ -497,8 +497,10 @@ export default function PlaylistsPage() {
       localStorage.setItem(LS_KEY, JSON.stringify(restoredPlaylists));
       localStorage.setItem("mp3:favorites:v1", JSON.stringify(favoritesMap));
 
-      setCloudMessage("Cloud restaure. Rechargement...");
-      window.location.reload();
+      setPlaylists(restoredPlaylists);
+      reloadFavoritesFromStorage();
+      setCloudMessage("Cloud restaure avec succes !");
+      setCloudLoading(null);
     } catch (errorValue: unknown) {
       setCloudMessage(getErrorMessage(errorValue, "Echec de restauration cloud"));
       setCloudLoading(null);

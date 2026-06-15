@@ -161,6 +161,8 @@ type PlayerCtx = {
 
   /** âœ… pour dÃ©clencher lâ€™achievement â€œPremiÃ¨re playlistâ€ depuis PlaylistsPage */
   markPlaylistCreated: () => void;
+
+  reloadFavoritesFromStorage: () => void;
 };
 
 const Ctx = createContext<PlayerCtx | null>(null);
@@ -1313,6 +1315,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
       _setTracks(session.tracks);
       shuffleHistoryRef.current = [];
+      plannedShuffleNextRef.current = null;
 
       const safeIndex =
         session.tracks.length === 0 ? -1 : clamp(session.index, 0, session.tracks.length - 1);
@@ -1402,7 +1405,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (!audio) return;
     const trackSrc = track?.src ?? "";
     autoAdvanceArmedRef.current = false;
-    plannedShuffleNextRef.current = null;
     clearAutoAdvanceTimer();
     clearTransitionTimer();
     clearFadeFrame();
@@ -1473,6 +1475,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   function restoreQueueSnapshot(snapshot: { tracks: Track[]; index: number; playing: boolean }) {
     _setTracks(snapshot.tracks);
     shuffleHistoryRef.current = [];
+    plannedShuffleNextRef.current = null;
 
     if (snapshot.tracks.length === 0) {
       setIndex(-1);
@@ -1913,6 +1916,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setFavoritesMap({});
   }
 
+  function reloadFavoritesFromStorage() {
+    try {
+      const raw = localStorage.getItem(LS_FAV);
+      if (!raw) { setFavoritesMap({}); return; }
+      setFavoritesMap(sanitizeFavoritesMap(JSON.parse(raw)));
+    } catch { setFavoritesMap({}); }
+  }
+
   function getAudio() {
     return audioRef.current;
   }
@@ -1999,6 +2010,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     dismissUndoToast,
 
     markPlaylistCreated,
+
+    reloadFavoritesFromStorage,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

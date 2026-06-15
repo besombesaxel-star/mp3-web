@@ -2,45 +2,16 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { usePlayer } from "./PlayerContext";
+import { getOrCreateSharedGraph, ensureConnected } from "./audioGraph";
 
 type Props = {
   bars?: number;
   height?: number;
   className?: string;
-
-  // style
-  accent?: string;  // ex: "#A855F7" ou "rgb(255,0,0)"
+  accent?: string;
   punch?: number;
   smooth?: number;
 };
-
-type Graph = {
-  ctx: AudioContext;
-  analyser: AnalyserNode;
-  source: MediaElementAudioSourceNode;
-  connected: boolean;
-};
-
-const graphByMedia = new WeakMap<HTMLMediaElement, Graph>();
-
-function getOrCreateGraph(media: HTMLMediaElement): Graph | null {
-  const existing = graphByMedia.get(media);
-  if (existing) return existing;
-
-  const webkitAudioContext = (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  const Ctx = window.AudioContext || webkitAudioContext;
-  if (!Ctx) return null;
-
-  const ctx: AudioContext = new Ctx();
-  const analyser = ctx.createAnalyser();
-  analyser.fftSize = 2048;
-  analyser.smoothingTimeConstant = 0.55;
-
-  const source = ctx.createMediaElementSource(media);
-  const graph: Graph = { ctx, analyser, source, connected: false };
-  graphByMedia.set(media, graph);
-  return graph;
-}
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
@@ -69,14 +40,10 @@ export default function AudioBars({
     const audio = getAudio();
     if (!audio) return;
 
-    const graph = getOrCreateGraph(audio);
+    const graph = getOrCreateSharedGraph(audio);
     if (!graph) return;
 
-    if (!graph.connected) {
-      graph.source.connect(graph.analyser);
-      graph.analyser.connect(graph.ctx.destination);
-      graph.connected = true;
-    }
+    ensureConnected(graph);
 
     const analyser = graph.analyser;
     const data = new Uint8Array(analyser.frequencyBinCount);

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePlayer } from "./PlayerContext";
+import AudioBars from "./AudioBars";
 import { useFocusTrap } from "./useFocusTrap";
 import { getArtistHref, getPublicProfileHref } from "@/lib/publicLinks";
 import {
@@ -753,9 +754,12 @@ export default function PlayerOverlay() {
             <div className="hidden md:block w-full mp3-ov-panel lg:self-center lg:translate-y-8">
               {!focusMode ? (
                 <>
-                  <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white/95 truncate">
-                    {track?.title ?? "Aucune lecture"}
-                  </h1>
+                  <div className="flex items-center gap-5 min-w-0">
+                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white/95 truncate min-w-0">
+                      {track?.title ?? "Aucune lecture"}
+                    </h1>
+                    <AudioBars bars={20} height={48} className="shrink-0 opacity-70" />
+                  </div>
                   <div className="mt-3 flex flex-wrap items-center gap-3 text-lg md:text-xl text-white/45">
                     {track?.artist ? (
                       <Link href={getArtistHref(track.artist)} className="truncate underline underline-offset-4 hover:text-white/80">

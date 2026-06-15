@@ -132,9 +132,24 @@ export default function StatsPage() {
       cursor -= 24 * 60 * 60 * 1000;
     }
 
+    const weeklySecondsByDay = new Map<number, number>();
+    for (const event of stats.recentPlays) {
+      if (event.playedAt < weekAgo) continue;
+      const dayMs = startOfDayMs(event.playedAt);
+      const avgTrackSeconds = avgSecondsBySrc.get(event.src) ?? 0;
+      weeklySecondsByDay.set(dayMs, (weeklySecondsByDay.get(dayMs) ?? 0) + avgTrackSeconds);
+    }
+
     const weekDays = Array.from({ length: 7 }, (_, i) => {
       const dayMs = today - (6 - i) * 24 * 60 * 60 * 1000;
-      return weeklyActiveDaySet.has(dayMs);
+      const date = new Date(dayMs);
+      return {
+        active: weeklyActiveDaySet.has(dayMs),
+        seconds: weeklySecondsByDay.get(dayMs) ?? 0,
+        dayNum: date.getDate(),
+        dayName: ["D", "L", "M", "M", "J", "V", "S"][date.getDay()],
+        isToday: dayMs === today,
+      };
     });
 
     return { weeklyListenSeconds, weeklyTopArtistName, weeklyTopArtistPlays, weeklyActiveDays: weeklyActiveDaySet.size, streakDays, weekDays };
@@ -181,18 +196,50 @@ export default function StatsPage() {
       {/* Weekly activity + top artist */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
         <div className="rounded-3xl bg-[#15151C] border border-white/5 p-5 mp3-fade-up" style={{ animationDelay: "240ms" }}>
-          <div className="flex items-center gap-2 mb-4">
-            <BarChart3 size={14} className="text-white/30" />
-            <p className="text-xs text-white/40">Activité des 7 derniers jours</p>
+          <div className="flex items-center justify-between gap-2 mb-5">
+            <div className="flex items-center gap-2">
+              <BarChart3 size={14} className="text-white/30" />
+              <p className="text-xs text-white/40">Activité des 7 derniers jours</p>
+            </div>
+            <p className="text-xs text-white/30 tabular-nums">{personalSummary.weeklyActiveDays}/7 jours</p>
           </div>
-          <div className="flex items-end gap-2 h-10">
-            {["L", "M", "M", "J", "V", "S", "D"].map((day, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-                <div className={["rounded-full w-full transition-all duration-500", personalSummary.weekDays[i] ? "bg-white/70 h-8" : "bg-white/10 h-2"].join(" ")} />
-                <span className="text-[10px] text-white/25">{day}</span>
+          {(() => {
+            const maxSec = Math.max(...personalSummary.weekDays.map(d => d.seconds), 1);
+            return (
+              <div className="flex items-end gap-1.5 h-16">
+                {personalSummary.weekDays.map((day, i) => {
+                  const ratio = day.seconds > 0 ? day.seconds / maxSec : 0;
+                  const barH = day.active ? Math.max(14, Math.round(ratio * 48)) : 4;
+                  return (
+                    <div key={i} className="group flex-1 flex flex-col items-center gap-2 cursor-default">
+                      {day.seconds > 0 && (
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-[9px] text-white/50 tabular-nums whitespace-nowrap">
+                          {formatDuration(day.seconds)}
+                        </div>
+                      )}
+                      <div className="flex-1 flex items-end w-full">
+                        <div
+                          className={[
+                            "w-full rounded-full transition-all duration-700",
+                            day.isToday
+                              ? "bg-white/90"
+                              : day.active
+                              ? "bg-white/45 group-hover:bg-white/65"
+                              : "bg-white/8",
+                          ].join(" ")}
+                          style={{ height: `${barH}px` }}
+                        />
+                      </div>
+                      <div className="flex flex-col items-center gap-0.5">
+                        <span className={["text-[10px] tabular-nums font-medium", day.isToday ? "text-white/80" : "text-white/25"].join(" ")}>{day.dayNum}</span>
+                        <span className={["text-[9px]", day.isToday ? "text-white/50" : "text-white/20"].join(" ")}>{day.dayName}</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            );
+          })()}
         </div>
 
         <div className="rounded-3xl bg-[#15151C] border border-white/5 p-5 mp3-fade-up" style={{ animationDelay: "280ms" }}>

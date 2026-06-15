@@ -755,7 +755,7 @@ export default function PlayerOverlay() {
               {!focusMode ? (
                 <>
                   <div className="flex items-center gap-5 min-w-0">
-                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white/95 truncate">
+                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white/95 truncate min-w-0 flex-1">
                       {track?.title ?? "Aucune lecture"}
                     </h1>
                     <AudioBars bars={20} height={48} className="shrink-0 opacity-70" />

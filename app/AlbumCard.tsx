@@ -40,16 +40,16 @@ export default function AlbumCard({
           data-scroll-cover="1"
           className={[
             "scroll-edge-blur relative aspect-square w-full overflow-hidden rounded-3xl border border-white/5 bg-[#1A1A22] shadow-sm will-change-transform",
-            "transition-all duration-200",
+            "transition-all duration-500 ease-out",
             hoverEffect === "shrink"
               ? "group-hover:scale-[0.96] group-hover:shadow-[0_0_32px_rgba(255,255,255,0.07)]"
-              : "transition-shadow duration-300 group-hover:shadow-[0_0_32px_rgba(255,255,255,0.07)]",
+              : "group-hover:shadow-[0_0_32px_rgba(255,255,255,0.07)]",
           ].join(" ")}
           style={coverTransform ? { transform: coverTransform } : undefined}
         >
           <div className={[
             "relative h-full w-full",
-            hoverEffect === "grow" ? "transition-transform duration-200 group-hover:scale-[1.02]" : "",
+            hoverEffect === "grow" ? "transition-transform duration-500 ease-out group-hover:scale-[1.02]" : "",
           ].join(" ")}>
             {track.cover ? (
               <Image

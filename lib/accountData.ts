@@ -5,6 +5,7 @@ import {
 } from "@/lib/supabaseAdmin";
 
 type AccountProfileData = {
+  avatarUrl: string;
   favoriteSrcs: string[];
   publicBio: string;
   updatedAt: number;
@@ -12,6 +13,7 @@ type AccountProfileData = {
 };
 
 const EMPTY_PROFILE: AccountProfileData = {
+  avatarUrl: "",
   favoriteSrcs: [],
   publicBio: "",
   updatedAt: 0,
@@ -49,8 +51,9 @@ function normalizeProfile(raw: unknown): AccountProfileData {
     return { ...EMPTY_PROFILE, favoriteSrcs: [] };
   }
 
-  const value = raw as { favoriteSrcs?: unknown; publicBio?: unknown; updatedAt?: unknown; version?: unknown };
+  const value = raw as { avatarUrl?: unknown; favoriteSrcs?: unknown; publicBio?: unknown; updatedAt?: unknown; version?: unknown };
   return {
+    avatarUrl: typeof value.avatarUrl === "string" ? value.avatarUrl.trim() : "",
     favoriteSrcs: normalizeFavoriteSrcs(value.favoriteSrcs),
     publicBio: normalizePublicBio(value.publicBio),
     updatedAt: typeof value.updatedAt === "number" ? value.updatedAt : 0,
@@ -134,6 +137,7 @@ async function writeAccountProfile(userId: string, profile: AccountProfileData) 
 
   const payload = JSON.stringify(
     {
+      avatarUrl: typeof profile.avatarUrl === "string" ? profile.avatarUrl.trim() : "",
       favoriteSrcs: normalizeFavoriteSrcs(profile.favoriteSrcs),
       publicBio: normalizePublicBio(profile.publicBio),
       updatedAt: Date.now(),
@@ -158,12 +162,14 @@ async function writeAccountProfile(userId: string, profile: AccountProfileData) 
 export async function saveAccountProfile(
   userId: string,
   patch: {
+    avatarUrl?: string;
     favoriteSrcs?: string[];
     publicBio?: string;
   }
 ) {
   const current = await readAccountProfile(userId);
   const next: AccountProfileData = {
+    avatarUrl: patch.avatarUrl === undefined ? current.avatarUrl : patch.avatarUrl.trim(),
     favoriteSrcs:
       patch.favoriteSrcs === undefined ? current.favoriteSrcs : normalizeFavoriteSrcs(patch.favoriteSrcs),
     publicBio: patch.publicBio === undefined ? current.publicBio : normalizePublicBio(patch.publicBio),

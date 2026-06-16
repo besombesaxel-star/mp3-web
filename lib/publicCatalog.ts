@@ -15,6 +15,7 @@ type SerializedPublicTrack = {
 };
 
 export type PublicUserProfileData = {
+  avatarUrl: string;
   bio: string;
   displayName: string;
   initials: string;
@@ -96,6 +97,7 @@ export async function getPublicUserProfileData(userId: string): Promise<PublicUs
   ).size;
 
   return {
+    avatarUrl: profile?.avatarUrl ?? "",
     bio: profile?.publicBio ?? "",
     displayName,
     initials: getInitials(displayName, "MP"),

@@ -35,6 +35,7 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     ok: true,
+    avatarUrl: profile.avatarUrl ?? "",
     favoriteSrcs: profile.favoriteSrcs,
     favoriteTracks: favoriteTracks.map((track) => serializeTrack(track)),
     publicBio: profile.publicBio,
@@ -55,12 +56,14 @@ export async function PUT(req: Request) {
     ? body.favoriteSrcs.filter((value: unknown): value is string => typeof value === "string")
     : undefined;
   const publicBio = typeof body?.publicBio === "string" ? body.publicBio : undefined;
+  const avatarUrl = typeof body?.avatarUrl === "string" ? body.avatarUrl : undefined;
 
-  if (favoriteSrcs === undefined && publicBio === undefined) {
+  if (favoriteSrcs === undefined && publicBio === undefined && avatarUrl === undefined) {
     return NextResponse.json({ ok: false, error: "Aucune mise a jour fournie" }, { status: 400 });
   }
 
   await saveAccountProfile(user.id, {
+    avatarUrl,
     favoriteSrcs,
     publicBio,
   });

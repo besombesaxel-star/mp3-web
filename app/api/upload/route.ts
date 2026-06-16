@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { isValidAudioUpload, isValidCoverUpload, uploadTrackForApi } from "@/lib/libraryRepository";
 import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
+import { readAccountProfile } from "@/lib/accountData";
+import { notifyAllUsersOfUpload } from "@/lib/notificationData";
 
 export const runtime = "nodejs";
 
@@ -41,6 +43,23 @@ export async function POST(req: Request) {
       email: auth.user.email ?? null,
       id: auth.user.id,
     });
+
+    const uploaderId = auth.user.id;
+    const uploaderName =
+      (auth.user.user_metadata?.display_name as string | undefined)?.trim() || "Quelqu'un";
+    void (async () => {
+      try {
+        const profile = await readAccountProfile(uploaderId);
+        await notifyAllUsersOfUpload({
+          uploaderUserId: uploaderId,
+          uploaderDisplayName: uploaderName,
+          uploaderAvatarUrl: profile.avatarUrl ?? "",
+          trackTitle: track.title,
+          trackSrc: track.src,
+          trackCover: track.cover ?? null,
+        });
+      } catch {}
+    })();
 
     return NextResponse.json({
       ok: true,

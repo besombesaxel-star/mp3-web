@@ -11,6 +11,8 @@ import PwaInstaller from "../app/PwaInstaller";
 import { AuthProvider } from "../app/AuthProvider";
 import { PlayerProvider } from "../app/PlayerContext";
 import Toast from "../app/Toast";
+import GlobalChat from "../app/GlobalChat";
+import NotificationBell from "../app/NotificationBell";;
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -76,6 +78,8 @@ export default function RootLayout({
             <PwaInstaller />
             <MiniPlayer />
             <PlayerOverlay />
+            <GlobalChat />
+            <NotificationBell />
             <Toast />
           </PlayerProvider>
         </AuthProvider>

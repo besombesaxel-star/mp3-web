@@ -227,6 +227,11 @@ body[data-mp3-theme="ocean"] {
   to   { opacity: 1; transform: scale(1); }
 }
 
+@keyframes nowPlayingBar {
+  from { transform: scaleY(0.3); }
+  to   { transform: scaleY(1); }
+}
+
 .mp3-fade-up {
   animation: mp3-fadeUp 220ms ease-out both;
 }

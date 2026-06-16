@@ -23,7 +23,7 @@ import { useFocusTrap } from "./useFocusTrap";
 
 const nav = [
   { href: "/", label: "Accueil", Icon: Home },
-  { href: "/library", label: "Bibliotheque", Icon: LibraryBig },
+{ href: "/library", label: "Bibliotheque", Icon: LibraryBig },
   { href: "/playlists", label: "Playlists", Icon: ListMusic },
   { href: "/search", label: "Recherche", Icon: SearchIcon },
   { href: "/favorites", label: "Favoris", Icon: Heart },

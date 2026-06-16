@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readAccountProfile, saveAccountProfile } from "@/lib/accountData";
+import { readAccountProfile, saveAccountProfile, type ProfileLink } from "@/lib/accountData";
 import { listTracksForApi } from "@/lib/libraryRepository";
 import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
 
@@ -27,19 +27,28 @@ export async function GET(req: Request) {
   const user = auth.user;
 
   const [profile, tracks] = await Promise.all([readAccountProfile(user.id), listTracksForApi()]);
-  const trackBySrc = new Map(tracks.map((track) => [track.src, track]));
+  const trackBySrc = new Map(tracks.map((t) => [t.src, t]));
   const favoriteTracks = profile.favoriteSrcs
     .map((src) => trackBySrc.get(src))
-    .filter((track): track is Awaited<ReturnType<typeof listTracksForApi>>[number] => Boolean(track));
-  const uploads = tracks.filter((track) => track.ownerId === user.id);
+    .filter((t): t is Awaited<ReturnType<typeof listTracksForApi>>[number] => Boolean(t));
+  const uploads = tracks.filter((t) => t.ownerId === user.id);
+  const pinnedTracks = profile.pinnedTrackSrcs
+    .map((src) => trackBySrc.get(src))
+    .filter((t): t is Awaited<ReturnType<typeof listTracksForApi>>[number] => Boolean(t));
 
   return NextResponse.json({
     ok: true,
     avatarUrl: profile.avatarUrl ?? "",
     favoriteSrcs: profile.favoriteSrcs,
-    favoriteTracks: favoriteTracks.map((track) => serializeTrack(track)),
+    favoriteTracks: favoriteTracks.map(serializeTrack),
+    followersCount: profile.followersCount ?? 0,
+    following: profile.following ?? [],
+    links: profile.links ?? [],
+    pinnedTrackSrcs: profile.pinnedTrackSrcs ?? [],
+    pinnedTracks: pinnedTracks.map(serializeTrack),
     publicBio: profile.publicBio,
-    uploads: uploads.map((track) => serializeTrack(track)),
+    themeHue: profile.themeHue ?? null,
+    uploads: uploads.map(serializeTrack),
     uploadsCount: uploads.length,
   });
 }
@@ -53,19 +62,20 @@ export async function PUT(req: Request) {
 
   const body = await req.json().catch(() => null);
   const favoriteSrcs = Array.isArray(body?.favoriteSrcs)
-    ? body.favoriteSrcs.filter((value: unknown): value is string => typeof value === "string")
+    ? body.favoriteSrcs.filter((v: unknown): v is string => typeof v === "string")
     : undefined;
   const publicBio = typeof body?.publicBio === "string" ? body.publicBio : undefined;
   const avatarUrl = typeof body?.avatarUrl === "string" ? body.avatarUrl : undefined;
+  const links = Array.isArray(body?.links) ? (body.links as ProfileLink[]) : undefined;
+  const pinnedTrackSrcs = Array.isArray(body?.pinnedTrackSrcs)
+    ? body.pinnedTrackSrcs.filter((v: unknown): v is string => typeof v === "string")
+    : undefined;
+  const themeHue = body?.themeHue === null ? null : typeof body?.themeHue === "number" ? body.themeHue : undefined;
 
-  if (favoriteSrcs === undefined && publicBio === undefined && avatarUrl === undefined) {
+  if ([favoriteSrcs, publicBio, avatarUrl, links, pinnedTrackSrcs, themeHue].every((v) => v === undefined)) {
     return NextResponse.json({ ok: false, error: "Aucune mise a jour fournie" }, { status: 400 });
   }
 
-  await saveAccountProfile(user.id, {
-    avatarUrl,
-    favoriteSrcs,
-    publicBio,
-  });
+  await saveAccountProfile(user.id, { avatarUrl, favoriteSrcs, links, pinnedTrackSrcs, publicBio, themeHue });
   return NextResponse.json({ ok: true });
 }

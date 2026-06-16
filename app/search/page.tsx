@@ -1,9 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { Music, Play, Search, User, X } from "lucide-react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Track, usePlayer } from "../PlayerContext";
 import { subscribeTracksUpdated } from "../tracksSync";
+import { getInitials, hashStringToHue } from "@/lib/publicLinks";
 
 type TrackWithCover = Track & { cover?: string };
 
@@ -16,23 +19,11 @@ type ApiTrack = {
   ownerId?: string | null;
 };
 
-type TracksResponse = {
-  tracks?: ApiTrack[];
-};
+type TracksResponse = { tracks?: ApiTrack[] };
+type SearchTab = "all" | "titres" | "artistes" | "utilisateurs";
 
-type PlaylistLite = {
-  id: string;
-  name: string;
-  trackSrcs: string[];
-};
-
-type SearchField = "all" | "title" | "artist";
-type ArtistSuggestion = {
-  name: string;
-  count: number;
-};
-
-const PLAYLISTS_LS_KEY = "mp3_playlists_v1";
+type ArtistEntry = { name: string; count: number; cover?: string };
+type UserEntry = { id: string; displayName: string; trackCount: number };
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -41,7 +32,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 function normalizeText(value: string) {
   return value
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-zA-Z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .toLowerCase()
@@ -49,43 +40,32 @@ function normalizeText(value: string) {
 }
 
 function levenshtein(a: string, b: string) {
-  const dp = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0));
-
+  const dp = Array.from({ length: a.length + 1 }, () =>
+    new Array<number>(b.length + 1).fill(0)
+  );
   for (let i = 0; i <= a.length; i++) dp[i][0] = i;
   for (let j = 0; j <= b.length; j++) dp[0][j] = j;
-
   for (let i = 1; i <= a.length; i++) {
     for (let j = 1; j <= b.length; j++) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      dp[i][j] = Math.min(
-        dp[i - 1][j] + 1,
-        dp[i][j - 1] + 1,
-        dp[i - 1][j - 1] + cost
-      );
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
     }
   }
-
   return dp[a.length][b.length];
 }
 
 function fuzzyMatch(haystack: string, needle: string): boolean {
   if (!needle) return true;
   const terms = needle.split(" ").filter(Boolean);
-  if (terms.length > 1) {
-    return terms.every((term) => fuzzyMatch(haystack, term));
-  }
+  if (terms.length > 1) return terms.every((t) => fuzzyMatch(haystack, t));
   if (haystack.includes(needle)) return true;
-
   const words = haystack.split(/\s+/).filter(Boolean);
   for (const word of words) {
     if (word.includes(needle)) return true;
-    if (needle.length >= 4 && Math.abs(word.length - needle.length) <= 1) {
-      if (levenshtein(word, needle) <= 1) return true;
-    }
+    if (needle.length >= 4 && Math.abs(word.length - needle.length) <= 1 && levenshtein(word, needle) <= 1)
+      return true;
   }
-
-  let i = 0;
-  let j = 0;
+  let i = 0, j = 0;
   while (i < haystack.length && j < needle.length) {
     if (haystack[i] === needle[j]) j++;
     i++;
@@ -100,412 +80,516 @@ function escapeRegExp(value: string) {
 function HighlightedText({ text, query }: { text: string; query: string }) {
   const clean = query.trim();
   if (!clean) return <>{text}</>;
-
   const regex = new RegExp(`(${escapeRegExp(clean)})`, "ig");
   const parts = text.split(regex);
-
   if (parts.length === 1) return <>{text}</>;
-
   return (
     <>
-      {parts.map((part, index) =>
+      {parts.map((part, i) =>
         part.toLowerCase() === clean.toLowerCase() ? (
-          <mark key={`${part}-${index}`} className="bg-white/20 text-white rounded px-[2px]">
-            {part}
-          </mark>
+          <mark key={i} className="bg-white/20 text-white rounded px-[2px]">{part}</mark>
         ) : (
-          <span key={`${part}-${index}`}>{part}</span>
+          <span key={i}>{part}</span>
         )
       )}
     </>
   );
 }
 
+function SectionHeader({
+  title, count, onMore,
+}: {
+  title: string; count?: number; onMore?: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between mb-3">
+      <p className="text-xs uppercase tracking-[0.22em] text-white/25">
+        {title}{typeof count === "number" && count > 0 ? ` · ${count}` : ""}
+      </p>
+      {onMore && (
+        <button onClick={onMore} type="button"
+          className="text-xs text-white/35 hover:text-white/70 transition">
+          Voir plus →
+        </button>
+      )}
+    </div>
+  );
+}
+
+function EmptyState({ icon, text }: { icon: ReactNode; text: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="mb-3">{icon}</div>
+      <p className="text-sm text-white/35">{text}</p>
+    </div>
+  );
+}
+
+function TrackRow({
+  track, idx, queue, active, query, isFav, onPlay, onHover,
+}: {
+  track: TrackWithCover; idx: number; queue: TrackWithCover[]; active: boolean;
+  query: string; isFav: boolean;
+  onPlay: (q: TrackWithCover[], i: number) => void;
+  onHover: (i: number) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="option"
+      aria-selected={active}
+      onClick={() => onPlay(queue, idx)}
+      onMouseEnter={() => onHover(idx)}
+      className={[
+        "group flex items-center gap-3 rounded-2xl px-3 py-2.5 transition w-full text-left",
+        active ? "bg-white/10" : "hover:bg-white/5",
+      ].join(" ")}
+    >
+      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-white/5">
+        {track.cover ? (
+          <Image src={track.cover} alt={track.title} fill className="object-cover" sizes="40px" />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center">
+            <Music size={11} className="text-white/20" />
+          </div>
+        )}
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition">
+          <Play size={11} className="fill-white text-white ml-0.5" />
+        </div>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-white/90 truncate">
+          <HighlightedText text={track.title} query={query} />
+        </p>
+        <p className="text-xs text-white/40 truncate">
+          <HighlightedText text={track.artist ?? "—"} query={query} />
+        </p>
+      </div>
+      {isFav && (
+        <span className="text-[9px] rounded-full border border-white/15 bg-white/8 px-2 py-0.5 text-white/45 shrink-0">
+          ♥
+        </span>
+      )}
+    </button>
+  );
+}
+
+function ArtistCard({
+  artist, query, onPlay,
+}: {
+  artist: ArtistEntry; query: string; onPlay: (name: string) => void;
+}) {
+  const hue = hashStringToHue(artist.name);
+  return (
+    <button
+      type="button"
+      onClick={() => onPlay(artist.name)}
+      className="group relative aspect-square rounded-2xl overflow-hidden border border-white/8 hover:border-white/20 transition"
+    >
+      {artist.cover ? (
+        <Image src={artist.cover} alt={artist.name} fill className="object-cover" sizes="160px" />
+      ) : (
+        <div
+          className="h-full w-full"
+          style={{
+            background: `linear-gradient(135deg, hsla(${hue}, 55%, 28%, 0.9), hsla(${(hue + 50) % 360}, 60%, 22%, 0.85))`,
+          }}
+        />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+      <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition">
+        <Play size={18} className="fill-white text-white" />
+      </div>
+      <div className="absolute bottom-0 left-0 right-0 p-2.5">
+        <p className="text-[11px] font-semibold text-white/95 truncate leading-tight">
+          <HighlightedText text={artist.name} query={query} />
+        </p>
+        <p className="text-[10px] text-white/45 mt-0.5">
+          {artist.count} son{artist.count > 1 ? "s" : ""}
+        </p>
+      </div>
+    </button>
+  );
+}
+
+function UserRow({ user, query }: { user: UserEntry; query: string }) {
+  const hue = hashStringToHue(user.id);
+  const initials = getInitials(user.displayName, "");
+  return (
+    <Link
+      href={`/users/${user.id}`}
+      className="group flex items-center gap-3 rounded-2xl px-3 py-2.5 hover:bg-white/5 transition"
+    >
+      <div
+        className="h-10 w-10 shrink-0 rounded-full flex items-center justify-center text-sm font-semibold text-white"
+        style={{
+          background: `linear-gradient(135deg, hsla(${hue}, 65%, 55%, 0.85), hsla(${(hue + 50) % 360}, 70%, 48%, 0.8))`,
+        }}
+      >
+        {initials || <User size={14} />}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-white/90 truncate">
+          <HighlightedText text={user.displayName} query={query} />
+        </p>
+        <p className="text-xs text-white/35">
+          {user.trackCount} son{user.trackCount > 1 ? "s" : ""}
+        </p>
+      </div>
+      <span className="text-white/20 group-hover:text-white/50 transition text-xs shrink-0">→</span>
+    </Link>
+  );
+}
+
+const TABS: { value: SearchTab; label: string }[] = [
+  { value: "all", label: "Tout" },
+  { value: "titres", label: "Titres" },
+  { value: "artistes", label: "Artistes" },
+  { value: "utilisateurs", label: "Utilisateurs" },
+];
+
 export default function SearchPage() {
   const { setQueueAndPlay, isFavorite } = usePlayer();
-  const [query, setQuery] = useState("");
-  const [activeIndex, setActiveIndex] = useState(-1);
-  const [searchField, setSearchField] = useState<SearchField>("all");
-  const [onlyFavorites, setOnlyFavorites] = useState(false);
-  const [playlistFilter, setPlaylistFilter] = useState<string>("all");
 
+  const [query, setQuery] = useState("");
+  const [tab, setTab] = useState<SearchTab>("all");
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const [tracks, setTracks] = useState<TrackWithCover[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [playlists, setPlaylists] = useState<PlaylistLite[]>([]);
 
   async function loadTracks() {
     try {
       setLoading(true);
       setError("");
-
       const res = await fetch("/api/tracks", { cache: "no-store" });
-      if (!res.ok) throw new Error("Impossible de charger /api/tracks");
-
+      if (!res.ok) throw new Error("Impossible de charger les sons");
       const json: TracksResponse = await res.json();
       const list = Array.isArray(json.tracks) ? json.tracks : [];
-
       setTracks(
-        list.map((track) => ({
-          title: track.title,
-          artist: track.artist,
-          src: track.src,
-          cover: track.cover ?? undefined,
-          ownerDisplayName: track.ownerDisplayName ?? undefined,
-          ownerId: track.ownerId ?? undefined,
+        list.map((t) => ({
+          title: t.title,
+          artist: t.artist,
+          src: t.src,
+          cover: t.cover ?? undefined,
+          ownerDisplayName: t.ownerDisplayName ?? undefined,
+          ownerId: t.ownerId ?? undefined,
         }))
       );
-    } catch (errorValue: unknown) {
-      setError(getErrorMessage(errorValue, "Erreur lors du chargement"));
-      setTracks([]);
+    } catch (e) {
+      setError(getErrorMessage(e, "Erreur lors du chargement"));
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    loadTracks();
-  }, []);
-
-  useEffect(() => {
-    return subscribeTracksUpdated(() => {
-      void loadTracks();
-    });
-  }, []);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(PLAYLISTS_LS_KEY);
-      if (!raw) {
-        setPlaylists([]);
-        return;
-      }
-
-      const parsed = JSON.parse(raw) as unknown;
-      if (!Array.isArray(parsed)) {
-        setPlaylists([]);
-        return;
-      }
-
-      const valid = parsed.filter((item): item is PlaylistLite => {
-        if (!item || typeof item !== "object") return false;
-        const obj = item as Record<string, unknown>;
-        return (
-          typeof obj.id === "string" &&
-          typeof obj.name === "string" &&
-          Array.isArray(obj.trackSrcs) &&
-          obj.trackSrcs.every((src) => typeof src === "string")
-        );
-      });
-
-      setPlaylists(valid);
-    } catch {
-      setPlaylists([]);
-    }
-  }, []);
+  useEffect(() => { void loadTracks(); }, []);
+  useEffect(() => subscribeTracksUpdated(() => { void loadTracks(); }), []);
 
   const hasQuery = query.trim().length > 0;
-  const hasFilters = searchField !== "all" || onlyFavorites || playlistFilter !== "all";
-  const shouldSearch = hasQuery || hasFilters;
+  const needle = useMemo(() => normalizeText(query), [query]);
 
-  const playlistTrackSet = useMemo(() => {
-    if (playlistFilter === "all") return null;
-    const selected = playlists.find((playlist) => playlist.id === playlistFilter);
-    if (!selected) return null;
-    return new Set(selected.trackSrcs);
-  }, [playlists, playlistFilter]);
-
-  const baseFilteredTracks = useMemo(
-    () =>
-      tracks.filter((track) => {
-        if (onlyFavorites && !isFavorite(track.src)) return false;
-        if (playlistTrackSet && !playlistTrackSet.has(track.src)) return false;
-        return true;
-      }),
-    [tracks, onlyFavorites, isFavorite, playlistTrackSet]
+  const baseTracks = useMemo(
+    () => (onlyFavorites ? tracks.filter((t) => isFavorite(t.src)) : tracks),
+    [tracks, onlyFavorites, isFavorite]
   );
 
-  const artistSuggestions = useMemo<ArtistSuggestion[]>(() => {
-    if (searchField !== "artist") return [];
-    const byArtist = new Map<string, ArtistSuggestion>();
+  const filteredTracks = useMemo(() => {
+    if (!hasQuery) return baseTracks;
+    return baseTracks.filter((t) =>
+      fuzzyMatch(`${normalizeText(t.title)} ${normalizeText(t.artist ?? "")}`, needle)
+    );
+  }, [baseTracks, hasQuery, needle]);
 
-    for (const track of baseFilteredTracks) {
-      const name = (track.artist ?? "").trim();
+  const artists = useMemo(() => {
+    const map = new Map<string, ArtistEntry>();
+    for (const t of baseTracks) {
+      const name = t.artist?.trim();
       if (!name) continue;
-
-      const normalizedArtist = normalizeText(name);
-
-      const existing = byArtist.get(normalizedArtist);
-      if (existing) {
-        existing.count += 1;
-      } else {
-        byArtist.set(normalizedArtist, { name, count: 1 });
-      }
+      const key = normalizeText(name);
+      const ex = map.get(key);
+      if (ex) { ex.count++; if (!ex.cover && t.cover) ex.cover = t.cover; }
+      else map.set(key, { name, count: 1, cover: t.cover });
     }
+    return [...map.values()].sort((a, b) => b.count - a.count);
+  }, [baseTracks]);
 
-    return [...byArtist.values()]
-      .sort((a, b) => {
-        if (b.count !== a.count) return b.count - a.count;
-        return a.name.localeCompare(b.name, "fr");
-      })
-      .slice(0, 24);
-  }, [searchField, baseFilteredTracks]);
+  const filteredArtists = useMemo(
+    () => hasQuery ? artists.filter((a) => fuzzyMatch(normalizeText(a.name), needle)) : artists,
+    [artists, hasQuery, needle]
+  );
 
-  const filtered = useMemo(() => {
-    if (!shouldSearch) return [];
-    const needle = normalizeText(query);
-    if (searchField === "artist" && !hasQuery) return [];
+  const users = useMemo(() => {
+    const map = new Map<string, UserEntry>();
+    for (const t of tracks) {
+      if (!t.ownerId || !t.ownerDisplayName) continue;
+      const ex = map.get(t.ownerId);
+      if (ex) ex.trackCount++;
+      else map.set(t.ownerId, { id: t.ownerId, displayName: t.ownerDisplayName, trackCount: 1 });
+    }
+    return [...map.values()].sort((a, b) => b.trackCount - a.trackCount);
+  }, [tracks]);
 
-    return baseFilteredTracks.filter((track) => {
-      if (!hasQuery) return true;
-
-      const title = normalizeText(track.title);
-      const artist = normalizeText(track.artist ?? "");
-
-      if (searchField === "title") return fuzzyMatch(title, needle);
-      if (searchField === "artist") return fuzzyMatch(artist, needle);
-      return fuzzyMatch(`${title} ${artist}`, needle);
-    });
-  }, [shouldSearch, query, baseFilteredTracks, hasQuery, searchField]);
+  const filteredUsers = useMemo(
+    () => hasQuery ? users.filter((u) => fuzzyMatch(normalizeText(u.displayName), needle)) : users,
+    [users, hasQuery, needle]
+  );
 
   useEffect(() => {
-    setActiveIndex(filtered.length > 0 ? 0 : -1);
-  }, [filtered.length]);
+    setActiveIndex(filteredTracks.length > 0 ? 0 : -1);
+  }, [filteredTracks.length]);
 
-  const resultLabel = useMemo(() => {
-    if (loading) return "Chargement...";
-    if (error) return "Erreur";
-    if (!shouldSearch) return "Tape pour chercher";
-    if (searchField === "artist" && !hasQuery) return `${artistSuggestions.length} artiste(s)`;
-    return `${filtered.length} resultat(s)`;
-  }, [loading, error, shouldSearch, filtered.length, searchField, hasQuery, artistSuggestions.length]);
-
-  function playResult(index: number) {
-    if (index < 0 || index >= filtered.length) return;
-    setQueueAndPlay(filtered, index);
+  function playArtist(name: string) {
+    const q = baseTracks.filter((t) => t.artist?.trim() === name);
+    if (q.length > 0) setQueueAndPlay(q, 0);
   }
 
-  function onSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "ArrowDown") {
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    const list = tab === "all" || tab === "titres" ? filteredTracks : [];
+    if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex((p) => Math.min(list.length - 1, p + 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex((p) => Math.max(0, p - 1)); }
+    else if (e.key === "Enter") {
       e.preventDefault();
-      setActiveIndex((prev) => Math.min(filtered.length - 1, prev + 1));
-      return;
-    }
-    if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setActiveIndex((prev) => Math.max(0, prev - 1));
-      return;
-    }
-    if (e.key === "Enter") {
-      e.preventDefault();
-      playResult(activeIndex >= 0 ? activeIndex : 0);
+      if (activeIndex >= 0 && activeIndex < list.length) setQueueAndPlay(list, activeIndex);
     }
   }
 
-  function applyArtistSuggestion(artistName: string) {
-    setQuery(artistName);
-    setActiveIndex(0);
+  function tabCount(t: SearchTab) {
+    if (!hasQuery) return 0;
+    if (t === "titres") return filteredTracks.length;
+    if (t === "artistes") return filteredArtists.length;
+    if (t === "utilisateurs") return filteredUsers.length;
+    return 0;
+  }
+
+  function renderTracks(list: TrackWithCover[], limit?: number) {
+    const items = limit ? list.slice(0, limit) : list;
+    return (
+      <div className="space-y-0.5">
+        {items.map((t, i) => (
+          <TrackRow
+            key={t.src}
+            track={t}
+            idx={i}
+            queue={list}
+            active={i === activeIndex}
+            query={query}
+            isFav={isFavorite(t.src)}
+            onPlay={setQueueAndPlay}
+            onHover={setActiveIndex}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  function renderContent() {
+    if (loading) {
+      return (
+        <div className="space-y-2">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="h-14 rounded-2xl bg-white/5 animate-pulse" />
+          ))}
+        </div>
+      );
+    }
+
+    if (tab === "titres") {
+      const list = hasQuery ? filteredTracks : baseTracks;
+      if (list.length === 0)
+        return <EmptyState icon={<Music size={20} className="text-white/20" />} text={hasQuery ? `Aucun titre pour "${query}"` : "Aucun son disponible"} />;
+      return (
+        <div className="rounded-3xl border border-white/8 bg-white/[0.03] p-4">
+          {renderTracks(list)}
+        </div>
+      );
+    }
+
+    if (tab === "artistes") {
+      const list = filteredArtists;
+      if (list.length === 0)
+        return <EmptyState icon={<Music size={20} className="text-white/20" />} text={hasQuery ? `Aucun artiste pour "${query}"` : "Aucun artiste"} />;
+      return (
+        <div className="grid grid-cols-3 gap-2">
+          {list.map((a) => (
+            <ArtistCard key={a.name} artist={a} query={query} onPlay={playArtist} />
+          ))}
+        </div>
+      );
+    }
+
+    if (tab === "utilisateurs") {
+      const list = filteredUsers;
+      if (list.length === 0)
+        return <EmptyState icon={<User size={20} className="text-white/20" />} text={hasQuery ? `Aucun utilisateur pour "${query}"` : "Aucun utilisateur"} />;
+      return (
+        <div className="rounded-3xl border border-white/8 bg-white/[0.03] p-4">
+          <div className="space-y-0.5">
+            {list.map((u) => <UserRow key={u.id} user={u} query={query} />)}
+          </div>
+        </div>
+      );
+    }
+
+    // tab === "all"
+    const noResults =
+      hasQuery &&
+      filteredTracks.length === 0 &&
+      filteredArtists.length === 0 &&
+      filteredUsers.length === 0;
+
+    if (noResults)
+      return <EmptyState icon={<Search size={20} className="text-white/20" />} text={`Aucun résultat pour « ${query} »`} />;
+
+    const artistsSlice = hasQuery ? filteredArtists.slice(0, 9) : artists.slice(0, 12);
+    const tracksSlice = hasQuery ? filteredTracks : [];
+    const usersSlice = hasQuery ? filteredUsers.slice(0, 4) : [];
+
+    return (
+      <>
+        {tracksSlice.length > 0 && (
+          <div className="mb-6">
+            <SectionHeader
+              title="Titres"
+              count={filteredTracks.length}
+              onMore={filteredTracks.length > 5 ? () => setTab("titres") : undefined}
+            />
+            <div className="rounded-3xl border border-white/8 bg-white/[0.03] p-3">
+              {renderTracks(filteredTracks, 5)}
+            </div>
+          </div>
+        )}
+
+        {artistsSlice.length > 0 && (
+          <div className="mb-6">
+            <SectionHeader
+              title="Artistes"
+              count={hasQuery ? filteredArtists.length : undefined}
+              onMore={
+                (hasQuery && filteredArtists.length > 9) || (!hasQuery && artists.length > 12)
+                  ? () => setTab("artistes")
+                  : undefined
+              }
+            />
+            <div className="grid grid-cols-3 gap-2">
+              {artistsSlice.map((a) => (
+                <ArtistCard key={a.name} artist={a} query={query} onPlay={playArtist} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {usersSlice.length > 0 && (
+          <div className="mb-6">
+            <SectionHeader
+              title="Utilisateurs"
+              count={filteredUsers.length}
+              onMore={filteredUsers.length > 4 ? () => setTab("utilisateurs") : undefined}
+            />
+            <div className="rounded-3xl border border-white/8 bg-white/[0.03] p-3">
+              <div className="space-y-0.5">
+                {usersSlice.map((u) => <UserRow key={u.id} user={u} query={query} />)}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!hasQuery && artistsSlice.length === 0 && (
+          <EmptyState icon={<Search size={20} className="text-white/20" />} text="Tape pour chercher" />
+        )}
+      </>
+    );
   }
 
   return (
     <div className="pb-28">
-      <div className="flex items-end justify-between mb-6">
+      {/* Header */}
+      <div className="mb-6 flex items-end justify-between mp3-fade-up">
         <h2 className="text-3xl font-light">Recherche</h2>
-        <span className="text-sm text-white/35" aria-live="polite">
-          {resultLabel}
+        <span className="text-sm text-white/35">
+          {loading ? "Chargement…" : error ? "Erreur" : `${tracks.length} son${tracks.length > 1 ? "s" : ""}`}
         </span>
       </div>
 
-      <div className="mb-6 space-y-3">
-        <div className="flex items-center gap-3 rounded-2xl border border-white/5 bg-[#15151C] px-4 py-3">
-          <span className="text-white/35" aria-hidden="true">
-            /
-          </span>
+      {/* Search input */}
+      <div className="mb-4 mp3-fade-up" style={{ animationDelay: "30ms" }}>
+        <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 focus-within:border-white/20 transition">
+          <Search size={15} className="text-white/30 shrink-0" />
           <input
-            aria-label="Rechercher un titre ou un artiste"
+            aria-label="Rechercher"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={onSearchKeyDown}
-            placeholder="Rechercher un titre ou un artiste..."
-            className="w-full bg-transparent outline-none text-sm text-white/90 placeholder:text-white/35"
+            onKeyDown={onKeyDown}
+            placeholder="Titre, artiste, utilisateur…"
+            className="w-full bg-transparent outline-none text-sm text-white/90 placeholder:text-white/30"
           />
-          {query ? (
+          {query && (
             <button
               onClick={() => setQuery("")}
-              className="text-xs text-white/45 hover:text-white/80 transition"
-              title="Effacer"
               type="button"
+              aria-label="Effacer"
+              className="text-white/30 hover:text-white/70 transition shrink-0"
             >
-              X
+              <X size={14} />
             </button>
-          ) : null}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {[
-            { value: "all" as const, label: "Tout" },
-            { value: "title" as const, label: "Titre" },
-            { value: "artist" as const, label: "Artiste" },
-          ].map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setSearchField(option.value)}
-              aria-pressed={searchField === option.value}
-              className={[
-                "h-9 px-3 rounded-full text-sm transition",
-                searchField === option.value
-                  ? "bg-white text-black"
-                  : "bg-white/10 text-white/80 hover:bg-white/15",
-              ].join(" ")}
-            >
-              {option.label}
-            </button>
-          ))}
-
-          <button
-            type="button"
-            onClick={() => setOnlyFavorites((value) => !value)}
-            aria-pressed={onlyFavorites}
-            className={[
-              "h-9 px-3 rounded-full text-sm transition",
-              onlyFavorites ? "bg-white text-black" : "bg-white/10 text-white/80 hover:bg-white/15",
-            ].join(" ")}
-          >
-            Favoris
-          </button>
-
-          <select
-            value={playlistFilter}
-            onChange={(e) => setPlaylistFilter(e.target.value)}
-            className="h-9 rounded-full bg-white/10 border border-white/10 px-3 text-sm text-white/85 outline-none"
-            aria-label="Filtrer par playlist"
-          >
-            <option value="all">Toutes playlists</option>
-            {playlists.map((playlist) => (
-              <option key={playlist.id} value={playlist.id}>
-                {playlist.name}
-              </option>
-            ))}
-          </select>
-
-          <button
-            type="button"
-            onClick={() => {
-              setSearchField("all");
-              setOnlyFavorites(false);
-              setPlaylistFilter("all");
-            }}
-            className="h-9 px-3 rounded-full bg-white/5 text-white/60 hover:bg-white/10 hover:text-white/85 transition text-sm"
-          >
-            Reset filtres
-          </button>
-        </div>
-
-        {searchField === "artist" ? (
-          <div className="flex flex-wrap items-center gap-2">
-            {artistSuggestions.length === 0 ? (
-              <span className="text-xs text-white/45">Aucun artiste avec ces filtres.</span>
-            ) : (
-              artistSuggestions.map((artistItem) => (
-                <button
-                  key={artistItem.name}
-                  type="button"
-                  onClick={() => applyArtistSuggestion(artistItem.name)}
-                  className={[
-                    "h-8 px-3 rounded-full text-xs transition",
-                    searchField === "artist" && hasQuery && normalizeText(query) === normalizeText(artistItem.name)
-                      ? "bg-white text-black"
-                      : "bg-white/8 text-white/80 hover:bg-white/15",
-                  ].join(" ")}
-                  title={`Rechercher ${artistItem.name}`}
-                >
-                  {artistItem.name} ({artistItem.count})
-                </button>
-              ))
-            )}
-          </div>
-        ) : null}
-
-        <div className="mt-3 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={loadTracks}
-            className="h-9 px-3 rounded-lg bg-white/10 text-white text-sm font-medium hover:bg-white/15 transition"
-          >
-            Recharger la bibliotheque
-          </button>
-
-          {error ? <span className="text-sm text-red-400">{error}</span> : null}
+          )}
         </div>
       </div>
 
-      <div className="rounded-3xl bg-[#15151C] border border-white/5 p-4">
-        {!shouldSearch ? (
-          <div className="px-3 py-10 text-sm text-white/45">
-            Commence a taper pour afficher des resultats, ou active un filtre.
-          </div>
-        ) : searchField === "artist" && !hasQuery ? (
-          <div className="px-3 py-10 text-sm text-white/45">
-            Choisis un artiste ci-dessus pour voir ses morceaux.
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="px-3 py-10 text-sm text-white/45">
-            Aucun resultat pour <span className="text-white/80">&quot;{query || "filtres actuels"}&quot;</span>.
-          </div>
-        ) : (
-          <div className="flex flex-col" role="listbox" aria-label="Resultats de recherche">
-            {filtered.map((track, index) => {
-              const active = index === activeIndex;
-              const fav = isFavorite(track.src);
-
-              return (
-                <button
-                  key={track.src}
-                  id={`search-result-${index}`}
-                  role="option"
-                  aria-selected={active}
-                  onClick={() => playResult(index)}
-                  onMouseEnter={() => setActiveIndex(index)}
-                  className={[
-                    "group flex items-center justify-between gap-4 rounded-2xl px-3 py-3 transition text-left mp3-fade-up",
-                    active ? "bg-white/10" : "hover:bg-white/5",
-                  ].join(" ")}
-                  style={{ animationDelay: `${Math.min(index, 12) * 30}ms` }}
-                  title="Lire"
-                  type="button"
-                >
-                  <div className="min-w-0 flex items-center gap-4">
-                    <div className="relative h-12 w-12 overflow-hidden rounded-xl border border-white/5 bg-[#1A1A22]">
-                      {track.cover ? (
-                        <Image src={track.cover} alt={track.title} fill className="object-cover" sizes="48px" />
-                      ) : null}
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="text-sm text-white/90 truncate">
-                        <HighlightedText text={track.title} query={query} />
-                      </p>
-                      <p className="text-xs text-white/45 truncate">
-                        <HighlightedText text={track.artist ?? "-"} query={query} />
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {fav ? (
-                      <span className="text-[10px] rounded-full border border-white/20 bg-white/10 px-2 py-1 text-white/80">
-                        Favori
-                      </span>
-                    ) : null}
-                    <span className="text-xs text-white/35 group-hover:text-white/70 transition">Play</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
+      {/* Tabs + favorites toggle */}
+      <div
+        className="mb-6 flex items-center justify-between gap-3 flex-wrap mp3-fade-up"
+        style={{ animationDelay: "60ms" }}
+      >
+        <div className="flex items-center gap-1.5">
+          {TABS.map(({ value, label }) => {
+            const count = tabCount(value);
+            return (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setTab(value)}
+                className={[
+                  "h-8 px-3.5 rounded-full text-sm transition flex items-center gap-1.5",
+                  tab === value
+                    ? "bg-white text-black font-medium"
+                    : "bg-white/8 text-white/60 hover:bg-white/12 hover:text-white/85",
+                ].join(" ")}
+              >
+                {label}
+                {hasQuery && value !== "all" && count > 0 && (
+                  <span
+                    className={`text-[10px] tabular-nums ${tab === value ? "text-black/50" : "text-white/30"}`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={() => setOnlyFavorites((v) => !v)}
+          className={[
+            "h-8 px-3.5 rounded-full text-sm transition",
+            onlyFavorites
+              ? "bg-white text-black font-medium"
+              : "bg-white/8 text-white/60 hover:bg-white/12",
+          ].join(" ")}
+        >
+          Favoris
+        </button>
       </div>
+
+      {error && (
+        <div className="mb-4 rounded-2xl border border-red-400/20 bg-red-400/8 px-4 py-3 text-sm text-red-300">
+          {error}
+        </div>
+      )}
+
+      {renderContent()}
     </div>
   );
 }

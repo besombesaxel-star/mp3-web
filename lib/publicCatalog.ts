@@ -1,4 +1,4 @@
-import { readAccountProfile } from "@/lib/accountData";
+import { readAccountProfile, type ProfileLink } from "@/lib/accountData";
 import { listTracksForApi } from "@/lib/libraryRepository";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getInitials, slugifyArtistName } from "@/lib/publicLinks";
@@ -18,8 +18,12 @@ export type PublicUserProfileData = {
   avatarUrl: string;
   bio: string;
   displayName: string;
+  followersCount: number;
   initials: string;
   joinedAt: string | null;
+  links: ProfileLink[];
+  pinnedTracks: SerializedPublicTrack[];
+  themeHue: number | null;
   uploads: SerializedPublicTrack[];
   uploadsCount: number;
   userId: string;
@@ -96,13 +100,22 @@ export async function getPublicUserProfileData(userId: string): Promise<PublicUs
     uploads.map((track) => track.artist.trim().toLowerCase()).filter(Boolean)
   ).size;
 
+  const pinnedTracks = (profile?.pinnedTrackSrcs ?? [])
+    .map((src) => tracks.find((t) => t.src === src))
+    .filter((t): t is Awaited<ReturnType<typeof listTracksForApi>>[number] => Boolean(t))
+    .map(serializeTrack);
+
   return {
     avatarUrl: profile?.avatarUrl ?? "",
     bio: profile?.publicBio ?? "",
     displayName,
+    followersCount: profile?.followersCount ?? 0,
     initials: getInitials(displayName, "MP"),
     joinedAt: userBasics.joinedAt,
-    uploads: uploads.map((track) => serializeTrack(track)),
+    links: profile?.links ?? [],
+    pinnedTracks,
+    themeHue: profile?.themeHue ?? null,
+    uploads: uploads.map(serializeTrack),
     uploadsCount: uploads.length,
     userId,
     uniqueArtistsCount,

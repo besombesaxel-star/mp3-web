@@ -627,6 +627,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const shownAchievementIdsRef = useRef<Set<AchievementId>>(new Set());
   const favoritesRemoteHydratedRef = useRef(false);
   const lastSyncedFavoritesSignatureRef = useRef("");
+  const nowPlayingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const statsRemoteHydratedRef = useRef(false);
+  const statsSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function dismissAchievementToast() {
     setAchievementToast(null);
@@ -1267,7 +1270,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     return () => window.clearTimeout(timeoutId);
   }, [accessToken, authLoading, favoritesMap, isAuthenticated]);
 
-  // load stats
+  // load stats (localStorage first, then merge remote if authenticated)
   useEffect(() => {
     try {
       const raw = localStorage.getItem(LS_STATS);
@@ -1282,6 +1285,51 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setStatsState(safe);
     } catch {}
   }, []);
+
+  // load remote stats on auth (use whichever has more plays)
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || !accessToken) return;
+    if (statsRemoteHydratedRef.current) return;
+    statsRemoteHydratedRef.current = true;
+
+    void fetch("/api/stats", {
+      cache: "no-store",
+      headers: createAuthorizedHeaders(accessToken),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { stats?: unknown } | null) => {
+        if (!data?.stats) return;
+        const remote = safeStats(data.stats);
+        setStatsState((local) => {
+          if (remote.totalPlays > local.totalPlays) {
+            shownAchievementIdsRef.current = new Set(
+              ACHIEVEMENTS.filter((a) => Boolean(remote.achievements[a.id])).map((a) => a.id)
+            );
+            return remote;
+          }
+          return local;
+        });
+      })
+      .catch(() => {});
+  }, [authLoading, isAuthenticated, accessToken]);
+
+  // push stats to server every 3 minutes while authenticated
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || !accessToken) return;
+
+    if (statsSyncTimerRef.current) clearTimeout(statsSyncTimerRef.current);
+    statsSyncTimerRef.current = setTimeout(() => {
+      void fetch("/api/stats", {
+        method: "PUT",
+        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+        body: JSON.stringify(statsState),
+      }).catch(() => {});
+    }, 180_000);
+
+    return () => {
+      if (statsSyncTimerRef.current) clearTimeout(statsSyncTimerRef.current);
+    };
+  }, [authLoading, isAuthenticated, accessToken, statsState]);
 
   // load UI/audio prefs
   useEffect(() => {
@@ -1371,6 +1419,42 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       break;
     }
   }, [statsState.achievements]);
+
+  // sync now-playing to server
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || !accessToken) return;
+
+    if (nowPlayingTimerRef.current) clearTimeout(nowPlayingTimerRef.current);
+
+    if (!track || !playing) {
+      nowPlayingTimerRef.current = setTimeout(() => {
+        void fetch("/api/now-playing", {
+          method: "DELETE",
+          headers: createAuthorizedHeaders(accessToken),
+        }).catch(() => {});
+      }, 12_000);
+      return () => {
+        if (nowPlayingTimerRef.current) clearTimeout(nowPlayingTimerRef.current);
+      };
+    }
+
+    nowPlayingTimerRef.current = setTimeout(() => {
+      void fetch("/api/now-playing", {
+        method: "POST",
+        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          title: track.title,
+          artist: track.artist ?? null,
+          cover: track.cover ?? null,
+          src: track.src,
+        }),
+      }).catch(() => {});
+    }, 1500);
+
+    return () => {
+      if (nowPlayingTimerRef.current) clearTimeout(nowPlayingTimerRef.current);
+    };
+  }, [track?.src, playing, isAuthenticated, accessToken, authLoading]);
 
   // persist prefs
   useEffect(() => {

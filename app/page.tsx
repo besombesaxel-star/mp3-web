@@ -550,9 +550,6 @@ export default function Home() {
       <div className="flex items-end justify-between mb-8">
         <h2 className="text-3xl font-light">Accueil</h2>
 
-        <Link href="/library" className="text-sm text-white/55 hover:text-white/85 transition">
-          Aller a Bibliotheque -&gt;
-        </Link>
       </div>
 
       {error ? (

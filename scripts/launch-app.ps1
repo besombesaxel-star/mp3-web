@@ -21,7 +21,11 @@ else {
 function Write-Status {
     param([string]$Message)
 
-    Write-Host "[MP3 Web] $Message"
+    if (-not $script:LogPath) {
+        return
+    }
+
+    Add-Content -Path $script:LogPath -Value ("[{0}] {1}" -f (Get-Date -Format "s"), $Message) -ErrorAction SilentlyContinue
 }
 
 function Get-AppRoot {
@@ -66,13 +70,53 @@ function Get-NpmPath {
         }
     }
 
+    $fallback = Join-Path $env:ProgramFiles "nodejs\npm.cmd"
+    if (Test-Path $fallback) {
+        return $fallback
+    }
+
     throw "npm est introuvable. Installe Node.js puis relance l'application."
+}
+
+function Get-LogTail {
+    param(
+        [string]$Path,
+        [int]$Lines = 30
+    )
+
+    if (-not (Test-Path $Path)) {
+        return ""
+    }
+
+    return (Get-Content -Path $Path -Tail $Lines -ErrorAction SilentlyContinue | Out-String)
+}
+
+function Invoke-NpmRedirected {
+    param(
+        [string]$NpmPath,
+        [string[]]$Arguments,
+        [string]$LogPath
+    )
+
+    # Redirecting a native command's stderr wraps each line as a NativeCommandError.
+    # With $ErrorActionPreference = "Stop" that turns harmless npm/node warnings into
+    # a terminating error, so it must be relaxed for the duration of this call.
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & $NpmPath @Arguments *> $LogPath
+        return $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousPreference
+    }
 }
 
 function Ensure-Dependencies {
     param(
         [string]$AppRoot,
-        [string]$NpmPath
+        [string]$NpmPath,
+        [string]$LogPath
     )
 
     $nextCliPath = Join-Path $AppRoot "node_modules\next\dist\bin\next"
@@ -84,9 +128,9 @@ function Ensure-Dependencies {
 
     Push-Location $AppRoot
     try {
-        & $NpmPath "install"
-        if ($LASTEXITCODE -ne 0) {
-            throw "L'installation des dependances a echoue."
+        $exitCode = Invoke-NpmRedirected -NpmPath $NpmPath -Arguments @("install") -LogPath $LogPath
+        if ($exitCode -ne 0) {
+            throw "L'installation des dependances a echoue.`n`n$(Get-LogTail -Path $LogPath)"
         }
     }
     finally {
@@ -98,6 +142,34 @@ function Ensure-Dependencies {
     }
 
     return $nextCliPath
+}
+
+function Repair-Dependencies {
+    param(
+        [string]$AppRoot,
+        [string]$NpmPath,
+        [string]$LogPath
+    )
+
+    Write-Status "Build echoue. Tentative de reparation (reinstallation propre)..."
+
+    $nodeModules = Join-Path $AppRoot "node_modules"
+    $nextBuildDir = Join-Path $AppRoot ".next"
+
+    if (Test-Path $nodeModules) {
+        Remove-Item $nodeModules -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    if (Test-Path $nextBuildDir) {
+        Remove-Item $nextBuildDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    Push-Location $AppRoot
+    try {
+        return (Invoke-NpmRedirected -NpmPath $NpmPath -Arguments @("install") -LogPath $LogPath) -eq 0
+    }
+    finally {
+        Pop-Location
+    }
 }
 
 function Test-LocalPort {
@@ -350,17 +422,15 @@ function Test-BuildRequired {
 function Invoke-ProductionBuild {
     param(
         [string]$AppRoot,
-        [string]$NpmPath
+        [string]$NpmPath,
+        [string]$LogPath
     )
 
     Write-Status "Build de production en cours..."
 
     Push-Location $AppRoot
     try {
-        & $NpmPath "run" "build"
-        if ($LASTEXITCODE -ne 0) {
-            throw "Le build Next.js a echoue."
-        }
+        return (Invoke-NpmRedirected -NpmPath $NpmPath -Arguments @("run", "build") -LogPath $LogPath) -eq 0
     }
     finally {
         Pop-Location
@@ -442,10 +512,14 @@ function Wait-ForServer {
 function Show-LauncherError {
     param([string]$Message)
 
-    Write-Host ""
-    Write-Host "[MP3 Web] ERREUR: $Message" -ForegroundColor Red
-    Write-Host "Appuie sur Entree pour fermer..."
-    [void][Console]::ReadLine()
+    Write-Status "ERREUR: $Message"
+
+    Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
+    [System.Windows.Forms.MessageBox]::Show(
+        $Message,
+        "MP3 Web",
+        [System.Windows.Forms.MessageBoxButtons]::OK,
+        [System.Windows.Forms.MessageBoxIcon]::Error) | Out-Null
 }
 
 try {
@@ -456,6 +530,7 @@ try {
     $stderrLog = Join-Path $stateDirectory "server.stderr.log"
 
     New-Item -ItemType Directory -Path $stateDirectory -Force | Out-Null
+    $script:LogPath = Join-Path $stateDirectory "launcher.log"
 
     $state = Get-State -StatePath $statePath
     if ($state) {
@@ -477,10 +552,25 @@ try {
 
     $nodePath = Get-NodePath
     $npmPath = Get-NpmPath
-    $nextCli = Ensure-Dependencies -AppRoot $appRoot -NpmPath $npmPath
+    $installLog = Join-Path $stateDirectory "install.log"
+    $nextCli = Ensure-Dependencies -AppRoot $appRoot -NpmPath $npmPath -LogPath $installLog
 
     if (Test-BuildRequired -AppRoot $appRoot -Force $ForceBuild.IsPresent) {
-        Invoke-ProductionBuild -AppRoot $appRoot -NpmPath $npmPath
+        $buildLog = Join-Path $stateDirectory "build.log"
+        $buildOk = Invoke-ProductionBuild -AppRoot $appRoot -NpmPath $npmPath -LogPath $buildLog
+
+        if (-not $buildOk) {
+            $repairLog = Join-Path $stateDirectory "repair-install.log"
+            $repaired = Repair-Dependencies -AppRoot $appRoot -NpmPath $npmPath -LogPath $repairLog
+
+            if ($repaired) {
+                $buildOk = Invoke-ProductionBuild -AppRoot $appRoot -NpmPath $npmPath -LogPath $buildLog
+            }
+
+            if (-not $buildOk) {
+                throw "Le build Next.js a echoue, meme apres reparation automatique.`n`n$(Get-LogTail -Path $buildLog)"
+            }
+        }
     }
 
     [void](Stop-ForeignMp3WebOnPort -AppRoot $appRoot -Port $PreferredPort)
@@ -489,6 +579,7 @@ try {
 
     Write-Status "Demarrage du serveur local sur $url"
 
+    $env:MP3_WEB_AUTO_SHUTDOWN = "1"
     $server = Start-Process `
         -FilePath $nodePath `
         -ArgumentList "`"$nextCli`" start -p $port -H 127.0.0.1" `
@@ -497,6 +588,7 @@ try {
         -PassThru `
         -RedirectStandardOutput $stdoutLog `
         -RedirectStandardError $stderrLog
+    Remove-Item Env:\MP3_WEB_AUTO_SHUTDOWN -ErrorAction SilentlyContinue
 
     if (-not (Wait-ForServer -ProcessId $server.Id -Port $port)) {
         $stderr = if (Test-Path $stderrLog) { Get-Content $stderrLog -Raw } else { "" }

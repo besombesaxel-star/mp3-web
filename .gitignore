@@ -21,12 +21,17 @@
 /launcher/
 /.launcher/
 
+# local media library (do not publish audio/cover assets)
+/public/audio/
+/public/cover/
+
 # production
 /build
 
 # misc
 .DS_Store
 *.pem
+/.claude/
 
 # debug
 npm-debug.log*

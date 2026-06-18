@@ -4,10 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Copy, ExternalLink, Music, Play, Shield, Shuffle, UserCheck, UserPlus } from "lucide-react";
+import { Copy, ExternalLink, Crown, Music, Play, Shield, Shuffle, UserCheck, UserPlus } from "lucide-react";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 
 const ADMIN_USER_IDS = new Set(["b793a3a7-45f8-4711-90b9-a1f0ac5fb8b9"]);
+const CO_FOUNDER_USER_IDS = new Set(["3de5eafa-673f-4f05-b925-a84cf31c1ecb"]);
 import { usePlayer } from "@/app/PlayerContext";
 import { useAuth } from "@/app/AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
@@ -311,6 +312,12 @@ export default function PublicUserProfilePage() {
                 <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase bg-red-500/20 text-red-300 border border-red-500/30">
                   <Shield size={10} className="fill-red-300/60" />
                   Admin
+                </span>
+              )}
+              {CO_FOUNDER_USER_IDS.has(profile.userId) && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  <Crown size={10} className="fill-amber-300/60" />
+                  Co-Founder
                 </span>
               )}
             </div>

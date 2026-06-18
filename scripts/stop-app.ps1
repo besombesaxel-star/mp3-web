@@ -52,10 +52,12 @@ function Get-State {
 function Show-StopError {
     param([string]$Message)
 
-    Write-Host ""
-    Write-Host "[MP3 Web] ERREUR: $Message" -ForegroundColor Red
-    Write-Host "Appuie sur Entree pour fermer..."
-    [void][Console]::ReadLine()
+    Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
+    [System.Windows.Forms.MessageBox]::Show(
+        $Message,
+        "MP3 Web",
+        [System.Windows.Forms.MessageBoxButtons]::OK,
+        [System.Windows.Forms.MessageBoxIcon]::Error) | Out-Null
 }
 
 try {

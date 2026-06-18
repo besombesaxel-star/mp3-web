@@ -90,21 +90,29 @@ internal static class LauncherProgram
             var process = new ProcessStartInfo
             {
                 FileName = File.Exists(powershellPath) ? powershellPath : "powershell.exe",
-                Arguments = "-NoProfile -ExecutionPolicy Bypass -File \"" + scriptPath + "\"",
+                Arguments = "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File \"" + scriptPath + "\"",
                 WorkingDirectory = appRoot,
                 UseShellExecute = false,
-                CreateNoWindow = false
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                RedirectStandardInput = true
             };
 
-            using (var child = Process.Start(process))
+            using (var child = new Process { StartInfo = process })
             {
-                if (child == null)
+                child.OutputDataReceived += (sender, e) => { };
+                child.ErrorDataReceived += (sender, e) => { };
+
+                if (!child.Start())
                 {
                     File.AppendAllText(earlyLogPath, DateTime.Now.ToString("o") + " | null-child" + Environment.NewLine);
                     File.AppendAllText(logPath, DateTime.Now.ToString("o") + " | null-child" + Environment.NewLine);
                     throw new InvalidOperationException("Impossible de demarrer PowerShell.");
                 }
 
+                child.BeginOutputReadLine();
+                child.BeginErrorReadLine();
                 child.WaitForExit();
                 File.AppendAllText(earlyLogPath, DateTime.Now.ToString("o") + " | exit | " + child.ExitCode + Environment.NewLine);
                 File.AppendAllText(logPath, DateTime.Now.ToString("o") + " | exit | " + child.ExitCode + Environment.NewLine);
@@ -149,7 +157,7 @@ function Build-Launcher {
 
     $arguments = @(
         "/nologo",
-        "/target:exe",
+        "/target:winexe",
         "/platform:anycpu",
         "/out:$OutputPath"
     ) + $references + @($SourcePath)
@@ -179,19 +187,12 @@ New-Item -ItemType Directory -Path $buildDirectory -Force | Out-Null
 $compilerPath = Get-CSharpCompiler
 
 $openSourcePath = Join-Path $buildDirectory "OpenMp3Web.cs"
-$stopSourcePath = Join-Path $buildDirectory "StopMp3Web.cs"
 
 New-LauncherSource -Path $openSourcePath -ScriptFileName "launch-app.ps1" -WindowTitle "Open MP3 Web"
-New-LauncherSource -Path $stopSourcePath -ScriptFileName "stop-app.ps1" -WindowTitle "Stop MP3 Web"
 
 Build-Launcher `
     -CompilerPath $compilerPath `
     -SourcePath $openSourcePath `
     -OutputPath (Join-Path $outputDirectory "Open MP3 Web.exe")
-
-Build-Launcher `
-    -CompilerPath $compilerPath `
-    -SourcePath $stopSourcePath `
-    -OutputPath (Join-Path $outputDirectory "Stop MP3 Web.exe")
 
 Write-Host "Executables generes dans: $outputDirectory"

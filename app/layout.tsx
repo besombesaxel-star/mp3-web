@@ -12,7 +12,8 @@ import { AuthProvider } from "../app/AuthProvider";
 import { PlayerProvider } from "../app/PlayerContext";
 import Toast from "../app/Toast";
 import GlobalChat from "../app/GlobalChat";
-import NotificationBell from "../app/NotificationBell";;
+import NotificationBell from "../app/NotificationBell";
+import LauncherHeartbeat from "../app/LauncherHeartbeat";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -76,6 +77,7 @@ export default function RootLayout({
 
             <KeyboardShortcuts />
             <PwaInstaller />
+            <LauncherHeartbeat />
             <MiniPlayer />
             <PlayerOverlay />
             <GlobalChat />

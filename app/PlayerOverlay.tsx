@@ -294,7 +294,7 @@ export default function PlayerOverlay() {
       >
         {/* Background */}
         <div className="absolute inset-0">
-          {track?.cover && (isMobileViewport || !focusMode) ? (
+          {track?.cover ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={track.cover}
@@ -336,14 +336,15 @@ export default function PlayerOverlay() {
           {focusMode ? (
             <>
               <div className="absolute inset-0 md:hidden bg-black/30" />
-              <div className="absolute inset-0 hidden md:block bg-black/88" />
+              <div className="absolute inset-0 hidden md:block bg-black/25" />
+              <div className="absolute inset-0 hidden md:block bg-gradient-to-b from-black/15 via-black/35 to-black/65" />
             </>
           ) : (
             <>
               <div className="absolute inset-0 md:hidden bg-black/20" />
               <div className="absolute inset-0 md:hidden bg-gradient-to-b from-black/0 via-black/12 to-black/34" />
-              <div className="absolute inset-0 hidden md:block bg-black/70" />
-              <div className="absolute inset-0 hidden md:block bg-gradient-to-b from-black/30 via-black/55 to-black/85" />
+              <div className="absolute inset-0 hidden md:block bg-black/15" />
+              <div className="absolute inset-0 hidden md:block bg-gradient-to-b from-black/5 via-black/25 to-black/55" />
             </>
           )}
         </div>
@@ -488,6 +489,7 @@ export default function PlayerOverlay() {
               ].join(" ")}
             >
               <div
+                key={track?.src ?? "empty"}
                 className="mp3-ov-cover aspect-square rounded-[26px] md:rounded-[38px] lg:rounded-[44px] overflow-hidden border border-white/10 bg-white/5"
                 style={{
                   boxShadow: `0 0 0 1px rgba(255,255,255,0.06), 0 0 78px ${glow}`,
@@ -511,7 +513,7 @@ export default function PlayerOverlay() {
             </div>
 
             {/* Right */}
-            <div className="w-full md:hidden mp3-ov-panel">
+            <div key={track?.src ?? "empty"} className="w-full md:hidden mp3-ov-panel">
               {!focusMode ? (
                 <>
                   <h1 className="text-2xl font-semibold text-white/95 leading-tight max-h-[4.8rem] overflow-hidden">
@@ -618,7 +620,7 @@ export default function PlayerOverlay() {
 
             </div>
 
-            <div className="hidden md:block w-full mp3-ov-panel lg:self-center lg:translate-y-8">
+            <div key={track?.src ?? "empty"} className="hidden md:block w-full mp3-ov-panel lg:self-center lg:translate-y-8">
               {!focusMode ? (
                 <>
                   <div className="flex items-center gap-5 min-w-0">

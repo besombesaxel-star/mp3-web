@@ -169,20 +169,20 @@ body[data-mp3-theme="ocean"] {
   to   { opacity: 0; transform: translateY(30px) scale(0.97); }
 }
 @keyframes mp3BgDrift {
-  0%   { transform: scale(1.06) translateY(0);    opacity: 0.22; }
-  50%  { transform: scale(1.1)  translateY(-6px); opacity: 0.28; }
-  100% { transform: scale(1.06) translateY(0);    opacity: 0.22; }
+  0%   { transform: scale(1.06) translateY(0);    opacity: 0.92; }
+  50%  { transform: scale(1.1)  translateY(-6px); opacity: 1;    }
+  100% { transform: scale(1.06) translateY(0);    opacity: 0.92; }
 }
 @keyframes mp3CoverPop {
-  from { opacity: 0; transform: translateY(60px) scale(0.92); }
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
   to   { opacity: 1; transform: translateY(0)    scale(1);    }
 }
 @keyframes mp3PanelSlide {
-  from { opacity: 0; transform: translateY(50px); }
-  to   { opacity: 1; transform: translateY(0);    }
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0);     }
 }
 @keyframes mp3ControlsRise {
-  from { opacity: 0; transform: translateY(40px); }
+  from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0);    }
 }
 @keyframes mp3ProgressSheen {
@@ -201,12 +201,12 @@ body[data-mp3-theme="ocean"] {
 .mp3-ov-exit     { animation: mp3OvExit       240ms cubic-bezier(0.4, 0, 1, 1)   both; }
 .mp3-ov-bg       { animation: mp3BgDrift      9s   ease-in-out infinite;
                    will-change: transform, opacity; }
-.mp3-ov-cover    { animation: mp3CoverPop     480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+.mp3-ov-cover    { animation: mp3CoverPop     820ms cubic-bezier(0.22, 1, 0.36, 1) both;
                    animation-delay: 40ms; }
-.mp3-ov-panel    { animation: mp3PanelSlide   420ms cubic-bezier(0.16, 1, 0.3, 1) both;
-                   animation-delay: 100ms; }
-.mp3-ov-controls { animation: mp3ControlsRise 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
-                   animation-delay: 160ms; }
+.mp3-ov-panel    { animation: mp3PanelSlide   720ms cubic-bezier(0.22, 1, 0.36, 1) both;
+                   animation-delay: 110ms; }
+.mp3-ov-controls { animation: mp3ControlsRise 680ms cubic-bezier(0.22, 1, 0.36, 1) both;
+                   animation-delay: 180ms; }
 
 @media (prefers-reduced-motion: reduce) {
   .mp3-ov-enter, .mp3-ov-exit, .mp3-ov-bg,

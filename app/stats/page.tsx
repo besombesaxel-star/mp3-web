@@ -11,6 +11,19 @@ function formatSeconds(s: number) {
   return m > 0 ? `${h}h ${m}min` : `${h}h`;
 }
 
+function formatRelativeTime(timestamp: number) {
+  const diffSeconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+  if (diffSeconds < 60) return "à l'instant";
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) return `il y a ${diffMinutes} min`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `il y a ${diffHours}h`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 30) return `il y a ${diffDays}j`;
+  const diffMonths = Math.floor(diffDays / 30);
+  return `il y a ${diffMonths} mois`;
+}
+
 function VerticalBars({
   data,
   maxValue,
@@ -132,10 +145,41 @@ export default function StatsPage() {
     [stats.byArtist]
   );
 
+  const topTracksMonth = useMemo(() => {
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const playsBySrc = new Map<string, number>();
+    for (const play of stats.recentPlays) {
+      if (play.playedAt < thirtyDaysAgo) continue;
+      playsBySrc.set(play.src, (playsBySrc.get(play.src) ?? 0) + 1);
+    }
+
+    return [...playsBySrc.entries()]
+      .map(([src, plays]) => {
+        const track = stats.byTrack[src];
+        return { label: track?.title || "?", value: plays, sub: `${plays} écoute${plays > 1 ? "s" : ""}` };
+      })
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6);
+  }, [stats.recentPlays, stats.byTrack]);
+
+  const recentHistory = useMemo(() =>
+    [...stats.recentPlays]
+      .sort((a, b) => b.playedAt - a.playedAt)
+      .slice(0, 15)
+      .map((play) => ({
+        src: play.src,
+        playedAt: play.playedAt,
+        title: stats.byTrack[play.src]?.title || "?",
+        artist: stats.byTrack[play.src]?.artist,
+      })),
+    [stats.recentPlays, stats.byTrack]
+  );
+
   const maxDay = Math.max(...playsPerDay.map((d) => d.value), 1);
   const maxHour = Math.max(...playsPerHour.map((h) => h.value), 1);
   const maxTrack = Math.max(...topTracks.map((t) => t.value), 1);
   const maxArtist = Math.max(...topArtists.map((a) => a.value), 1);
+  const maxTrackMonth = Math.max(...topTracksMonth.map((t) => t.value), 1);
   const uniqueArtists = Object.keys(stats.byArtist).filter((k) => k !== "-").length;
 
   return (
@@ -237,6 +281,50 @@ export default function StatsPage() {
               </div>
             )}
           </div>
+
+          {/* Top tracks this month */}
+          {topTracksMonth.length > 0 && (
+            <div className="rounded-2xl border border-white/10 bg-white/3 px-5 py-5">
+              <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-4">
+                Top morceaux · 30 derniers jours
+              </p>
+              <div className="space-y-3">
+                {topTracksMonth.map((t, i) => (
+                  <HorizontalBar
+                    key={t.label + i}
+                    rank={i + 1}
+                    label={t.label}
+                    value={t.value}
+                    maxValue={maxTrackMonth}
+                    sub={t.sub}
+                    color="hsl(150, 60%, 55%)"
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recent listening history */}
+          {recentHistory.length > 0 && (
+            <div className="rounded-2xl border border-white/10 bg-white/3 px-5 py-5">
+              <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-4">
+                Historique récent
+              </p>
+              <div className="space-y-2.5">
+                {recentHistory.map((play, i) => (
+                  <div key={`${play.src}-${play.playedAt}-${i}`} className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm text-white/80 truncate">{play.title}</p>
+                      {play.artist && <p className="text-xs text-white/35 truncate">{play.artist}</p>}
+                    </div>
+                    <span className="text-xs text-white/30 shrink-0 tabular-nums">
+                      {formatRelativeTime(play.playedAt)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Highlight: top track */}
           {stats.topTrack && (

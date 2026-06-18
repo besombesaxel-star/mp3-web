@@ -2,11 +2,18 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Bell } from "lucide-react";
+import { Bell, BellRing } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/app/AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
+
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  return Uint8Array.from(rawData, (char) => char.charCodeAt(0));
+}
 
 type AppNotification = {
   id: string;
@@ -78,9 +85,51 @@ export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [notifs, setNotifs] = useState<AppNotification[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const unread = notifs.filter((n) => !n.read).length;
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    setPushSupported(true);
+
+    navigator.serviceWorker.ready
+      .then((registration) => registration.pushManager.getSubscription())
+      .then((subscription) => setPushEnabled(Boolean(subscription)))
+      .catch(() => {});
+  }, []);
+
+  async function enablePush() {
+    const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    if (!vapidPublicKey || !accessToken || pushBusy) return;
+
+    setPushBusy(true);
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") return;
+
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+      });
+
+      await fetch("/api/push/subscribe", {
+        method: "POST",
+        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+        body: JSON.stringify({ subscription: subscription.toJSON() }),
+      });
+
+      setPushEnabled(true);
+    } catch {
+      /* silent */
+    } finally {
+      setPushBusy(false);
+    }
+  }
 
   // Realtime: listen for new notifications via Supabase Broadcast
   useEffect(() => {
@@ -158,8 +207,20 @@ export default function NotificationBell() {
 
       {open && (
         <div className="absolute top-11 right-0 w-[320px] max-h-[440px] overflow-y-auto rounded-2xl bg-zinc-900/95 border border-white/10 shadow-2xl backdrop-blur-sm">
-          <div className="px-4 py-3 border-b border-white/10">
+          <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold text-white/90">Notifications</h3>
+            {pushSupported && !pushEnabled && (
+              <button
+                type="button"
+                onClick={() => void enablePush()}
+                disabled={pushBusy}
+                className="flex items-center gap-1.5 text-xs text-white/45 hover:text-white/80 transition disabled:opacity-50"
+                title="Activer les notifications push"
+              >
+                <BellRing size={12} />
+                {pushBusy ? "..." : "Activer le push"}
+              </button>
+            )}
           </div>
 
           {!loaded ? (

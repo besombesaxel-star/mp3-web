@@ -522,6 +522,108 @@ function Show-LauncherError {
         [System.Windows.Forms.MessageBoxIcon]::Error) | Out-Null
 }
 
+function Show-SetupWizard {
+    param([string]$EnvPath)
+
+    Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
+    Add-Type -AssemblyName System.Drawing -ErrorAction SilentlyContinue
+
+    $form = New-Object System.Windows.Forms.Form
+    $form.Text = "Configuration de MP3 Web"
+    $form.Size = New-Object System.Drawing.Size(460, 380)
+    $form.StartPosition = "CenterScreen"
+    $form.FormBorderStyle = "FixedDialog"
+    $form.MaximizeBox = $false
+    $form.MinimizeBox = $false
+    $form.TopMost = $true
+
+    $intro = New-Object System.Windows.Forms.Label
+    $intro.Text = "Premier lancement : renseigne les informations de ton projet Supabase (Project Settings > API)."
+    $intro.SetBounds(20, 15, 410, 45)
+    $form.Controls.Add($intro)
+
+    $urlLabel = New-Object System.Windows.Forms.Label
+    $urlLabel.Text = "Project URL"
+    $urlLabel.SetBounds(20, 70, 410, 18)
+    $form.Controls.Add($urlLabel)
+
+    $urlBox = New-Object System.Windows.Forms.TextBox
+    $urlBox.SetBounds(20, 90, 410, 24)
+    $form.Controls.Add($urlBox)
+
+    $anonLabel = New-Object System.Windows.Forms.Label
+    $anonLabel.Text = "Publishable key (anon)"
+    $anonLabel.SetBounds(20, 125, 410, 18)
+    $form.Controls.Add($anonLabel)
+
+    $anonBox = New-Object System.Windows.Forms.TextBox
+    $anonBox.SetBounds(20, 145, 410, 24)
+    $form.Controls.Add($anonBox)
+
+    $serviceLabel = New-Object System.Windows.Forms.Label
+    $serviceLabel.Text = "Service role key (secret)"
+    $serviceLabel.SetBounds(20, 180, 410, 18)
+    $form.Controls.Add($serviceLabel)
+
+    $serviceBox = New-Object System.Windows.Forms.TextBox
+    $serviceBox.SetBounds(20, 200, 410, 24)
+    $serviceBox.UseSystemPasswordChar = $true
+    $form.Controls.Add($serviceBox)
+
+    $errorLabel = New-Object System.Windows.Forms.Label
+    $errorLabel.ForeColor = [System.Drawing.Color]::Firebrick
+    $errorLabel.SetBounds(20, 232, 410, 36)
+    $form.Controls.Add($errorLabel)
+
+    $okButton = New-Object System.Windows.Forms.Button
+    $okButton.Text = "Enregistrer et lancer"
+    $okButton.SetBounds(220, 300, 200, 32)
+    $form.Controls.Add($okButton)
+
+    $cancelButton = New-Object System.Windows.Forms.Button
+    $cancelButton.Text = "Annuler"
+    $cancelButton.SetBounds(20, 300, 100, 32)
+    $cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+    $form.Controls.Add($cancelButton)
+    $form.CancelButton = $cancelButton
+
+    $okButton.Add_Click({
+        $url = $urlBox.Text.Trim()
+        $anon = $anonBox.Text.Trim()
+        $service = $serviceBox.Text.Trim()
+
+        if (-not $url -or -not $anon -or -not $service) {
+            $errorLabel.Text = "Merci de remplir les trois champs."
+            return
+        }
+        if ($url -notmatch '^https://.+\.supabase\.co$') {
+            $errorLabel.Text = "L'URL doit ressembler a https://xxxxx.supabase.co"
+            return
+        }
+
+        $form.Tag = [PSCustomObject]@{ Url = $url; Anon = $anon; Service = $service }
+        $form.DialogResult = [System.Windows.Forms.DialogResult]::OK
+        $form.Close()
+    })
+
+    $result = $form.ShowDialog()
+    if ($result -ne [System.Windows.Forms.DialogResult]::OK) {
+        return $false
+    }
+
+    $values = $form.Tag
+    $lines = @(
+        "SUPABASE_URL=$($values.Url)",
+        "SUPABASE_SERVICE_ROLE_KEY=$($values.Service)",
+        "SUPABASE_STORAGE_BUCKET=media",
+        "NEXT_PUBLIC_SUPABASE_URL=$($values.Url)",
+        "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$($values.Anon)"
+    )
+
+    Set-Content -Path $EnvPath -Value $lines -Encoding UTF8
+    return $true
+}
+
 try {
     $appRoot = Get-AppRoot
     $stateDirectory = Join-Path $appRoot ".launcher"
@@ -547,7 +649,11 @@ try {
 
     $envPath = Join-Path $appRoot ".env.local"
     if (-not (Test-Path $envPath)) {
-        throw "Le fichier de configuration est manquant.`n`nDemande le fichier '.env.local' a l'administrateur et place-le ici :`n$envPath`n`nRelance ensuite l'application."
+        Write-Status "Fichier .env.local manquant. Ouverture de l'assistant de configuration..."
+        if (-not (Show-SetupWizard -EnvPath $envPath)) {
+            throw "Configuration annulee. Relance l'application quand tu seras pret a configurer Supabase."
+        }
+        Write-Status "Fichier .env.local cree via l'assistant de configuration."
     }
 
     $nodePath = Get-NodePath

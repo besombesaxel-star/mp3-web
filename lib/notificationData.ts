@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { sendPushToUser } from "@/lib/pushSubscriptions";
 
 export type AppNotification = {
   id: string;
@@ -50,6 +51,17 @@ export async function pushNotification(
   await admin.client.storage
     .from(BUCKET)
     .upload(getNotifPath(userId), blob, { upsert: true, contentType: "application/json" });
+
+  const pushBody =
+    notif.type === "follow"
+      ? `${notif.fromDisplayName} a commence a vous suivre`
+      : `${notif.fromDisplayName} a partage "${notif.trackTitle}"`;
+
+  void sendPushToUser(userId, {
+    title: ".mp3",
+    body: pushBody,
+    url: notif.type === "follow" ? `/users/${notif.fromUserId}` : "/library",
+  });
 }
 
 export async function notifyAllUsersOfUpload(params: {

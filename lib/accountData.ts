@@ -10,13 +10,25 @@ export type ProfileLink = {
   url: string;
 };
 
+export type AccountPlaylist = {
+  id: string;
+  name: string;
+  trackSrcs: string[];
+};
+
+export type EqPreset = "off" | "bass" | "vocal" | "night";
+
+const EQ_PRESETS: EqPreset[] = ["off", "bass", "vocal", "night"];
+
 type AccountProfileData = {
   avatarUrl: string;
+  eqPreset: EqPreset | null;
   favoriteSrcs: string[];
   followersCount: number;
   following: string[];
   links: ProfileLink[];
   pinnedTrackSrcs: string[];
+  playlists: AccountPlaylist[];
   publicBio: string;
   themeHue: number | null;
   updatedAt: number;
@@ -25,11 +37,13 @@ type AccountProfileData = {
 
 const EMPTY_PROFILE: AccountProfileData = {
   avatarUrl: "",
+  eqPreset: null,
   favoriteSrcs: [],
   followersCount: 0,
   following: [],
   links: [],
   pinnedTrackSrcs: [],
+  playlists: [],
   publicBio: "",
   themeHue: null,
   updatedAt: 0,
@@ -85,6 +99,33 @@ function normalizePinnedTrackSrcs(value: unknown): string[] {
   return out.slice(0, 6);
 }
 
+function normalizePlaylists(value: unknown): AccountPlaylist[] {
+  if (!Array.isArray(value)) return [];
+  const out: AccountPlaylist[] = [];
+
+  for (const item of value) {
+    if (!item || typeof item !== "object") continue;
+    const v = item as Record<string, unknown>;
+    const id = typeof v.id === "string" ? v.id.trim() : "";
+    const name = typeof v.name === "string" ? v.name.trim().slice(0, 80) : "";
+    if (!id || !name) continue;
+
+    const trackSrcsRaw = Array.isArray(v.trackSrcs) ? v.trackSrcs : [];
+    const trackSrcs = trackSrcsRaw
+      .filter((src): src is string => typeof src === "string" && src.trim().length > 0)
+      .slice(0, 1000);
+
+    out.push({ id, name, trackSrcs });
+    if (out.length >= 200) break;
+  }
+
+  return out;
+}
+
+function normalizeEqPreset(value: unknown): EqPreset | null {
+  return typeof value === "string" && EQ_PRESETS.includes(value as EqPreset) ? (value as EqPreset) : null;
+}
+
 function normalizeFollowing(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
@@ -116,11 +157,13 @@ function normalizeProfile(raw: unknown): AccountProfileData {
   const v = raw as Record<string, unknown>;
   return {
     avatarUrl: typeof v.avatarUrl === "string" ? v.avatarUrl.trim() : "",
+    eqPreset: normalizeEqPreset(v.eqPreset),
     favoriteSrcs: normalizeFavoriteSrcs(v.favoriteSrcs),
     followersCount: normalizeFollowersCount(v.followersCount),
     following: normalizeFollowing(v.following),
     links: normalizeLinks(v.links),
     pinnedTrackSrcs: normalizePinnedTrackSrcs(v.pinnedTrackSrcs),
+    playlists: normalizePlaylists(v.playlists),
     publicBio: normalizePublicBio(v.publicBio),
     themeHue: normalizeThemeHue(v.themeHue),
     updatedAt: typeof v.updatedAt === "number" ? v.updatedAt : 0,
@@ -178,11 +221,13 @@ async function writeAccountProfile(userId: string, profile: AccountProfileData) 
 
   const payload = JSON.stringify({
     avatarUrl: typeof profile.avatarUrl === "string" ? profile.avatarUrl.trim() : "",
+    eqPreset: normalizeEqPreset(profile.eqPreset),
     favoriteSrcs: normalizeFavoriteSrcs(profile.favoriteSrcs),
     followersCount: normalizeFollowersCount(profile.followersCount),
     following: normalizeFollowing(profile.following),
     links: normalizeLinks(profile.links),
     pinnedTrackSrcs: normalizePinnedTrackSrcs(profile.pinnedTrackSrcs),
+    playlists: normalizePlaylists(profile.playlists),
     publicBio: normalizePublicBio(profile.publicBio),
     themeHue: normalizeThemeHue(profile.themeHue),
     updatedAt: Date.now(),
@@ -204,11 +249,13 @@ export async function saveAccountProfile(
   userId: string,
   patch: {
     avatarUrl?: string;
+    eqPreset?: EqPreset | null;
     favoriteSrcs?: string[];
     followersCount?: number;
     following?: string[];
     links?: ProfileLink[];
     pinnedTrackSrcs?: string[];
+    playlists?: AccountPlaylist[];
     publicBio?: string;
     themeHue?: number | null;
   }
@@ -216,11 +263,13 @@ export async function saveAccountProfile(
   const current = await readAccountProfile(userId);
   const next: AccountProfileData = {
     avatarUrl: patch.avatarUrl === undefined ? current.avatarUrl : patch.avatarUrl.trim(),
+    eqPreset: patch.eqPreset === undefined ? current.eqPreset : normalizeEqPreset(patch.eqPreset),
     favoriteSrcs: patch.favoriteSrcs === undefined ? current.favoriteSrcs : normalizeFavoriteSrcs(patch.favoriteSrcs),
     followersCount: patch.followersCount === undefined ? current.followersCount : normalizeFollowersCount(patch.followersCount),
     following: patch.following === undefined ? current.following : normalizeFollowing(patch.following),
     links: patch.links === undefined ? current.links : normalizeLinks(patch.links),
     pinnedTrackSrcs: patch.pinnedTrackSrcs === undefined ? current.pinnedTrackSrcs : normalizePinnedTrackSrcs(patch.pinnedTrackSrcs),
+    playlists: patch.playlists === undefined ? current.playlists : normalizePlaylists(patch.playlists),
     publicBio: patch.publicBio === undefined ? current.publicBio : normalizePublicBio(patch.publicBio),
     themeHue: patch.themeHue === undefined ? current.themeHue : normalizeThemeHue(patch.themeHue),
     updatedAt: Date.now(),

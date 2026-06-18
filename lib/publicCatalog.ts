@@ -1,4 +1,5 @@
 import { readAccountProfile, type ProfileLink } from "@/lib/accountData";
+import { getBadgesForUser, type BadgeKey } from "@/lib/badges";
 import { listTracksForApi } from "@/lib/libraryRepository";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getInitials, slugifyArtistName } from "@/lib/publicLinks";
@@ -16,6 +17,7 @@ type SerializedPublicTrack = {
 
 export type PublicUserProfileData = {
   avatarUrl: string;
+  badges: BadgeKey[];
   bio: string;
   displayName: string;
   followersCount: number;
@@ -107,6 +109,7 @@ export async function getPublicUserProfileData(userId: string): Promise<PublicUs
 
   return {
     avatarUrl: profile?.avatarUrl ?? "",
+    badges: getBadgesForUser(userId),
     bio: profile?.publicBio ?? "",
     displayName,
     followersCount: profile?.followersCount ?? 0,

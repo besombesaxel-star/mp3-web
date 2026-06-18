@@ -42,18 +42,21 @@ type PlaylistBadge = {
   tone: "sky" | "emerald" | "amber";
 };
 
-type CloudResponse = {
-  ok?: boolean;
-  error?: string;
-  savedAt?: number;
-  playlists?: Playlist[];
-  favorites?: Track[];
-};
-
 const LS_KEY = "mp3_playlists_v1";
 
 function uid() {
   return Math.random().toString(36).slice(2, 10);
+}
+
+function isValidPlaylist(value: unknown): value is Playlist {
+  if (!value || typeof value !== "object") return false;
+  const obj = value as Record<string, unknown>;
+  return (
+    typeof obj.id === "string" &&
+    typeof obj.name === "string" &&
+    Array.isArray(obj.trackSrcs) &&
+    obj.trackSrcs.every((src) => typeof src === "string")
+  );
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -68,13 +71,14 @@ function badgeToneClass(tone: PlaylistBadge["tone"]) {
 
 export default function PlaylistsPage() {
   const { accessToken, isAuthenticated, loading } = useAuth();
-  const { setQueueAndPlay, markPlaylistCreated, stats, favorites, reloadFavoritesFromStorage } = usePlayer();
+  const { setQueueAndPlay, markPlaylistCreated, stats, favorites } = usePlayer();
 
   const [library, setLibrary] = useState<TrackWithCover[]>([]);
   const [libLoading, setLibLoading] = useState(true);
   const [libError, setLibError] = useState("");
 
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [playlistsHydrated, setPlaylistsHydrated] = useState(false);
   const [activeId, setActiveId] = useState("");
 
   const [newName, setNewName] = useState("");
@@ -82,9 +86,9 @@ export default function PlaylistsPage() {
   const [search, setSearch] = useState("");
   const [activeTracksSearch, setActiveTracksSearch] = useState("");
   const [deletedSnapshot, setDeletedSnapshot] = useState<{ playlist: Playlist; index: number } | null>(null);
-  const [cloudLoading, setCloudLoading] = useState<null | "save" | "restore">(null);
-  const [cloudMessage, setCloudMessage] = useState("");
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playlistsRemoteHydratedRef = useRef(false);
+  const lastSyncedPlaylistsSignatureRef = useRef("");
 
   async function loadLibrary() {
     try {
@@ -145,40 +149,112 @@ export default function PlaylistsPage() {
     return () => clearUndoTimer();
   }, []);
 
+  // load playlists: from the account if signed in, else from localStorage
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LS_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as unknown;
-      if (!Array.isArray(parsed)) return;
+    let cancelled = false;
 
-      const valid = parsed.filter((item): item is Playlist => {
-        if (!item || typeof item !== "object") return false;
-        const obj = item as Record<string, unknown>;
-        return (
-          typeof obj.id === "string" &&
-          typeof obj.name === "string" &&
-          Array.isArray(obj.trackSrcs) &&
-          obj.trackSrcs.every((src) => typeof src === "string")
-        );
-      });
-
-      setPlaylists(valid);
-      setActiveId(valid[0]?.id ?? "");
-    } catch {
-      setPlaylists([]);
-      setActiveId("");
+    function hydrateLocalPlaylists() {
+      try {
+        const raw = localStorage.getItem(LS_KEY);
+        const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+        const valid = Array.isArray(parsed) ? parsed.filter(isValidPlaylist) : [];
+        setPlaylists(valid);
+        setActiveId(valid[0]?.id ?? "");
+      } catch {
+        setPlaylists([]);
+        setActiveId("");
+      }
+      setPlaylistsHydrated(true);
     }
-  }, []);
 
+    async function hydrateRemotePlaylists() {
+      try {
+        const res = await fetch("/api/account", {
+          cache: "no-store",
+          headers: createAuthorizedHeaders(accessToken),
+        });
+        if (!res.ok) {
+          playlistsRemoteHydratedRef.current = false;
+          hydrateLocalPlaylists();
+          return;
+        }
+
+        const json = await res.json();
+        const remotePlaylists: Playlist[] = Array.isArray(json.playlists)
+          ? json.playlists.filter(isValidPlaylist)
+          : [];
+        if (cancelled) return;
+
+        lastSyncedPlaylistsSignatureRef.current = JSON.stringify(remotePlaylists);
+        playlistsRemoteHydratedRef.current = true;
+        setPlaylists(remotePlaylists);
+        setActiveId(remotePlaylists[0]?.id ?? "");
+        setPlaylistsHydrated(true);
+      } catch {
+        playlistsRemoteHydratedRef.current = false;
+        if (!cancelled) hydrateLocalPlaylists();
+      }
+    }
+
+    if (loading) return;
+
+    setPlaylistsHydrated(false);
+
+    if (!isAuthenticated || !accessToken) {
+      playlistsRemoteHydratedRef.current = false;
+      lastSyncedPlaylistsSignatureRef.current = "";
+      hydrateLocalPlaylists();
+      return;
+    }
+
+    void hydrateRemotePlaylists();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, isAuthenticated, loading]);
+
+  // cache playlists locally for offline-first access
   useEffect(() => {
+    if (!playlistsHydrated) return;
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(playlists));
     } catch {}
-  }, [playlists]);
+  }, [playlistsHydrated, playlists]);
+
+  // push playlist changes to the account
+  useEffect(() => {
+    if (loading || !isAuthenticated || !accessToken || !playlistsRemoteHydratedRef.current) {
+      return;
+    }
+
+    const signature = JSON.stringify(playlists);
+    if (signature === lastSyncedPlaylistsSignatureRef.current) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void fetch("/api/account", {
+        method: "PUT",
+        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+        body: JSON.stringify({ playlists }),
+      })
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error("playlist sync failed");
+          }
+
+          lastSyncedPlaylistsSignatureRef.current = signature;
+        })
+        .catch(() => {});
+    }, 250);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [accessToken, loading, isAuthenticated, playlists]);
 
   useEffect(() => {
     if (libLoading) return;
+    if (!playlistsHydrated) return;
     if (playlists.length > 0) return;
 
     const def: Playlist = {
@@ -189,7 +265,7 @@ export default function PlaylistsPage() {
     setPlaylists([def]);
     setActiveId(def.id);
     setRenameValue("");
-  }, [libLoading, library, playlists.length]);
+  }, [libLoading, playlistsHydrated, library, playlists.length]);
 
   const libraryBySrc = useMemo(() => {
     const map = new Map<string, TrackWithCover>();
@@ -437,76 +513,6 @@ export default function PlaylistsPage() {
     markPlaylistCreated();
   }
 
-  async function backupToCloud() {
-    if (!accessToken) {
-      setCloudMessage("Connecte-toi pour sauvegarder dans le cloud.");
-      return;
-    }
-
-    try {
-      setCloudLoading("save");
-      setCloudMessage("");
-
-      const res = await fetch("/api/cloud", {
-        method: "POST",
-        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
-        body: JSON.stringify({
-          action: "backup",
-          playlists,
-          favorites,
-        }),
-      });
-
-      const json = (await res.json().catch(() => ({}))) as CloudResponse;
-      if (!res.ok || !json.ok) {
-        throw new Error(json.error ?? `Backup cloud impossible (HTTP ${res.status})`);
-      }
-
-      setCloudMessage("Cloud sauvegarde.");
-    } catch (errorValue: unknown) {
-      setCloudMessage(getErrorMessage(errorValue, "Echec de sauvegarde cloud"));
-    } finally {
-      setCloudLoading(null);
-    }
-  }
-
-  async function restoreFromCloud() {
-    if (!accessToken) {
-      setCloudMessage("Connecte-toi pour restaurer le cloud.");
-      return;
-    }
-
-    try {
-      setCloudLoading("restore");
-      setCloudMessage("");
-
-      const res = await fetch("/api/cloud", {
-        method: "POST",
-        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
-        body: JSON.stringify({ action: "restore" }),
-      });
-      const json = (await res.json().catch(() => ({}))) as CloudResponse;
-      if (!res.ok || !json.ok) {
-        throw new Error(json.error ?? `Restauration cloud impossible (HTTP ${res.status})`);
-      }
-
-      const restoredPlaylists = Array.isArray(json.playlists) ? json.playlists : [];
-      const restoredFavorites = Array.isArray(json.favorites) ? json.favorites : [];
-      const favoritesMap = Object.fromEntries(restoredFavorites.map((track) => [track.src, track]));
-
-      localStorage.setItem(LS_KEY, JSON.stringify(restoredPlaylists));
-      localStorage.setItem("mp3:favorites:v1", JSON.stringify(favoritesMap));
-
-      setPlaylists(restoredPlaylists);
-      reloadFavoritesFromStorage();
-      setCloudMessage("Cloud restaure avec succes !");
-      setCloudLoading(null);
-    } catch (errorValue: unknown) {
-      setCloudMessage(getErrorMessage(errorValue, "Echec de restauration cloud"));
-      setCloudLoading(null);
-    }
-  }
-
   useEffect(() => {
     setActiveTracksSearch("");
   }, [activeId]);
@@ -515,41 +521,16 @@ export default function PlaylistsPage() {
     <div className="pb-28">
       <div className="flex items-end justify-between mb-8">
         <h2 className="text-3xl font-light">Playlists</h2>
-        <span className="text-sm text-white/35">Local + compte</span>
+        <span className="text-sm text-white/35">
+          {isAuthenticated ? "Synchronisees avec ton compte" : "Locales sur cet appareil"}
+        </span>
       </div>
 
-      <section className="mb-6 rounded-3xl border border-white/10 bg-[#121218] p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs text-white/45">Cloud compte</p>
-            <p className="text-sm text-white/85">Sauvegarde playlists, favoris et metadata par compte.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={backupToCloud}
-              disabled={cloudLoading !== null || loading || !isAuthenticated}
-              className="h-9 px-3 rounded-xl bg-white text-black text-sm font-medium hover:opacity-90 transition disabled:opacity-60"
-            >
-              {cloudLoading === "save" ? "Sauvegarde..." : "Sauvegarder cloud"}
-            </button>
-            <button
-              type="button"
-              onClick={restoreFromCloud}
-              disabled={cloudLoading !== null || loading || !isAuthenticated}
-              className="h-9 px-3 rounded-xl bg-white/10 text-white text-sm hover:bg-white/15 transition disabled:opacity-60"
-            >
-              {cloudLoading === "restore" ? "Restauration..." : "Restaurer cloud"}
-            </button>
-          </div>
-        </div>
-        {!loading && !isAuthenticated ? (
-          <p className="mt-3 text-xs text-white/55">
-            Connecte-toi dans <Link href="/account" className="text-white/85 underline underline-offset-4">Compte</Link> pour activer la sauvegarde cloud.
-          </p>
-        ) : null}
-        {cloudMessage ? <p className="mt-3 text-xs text-white/60">{cloudMessage}</p> : null}
-      </section>
+      {!loading && !isAuthenticated ? (
+        <p className="mb-6 text-xs text-white/45">
+          Connecte-toi dans <Link href="/account" className="text-white/85 underline underline-offset-4">Compte</Link> pour retrouver tes playlists sur tous tes appareils.
+        </p>
+      ) : null}
 
       <section className="mb-6 rounded-3xl border border-white/10 bg-[#121218] p-4">
         <div className="flex items-end justify-between mb-3">

@@ -86,8 +86,23 @@ Migration locale vers Firebase:
 npm run firebase:migrate
 ```
 
+## Notifications push (optionnel)
+
+Pour activer les notifications push (nouveau follower, nouvel upload), genere une paire de cles VAPID et ajoute-les a `.env.local` :
+
+```bash
+npx web-push generate-vapid-keys --json
+```
+
+```env
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+```
+
+Sans ces variables, l'app fonctionne normalement, simplement sans notifications push.
+
 ## Notes utiles
 
 - Les uploads restent limites a `80 MB` par piste dans l'API actuelle.
-- Les playlists et favoris restent locaux au navigateur pour l'instant.
+- Les playlists et favoris sont synchronises par compte des qu'un backend cloud est configure (sinon ils restent locaux au navigateur).
 - Les morceaux et covers deviennent partages entre utilisateurs des que l'app pointe vers le meme projet cloud.

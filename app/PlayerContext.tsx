@@ -627,6 +627,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const shownAchievementIdsRef = useRef<Set<AchievementId>>(new Set());
   const favoritesRemoteHydratedRef = useRef(false);
   const lastSyncedFavoritesSignatureRef = useRef("");
+  const eqPresetRemoteHydratedRef = useRef(false);
+  const lastSyncedEqPresetRef = useRef("");
   const nowPlayingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const statsRemoteHydratedRef = useRef(false);
   const statsSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1269,6 +1271,86 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
     return () => window.clearTimeout(timeoutId);
   }, [accessToken, authLoading, favoritesMap, isAuthenticated]);
+
+  // hydrate eq preset from the account when signed in
+  useEffect(() => {
+    let cancelled = false;
+
+    async function hydrateRemoteEqPreset() {
+      try {
+        const res = await fetch("/api/account", {
+          cache: "no-store",
+          headers: createAuthorizedHeaders(accessToken),
+        });
+        if (!res.ok) {
+          eqPresetRemoteHydratedRef.current = false;
+          return;
+        }
+
+        const json = await res.json();
+        if (cancelled) return;
+
+        const remoteEqPreset = json.eqPreset;
+        if (
+          remoteEqPreset === "off" ||
+          remoteEqPreset === "bass" ||
+          remoteEqPreset === "vocal" ||
+          remoteEqPreset === "night"
+        ) {
+          lastSyncedEqPresetRef.current = remoteEqPreset;
+          setEqPreset(remoteEqPreset);
+        } else {
+          lastSyncedEqPresetRef.current = "";
+        }
+        eqPresetRemoteHydratedRef.current = true;
+      } catch {
+        eqPresetRemoteHydratedRef.current = false;
+      }
+    }
+
+    if (authLoading) return;
+
+    if (!isAuthenticated || !accessToken) {
+      eqPresetRemoteHydratedRef.current = false;
+      lastSyncedEqPresetRef.current = "";
+      return;
+    }
+
+    void hydrateRemoteEqPreset();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, authLoading, isAuthenticated]);
+
+  // push eq preset changes to the account
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || !accessToken || !eqPresetRemoteHydratedRef.current) {
+      return;
+    }
+
+    if (eqPreset === lastSyncedEqPresetRef.current) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      void fetch("/api/account", {
+        method: "PUT",
+        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+        body: JSON.stringify({ eqPreset }),
+      })
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error("eq preset sync failed");
+          }
+
+          lastSyncedEqPresetRef.current = eqPreset;
+        })
+        .catch(() => {});
+    }, 250);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [accessToken, authLoading, eqPreset, isAuthenticated]);
 
   // load stats (localStorage first, then merge remote if authenticated)
   useEffect(() => {

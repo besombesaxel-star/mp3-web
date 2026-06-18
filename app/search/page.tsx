@@ -254,6 +254,7 @@ export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<SearchTab>("all");
   const [onlyFavorites, setOnlyFavorites] = useState(false);
+  const [artistFilter, setArtistFilter] = useState("");
   const [activeIndex, setActiveIndex] = useState(-1);
   const [tracks, setTracks] = useState<TrackWithCover[]>([]);
   const [loading, setLoading] = useState(true);
@@ -290,10 +291,20 @@ export default function SearchPage() {
   const hasQuery = query.trim().length > 0;
   const needle = useMemo(() => normalizeText(query), [query]);
 
-  const baseTracks = useMemo(
-    () => (onlyFavorites ? tracks.filter((t) => isFavorite(t.src)) : tracks),
-    [tracks, onlyFavorites, isFavorite]
-  );
+  const allArtistNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const t of tracks) {
+      const name = t.artist?.trim();
+      if (name) names.add(name);
+    }
+    return [...names].sort((a, b) => a.localeCompare(b, "fr"));
+  }, [tracks]);
+
+  const baseTracks = useMemo(() => {
+    let list = onlyFavorites ? tracks.filter((t) => isFavorite(t.src)) : tracks;
+    if (artistFilter) list = list.filter((t) => t.artist?.trim() === artistFilter);
+    return list;
+  }, [tracks, onlyFavorites, isFavorite, artistFilter]);
 
   const filteredTracks = useMemo(() => {
     if (!hasQuery) return baseTracks;
@@ -569,18 +580,38 @@ export default function SearchPage() {
             );
           })}
         </div>
-        <button
-          type="button"
-          onClick={() => setOnlyFavorites((v) => !v)}
-          className={[
-            "h-8 px-3.5 rounded-full text-sm transition",
-            onlyFavorites
-              ? "bg-white text-black font-medium"
-              : "bg-white/8 text-white/60 hover:bg-white/12",
-          ].join(" ")}
-        >
-          Favoris
-        </button>
+        <div className="flex items-center gap-1.5">
+          <select
+            value={artistFilter}
+            onChange={(e) => setArtistFilter(e.target.value)}
+            aria-label="Filtrer par artiste"
+            className={[
+              "h-8 px-3 rounded-full text-sm transition outline-none appearance-none cursor-pointer",
+              artistFilter
+                ? "bg-white text-black font-medium"
+                : "bg-white/8 text-white/60 hover:bg-white/12",
+            ].join(" ")}
+          >
+            <option value="">Tous les artistes</option>
+            {allArtistNames.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => setOnlyFavorites((v) => !v)}
+            className={[
+              "h-8 px-3.5 rounded-full text-sm transition",
+              onlyFavorites
+                ? "bg-white text-black font-medium"
+                : "bg-white/8 text-white/60 hover:bg-white/12",
+            ].join(" ")}
+          >
+            Favoris
+          </button>
+        </div>
       </div>
 
       {error && (

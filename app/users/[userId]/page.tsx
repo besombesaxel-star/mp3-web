@@ -6,13 +6,16 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Copy, ExternalLink, Crown, Music, Play, Shield, Shuffle, UserCheck, UserPlus } from "lucide-react";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
-
-const ADMIN_USER_IDS = new Set(["b793a3a7-45f8-4711-90b9-a1f0ac5fb8b9"]);
-const CO_FOUNDER_USER_IDS = new Set(["3de5eafa-673f-4f05-b925-a84cf31c1ecb"]);
+import { BADGE_LABELS, type BadgeKey } from "@/lib/badges";
 import { usePlayer } from "@/app/PlayerContext";
 import { useAuth } from "@/app/AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { getArtistHref, getInitials, hashStringToHue } from "@/lib/publicLinks";
+
+const BADGE_STYLES: Record<BadgeKey, { icon: typeof Shield; className: string }> = {
+  admin: { icon: Shield, className: "bg-red-500/20 text-red-300 border-red-500/30" },
+  "co-founder": { icon: Crown, className: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
+};
 
 type PublicTrack = {
   artist: string;
@@ -33,6 +36,7 @@ type ProfileLink = {
 
 type PublicProfile = {
   avatarUrl: string;
+  badges: BadgeKey[];
   bio: string;
   displayName: string;
   followersCount: number;
@@ -308,18 +312,20 @@ export default function PublicUserProfilePage() {
 
             <div className="flex items-center gap-2 mb-1">
               <h1 className="text-2xl font-semibold text-white/95">{profile.displayName}</h1>
-              {ADMIN_USER_IDS.has(profile.userId) && (
-                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase bg-red-500/20 text-red-300 border border-red-500/30">
-                  <Shield size={10} className="fill-red-300/60" />
-                  Admin
-                </span>
-              )}
-              {CO_FOUNDER_USER_IDS.has(profile.userId) && (
-                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  <Crown size={10} className="fill-amber-300/60" />
-                  Co-Founder
-                </span>
-              )}
+              {profile.badges.map((badgeKey) => {
+                const style = BADGE_STYLES[badgeKey];
+                if (!style) return null;
+                const Icon = style.icon;
+                return (
+                  <span
+                    key={badgeKey}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase border ${style.className}`}
+                  >
+                    <Icon size={10} />
+                    {BADGE_LABELS[badgeKey]}
+                  </span>
+                );
+              })}
             </div>
 
             {formatJoinedAt(profile.joinedAt) && (

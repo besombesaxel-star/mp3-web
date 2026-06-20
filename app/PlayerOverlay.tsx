@@ -20,8 +20,6 @@ import {
   VolumeX,
   Volume1,
   Volume2,
-  Eye,
-  EyeOff,
 } from "lucide-react";
 
 function withAlpha(color: string, alpha: number) {
@@ -175,14 +173,11 @@ export default function PlayerOverlay() {
     setExpanded,
     shuffle,
     repeat,
-    smoothTransitions,
     toggleShuffle,
     cycleRepeat,
     isFavorite,
     toggleFavorite,
     focusMode,
-    toggleFocusMode,
-    toggleSmoothTransitions,
     preloadedTrack,
   } = usePlayer();
 
@@ -366,19 +361,6 @@ export default function PlayerOverlay() {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={toggleSmoothTransitions}
-                aria-pressed={smoothTransitions}
-                className={[
-                  "h-10 rounded-full px-3 text-[11px] font-semibold transition",
-                  smoothTransitions ? "bg-white/12 text-white ring-1 ring-white/15" : "bg-white/8 text-white/75 hover:bg-white/12",
-                ].join(" ")}
-                title={smoothTransitions ? "Transitions douces actives" : "Transitions douces inactives"}
-                type="button"
-              >
-                FX
-              </button>
-
-              <button
                 onClick={closeOverlay}
                 className="h-10 w-10 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98]"
                 title="Fermer"
@@ -407,30 +389,6 @@ export default function PlayerOverlay() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={toggleSmoothTransitions}
-              aria-pressed={smoothTransitions}
-              className={[
-                "h-11 px-4 rounded-full transition flex items-center gap-2 text-sm",
-                smoothTransitions ? "bg-white/12 ring-1 ring-white/15 text-white" : "bg-white/8 hover:bg-white/12 text-white/80",
-              ].join(" ")}
-              title={smoothTransitions ? "Transitions douces actives" : "Transitions douces inactives"}
-              type="button"
-            >
-              <span className="font-semibold">FX</span>
-            </button>
-
-            <button
-              onClick={toggleFocusMode}
-              aria-pressed={focusMode}
-              className="h-11 px-4 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98] flex items-center gap-2"
-              title={focusMode ? "Quitter Focus" : "Mode Focus"}
-              type="button"
-            >
-              {focusMode ? <EyeOff size={16} /> : <Eye size={16} />}
-              <span className="text-sm text-white/85">Focus</span>
-            </button>
-
             <button
               onClick={() => track && toggleFavorite(track)}
               disabled={!track}
@@ -551,7 +509,7 @@ export default function PlayerOverlay() {
                   title="Cliquer pour se deplacer"
                 >
                   <div
-                    className="h-full"
+                    className="h-full transition-[width] duration-150 ease-out"
                     style={{
                       width: `${(progress || 0) * 100}%`,
                       background: accent,
@@ -662,7 +620,7 @@ export default function PlayerOverlay() {
                   title="Cliquer pour se dÃ©placer"
                 >
                   <div
-                    className="h-full"
+                    className="h-full transition-[width] duration-150 ease-out"
                     style={{
                       width: `${(progress || 0) * 100}%`,
                       background: accent,

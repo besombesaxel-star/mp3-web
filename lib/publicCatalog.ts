@@ -79,10 +79,11 @@ async function readPublicUserBasics(userId: string) {
 }
 
 export async function getPublicUserProfileData(userId: string): Promise<PublicUserProfileData | null> {
-  const [tracks, profile, userBasics] = await Promise.all([
+  const [tracks, profile, userBasics, badges] = await Promise.all([
     listTracksForApi(),
     readAccountProfile(userId).catch(() => null),
     readPublicUserBasics(userId),
+    getBadgesForUser(userId),
   ]);
 
   const uploads = tracks
@@ -109,7 +110,7 @@ export async function getPublicUserProfileData(userId: string): Promise<PublicUs
 
   return {
     avatarUrl: profile?.avatarUrl ?? "",
-    badges: getBadgesForUser(userId),
+    badges,
     bio: profile?.publicBio ?? "",
     displayName,
     followersCount: profile?.followersCount ?? 0,

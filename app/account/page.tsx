@@ -13,6 +13,7 @@ import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { usePlayer } from "@/app/PlayerContext";
 import { getPublicProfileHref, hashStringToHue } from "@/lib/publicLinks";
 import type { ProfileLink } from "@/lib/accountData";
+import AvatarCropper from "@/app/AvatarCropper";
 
 type AccountTrack = {
   artist: string;
@@ -232,14 +233,21 @@ export default function AccountPage() {
   }, [accessToken, isAuthenticated]);
 
   // --- Avatar ---
-  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+
+  function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !accessToken) return;
     e.target.value = "";
+    if (!file) return;
+    setPendingAvatarFile(file);
+  }
+
+  async function uploadAvatarBlob(blob: Blob) {
+    if (!accessToken) return;
     setBusy("avatar");
     try {
       const form = new FormData();
-      form.append("image", file);
+      form.append("image", blob, "avatar.jpg");
       const res = await fetch("/api/account/avatar", {
         method: "POST",
         headers: createAuthorizedHeaders(accessToken),
@@ -923,6 +931,17 @@ export default function AccountPage() {
           </div>
         )}
       </div>
+
+      {pendingAvatarFile && (
+        <AvatarCropper
+          file={pendingAvatarFile}
+          onCancel={() => setPendingAvatarFile(null)}
+          onCropped={(blob) => {
+            setPendingAvatarFile(null);
+            void uploadAvatarBlob(blob);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -10,6 +10,8 @@ import React, {
 } from "react";
 import { useAuth } from "./AuthProvider";
 import { toast } from "./Toast";
+import { vibrate } from "./haptics";
+import { playChimeSound, playPopSound, unlockAudio } from "./sound";
 import { getOrCreateSharedGraph, type SharedGraph } from "./audioGraph";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 
@@ -133,8 +135,12 @@ type PlayerCtx = {
   repeat: RepeatMode;
   smoothTransitions: boolean;
   smartAutoplay: boolean;
+  uiSounds: boolean;
+  hapticsEnabled: boolean;
   toggleSmoothTransitions: () => void;
   toggleSmartAutoplay: () => void;
+  toggleUiSounds: () => void;
+  toggleHaptics: () => void;
   preloadedTrack: Track | null;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
@@ -198,6 +204,8 @@ type PlayerPrefs = {
   focusMode: boolean;
   smoothTransitions: boolean;
   smartAutoplay: boolean;
+  uiSounds: boolean;
+  hapticsEnabled: boolean;
   theme: ThemeMode;
   eqPreset: EqPreset;
 };
@@ -353,7 +361,15 @@ function safeSession(parsed: unknown): PlayerSession | null {
 
 function safePrefs(parsed: unknown): PlayerPrefs {
   if (!isRecord(parsed)) {
-    return { focusMode: false, smoothTransitions: true, smartAutoplay: true, theme: "midnight", eqPreset: "off" };
+    return {
+      focusMode: false,
+      smoothTransitions: true,
+      smartAutoplay: true,
+      uiSounds: false,
+      hapticsEnabled: true,
+      theme: "midnight",
+      eqPreset: "off",
+    };
   }
 
   return {
@@ -362,6 +378,8 @@ function safePrefs(parsed: unknown): PlayerPrefs {
       typeof parsed.smoothTransitions === "boolean" ? parsed.smoothTransitions : true,
     smartAutoplay:
       typeof parsed.smartAutoplay === "boolean" ? parsed.smartAutoplay : true,
+    uiSounds: typeof parsed.uiSounds === "boolean" ? parsed.uiSounds : false,
+    hapticsEnabled: typeof parsed.hapticsEnabled === "boolean" ? parsed.hapticsEnabled : true,
     theme:
       parsed.theme === "midnight" || parsed.theme === "sunset" || parsed.theme === "ocean"
         ? parsed.theme
@@ -584,7 +602,30 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [repeat, setRepeat] = useState<RepeatMode>("off");
   const [smoothTransitions, setSmoothTransitions] = useState(true);
   const [smartAutoplay, setSmartAutoplay] = useState(true);
+  const [uiSounds, setUiSounds] = useState(false);
+  const uiSoundsRef = useRef(uiSounds);
+  uiSoundsRef.current = uiSounds;
+  const [hapticsEnabled, setHapticsEnabled] = useState(true);
+  const hapticsEnabledRef = useRef(hapticsEnabled);
+  hapticsEnabledRef.current = hapticsEnabled;
   const [preloadedTrack, setPreloadedTrack] = useState<Track | null>(null);
+
+  // Browsers only let an AudioContext play sound after a direct user gesture.
+  // Unlock on the very first click/keypress anywhere so favorite/achievement
+  // sounds work even though they're triggered well after that gesture fires.
+  useEffect(() => {
+    function handleFirstInteraction() {
+      unlockAudio();
+      window.removeEventListener("pointerdown", handleFirstInteraction);
+      window.removeEventListener("keydown", handleFirstInteraction);
+    }
+    window.addEventListener("pointerdown", handleFirstInteraction);
+    window.addEventListener("keydown", handleFirstInteraction);
+    return () => {
+      window.removeEventListener("pointerdown", handleFirstInteraction);
+      window.removeEventListener("keydown", handleFirstInteraction);
+    };
+  }, []);
 
   const shuffleHistoryRef = useRef<number[]>([]);
   const preloadAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -743,6 +784,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }
 
   function unlockAchievement(id: AchievementId) {
+    const alreadyUnlocked = Boolean(statsState.achievements?.[id]);
+
     setStatsState((prev) => {
       if (prev.achievements?.[id]) return prev;
 
@@ -752,6 +795,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         achievements: { ...(prev.achievements ?? {}), [id]: { unlockedAt } },
       });
     });
+
+    if (!alreadyUnlocked) {
+      if (hapticsEnabledRef.current) vibrate([15, 40, 15]);
+      if (uiSoundsRef.current) playChimeSound();
+    }
   }
 
   function markPlaylistCreated() {
@@ -822,6 +870,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       if (queue.length === 0) return false;
 
       setQueueAndPlay(queue, 0);
+      toast("Lecture intelligente : la suite selon tes gouts", "music");
       return true;
     } catch {
       return false;
@@ -1422,6 +1471,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setFocusMode(prefs.focusMode);
       setSmoothTransitions(prefs.smoothTransitions);
       setSmartAutoplay(prefs.smartAutoplay);
+      setUiSounds(prefs.uiSounds);
+      setHapticsEnabled(prefs.hapticsEnabled);
       setTheme(prefs.theme);
       setEqPreset(prefs.eqPreset);
     } catch {}
@@ -1540,11 +1591,19 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   // persist prefs
   useEffect(() => {
-    const payload: PlayerPrefs = { focusMode, smoothTransitions, smartAutoplay, theme, eqPreset };
+    const payload: PlayerPrefs = {
+      focusMode,
+      smoothTransitions,
+      smartAutoplay,
+      uiSounds,
+      hapticsEnabled,
+      theme,
+      eqPreset,
+    };
     try {
       localStorage.setItem(LS_PREFS, JSON.stringify(payload));
     } catch {}
-  }, [focusMode, smoothTransitions, smartAutoplay, theme, eqPreset]);
+  }, [focusMode, smoothTransitions, smartAutoplay, uiSounds, hapticsEnabled, theme, eqPreset]);
 
   // persist playback session
   useEffect(() => {
@@ -1887,6 +1946,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setSmartAutoplay((value) => !value);
   }
 
+  function toggleUiSounds() {
+    setUiSounds((value) => !value);
+  }
+
+  function toggleHaptics() {
+    setHapticsEnabled((value) => !value);
+  }
+
   function toggleSmoothTransitions() {
     setSmoothTransitions((value) => !value);
   }
@@ -2076,6 +2143,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     });
 
     toast(wasFav ? "Retiré des favoris" : "Ajouté aux favoris", "heart");
+
+    if (!wasFav) {
+      if (hapticsEnabledRef.current) vibrate(12);
+      if (uiSoundsRef.current) playPopSound();
+    }
   }
 
   function clearFavorites() {
@@ -2152,8 +2224,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     repeat,
     smoothTransitions,
     smartAutoplay,
+    uiSounds,
+    hapticsEnabled,
     toggleSmoothTransitions,
     toggleSmartAutoplay,
+    toggleUiSounds,
+    toggleHaptics,
     preloadedTrack,
     toggleShuffle,
     cycleRepeat,

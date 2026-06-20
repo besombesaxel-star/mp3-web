@@ -6,22 +6,17 @@ import {
   Heart,
   ListMusic,
   Maximize2,
-  Palette,
   Pause,
   Play,
   Repeat,
   Repeat1,
   Shuffle,
-  SlidersHorizontal,
   SkipBack,
   SkipForward,
   Trophy,
   Volume1,
   Volume2,
   VolumeX,
-  Eye,
-  EyeOff,
-  Wand2,
   X,
 } from "lucide-react";
 import AudioEqualizer from "./AudioEqualizer";
@@ -72,14 +67,8 @@ export default function MiniPlayer() {
     seekTo,
     expanded,
     setExpanded,
-    focusMode,
-    toggleFocusMode,
     shuffle,
     repeat,
-    smoothTransitions,
-    smartAutoplay,
-    toggleSmartAutoplay,
-    toggleSmoothTransitions,
     preloadedTrack,
     toggleShuffle,
     cycleRepeat,
@@ -93,10 +82,6 @@ export default function MiniPlayer() {
     undoLastAction,
     dismissUndoToast,
     stats,
-    theme,
-    cycleTheme,
-    eqPreset,
-    cycleEqPreset,
   } = usePlayer();
 
   const [queueOpen, setQueueOpen] = useState(false);
@@ -109,10 +94,6 @@ export default function MiniPlayer() {
 
   const currentQueueTrack = index >= 0 && index < tracks.length ? tracks[index] : null;
 
-  const eqPresetLabel =
-    eqPreset === "bass" ? "Bass boost" : eqPreset === "vocal" ? "Vocal" : eqPreset === "night" ? "Night" : "Off";
-
-  const themeLabel = theme === "sunset" ? "Sunset" : theme === "ocean" ? "Ocean" : "Midnight";
   const accentValue = track?.accent?.trim();
   const mobileAccent = accentValue && accentValue.length > 0 ? accentValue : "#ffffff";
   const mobileAccentSoft = withAlpha(accentValue, 0.18);
@@ -265,6 +246,13 @@ export default function MiniPlayer() {
         .mp3-toast-in {
           animation: mp3ToastIn 180ms ease-out both;
         }
+        @keyframes mp3AchievementGlow {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.18); }
+          50% { box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.06); }
+        }
+        .mp3-achievement-glow {
+          animation: mp3AchievementGlow 2.4s ease-in-out infinite;
+        }
         .mp3-mobile-progress {
           -webkit-appearance: none;
           appearance: none;
@@ -299,6 +287,64 @@ export default function MiniPlayer() {
           background: rgba(255, 255, 255, 0.95);
           box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
         }
+        .mp3-slider {
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          appearance: none;
+          height: 6px;
+          border-radius: 999px;
+          outline: none;
+          cursor: pointer;
+          transition: height 120ms ease;
+        }
+        .mp3-slider:hover,
+        .mp3-slider:active {
+          height: 7px;
+        }
+        .mp3-slider::-webkit-slider-runnable-track {
+          height: 6px;
+          border-radius: 999px;
+          background: transparent;
+        }
+        .mp3-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          width: 15px;
+          height: 15px;
+          border-radius: 999px;
+          margin-top: -4.5px;
+          background: #ffffff;
+          border: 2px solid rgba(10, 10, 14, 0.9);
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+          transition: transform 150ms ease, box-shadow 150ms ease;
+        }
+        .mp3-slider:hover::-webkit-slider-thumb,
+        .mp3-slider:active::-webkit-slider-thumb {
+          transform: scale(1.2);
+          box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
+        }
+        .mp3-slider::-moz-range-track {
+          height: 6px;
+          border-radius: 999px;
+          background: transparent;
+        }
+        .mp3-slider::-moz-range-thumb {
+          width: 15px;
+          height: 15px;
+          border-radius: 999px;
+          background: #ffffff;
+          border: 2px solid rgba(10, 10, 14, 0.9);
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+          transition: transform 150ms ease, box-shadow 150ms ease;
+        }
+        .mp3-slider:hover::-moz-range-thumb,
+        .mp3-slider:active::-moz-range-thumb {
+          transform: scale(1.2);
+          box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
+        }
+        .mp3-slider:disabled {
+          cursor: default;
+          opacity: 0.45;
+        }
       `}</style>
 
       {achievementToast ? (
@@ -309,8 +355,8 @@ export default function MiniPlayer() {
         >
           <div className="mp3-toast-in rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
             <div className="flex items-start gap-3 p-4">
-              <div className="h-10 w-10 rounded-2xl bg-white/8 border border-white/10 flex items-center justify-center shrink-0">
-                <Trophy size={18} className="text-white/85" />
+              <div className="mp3-achievement-glow h-10 w-10 rounded-2xl bg-white/8 border border-white/10 flex items-center justify-center shrink-0 text-lg">
+                {achievementToast.icon || <Trophy size={18} className="text-white/85" />}
               </div>
 
               <div className="min-w-0 flex-1">
@@ -711,19 +757,6 @@ export default function MiniPlayer() {
                   >
                     <ListMusic size={15} className="mx-auto opacity-90" />
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={toggleSmoothTransitions}
-                    className={[
-                      "h-8 w-8 rounded-full transition active:scale-95 text-[10px] font-semibold",
-                      smoothTransitions ? "bg-white/12 ring-1 ring-white/20 text-white" : "text-white/75",
-                    ].join(" ")}
-                    title={smoothTransitions ? "Transitions douces actives" : "Transitions douces inactives"}
-                    aria-pressed={smoothTransitions}
-                  >
-                    FX
-                  </button>
                 </div>
               </div>
             </div>
@@ -797,7 +830,10 @@ export default function MiniPlayer() {
                 max={1000}
                 value={Math.round((progress || 0) * 1000)}
                 onChange={(e) => seekTo(Number(e.target.value) / 1000)}
-                className="flex-1 accent-white"
+                className="mp3-slider flex-1"
+                style={{
+                  background: `linear-gradient(to right, rgba(255,255,255,0.95) ${Math.round((progress || 0) * 100)}%, rgba(255,255,255,0.14) ${Math.round((progress || 0) * 100)}%)`,
+                }}
                 aria-label="Progression"
                 disabled={!track}
                 title="Progression"
@@ -808,19 +844,6 @@ export default function MiniPlayer() {
           </div>
 
           <div className="flex items-center justify-center gap-2">
-            <button
-              onClick={toggleShuffle}
-              aria-pressed={shuffle}
-              className={[
-                "h-10 w-10 rounded-full transition",
-                shuffle ? "bg-white/10 ring-1 ring-white/20" : "hover:bg-white/5",
-              ].join(" ")}
-              title="Lecture aleatoire"
-              type="button"
-            >
-              <Shuffle size={18} className={["mx-auto", shuffle ? "text-white/85" : "opacity-90"].join(" ")} />
-            </button>
-
             <button
               className={[
                 "h-10 w-10 rounded-full transition",
@@ -930,6 +953,19 @@ export default function MiniPlayer() {
                 <Repeat size={18} className={["mx-auto", repeat ? "text-white/85" : "opacity-90"].join(" ")} />
               )}
             </button>
+
+            <button
+              onClick={toggleShuffle}
+              aria-pressed={shuffle}
+              className={[
+                "h-10 w-10 rounded-full transition",
+                shuffle ? "bg-white/10 ring-1 ring-white/20" : "hover:bg-white/5",
+              ].join(" ")}
+              title="Lecture aleatoire"
+              type="button"
+            >
+              <Shuffle size={18} className={["mx-auto", shuffle ? "text-white/85" : "opacity-90"].join(" ")} />
+            </button>
           </div>
 
           <div className="flex items-center justify-end gap-2">
@@ -959,91 +995,13 @@ export default function MiniPlayer() {
                 max={100}
                 value={Math.round(volume * 100)}
                 onChange={(e) => setVolume(Number(e.target.value) / 100)}
-                className="w-[110px] accent-white"
+                className="mp3-slider w-[110px]"
+                style={{
+                  background: `linear-gradient(to right, rgba(255,255,255,0.95) ${muted ? 0 : Math.round(volume * 100)}%, rgba(255,255,255,0.14) ${muted ? 0 : Math.round(volume * 100)}%)`,
+                }}
                 aria-label="Volume"
               />
             </div>
-
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleSmoothTransitions();
-              }}
-              className={[
-                "h-10 w-10 rounded-full transition text-[10px] font-semibold",
-                smoothTransitions ? "bg-white/10 ring-1 ring-white/20 text-white" : "hover:bg-white/5 text-white/75",
-              ].join(" ")}
-              title={smoothTransitions ? "Transitions douces actives" : "Transitions douces inactives"}
-              aria-pressed={smoothTransitions}
-            >
-              FX
-            </button>
-
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                cycleEqPreset();
-              }}
-              className={[
-                "h-10 w-10 rounded-full transition",
-                eqPreset !== "off" ? "bg-white/10 ring-1 ring-white/20" : "hover:bg-white/5",
-              ].join(" ")}
-              title={`Equalizer: ${eqPresetLabel}`}
-              aria-label={`Equalizer preset ${eqPresetLabel}`}
-            >
-              <SlidersHorizontal size={18} className="mx-auto opacity-90" />
-            </button>
-
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                cycleTheme();
-              }}
-              className="h-10 w-10 rounded-full hover:bg-white/5 transition"
-              title={`Theme: ${themeLabel}`}
-              aria-label={`Theme ${themeLabel}`}
-            >
-              <Palette size={18} className="mx-auto opacity-90" />
-            </button>
-
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleSmartAutoplay();
-              }}
-              className={[
-                "h-10 w-10 rounded-full transition",
-                smartAutoplay ? "bg-white/10 ring-1 ring-white/20" : "hover:bg-white/5",
-              ].join(" ")}
-              title={smartAutoplay ? "Autoplay intelligent actif" : "Autoplay intelligent inactif"}
-              aria-pressed={smartAutoplay}
-            >
-              <Wand2 size={18} className="mx-auto opacity-90" />
-            </button>
-
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleFocusMode();
-              }}
-              className={[
-                "h-10 w-10 rounded-full transition",
-                focusMode ? "bg-white/10 ring-1 ring-white/20" : "hover:bg-white/5",
-              ].join(" ")}
-              title={focusMode ? "Mode focus actif" : "Mode focus inactif"}
-              aria-pressed={focusMode}
-            >
-              {focusMode ? (
-                <EyeOff size={18} className="mx-auto opacity-90" />
-              ) : (
-                <Eye size={18} className="mx-auto opacity-90" />
-              )}
-            </button>
 
             <button
               className="h-10 w-10 rounded-full hover:bg-white/5 transition"

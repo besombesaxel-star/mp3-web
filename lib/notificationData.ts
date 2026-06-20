@@ -3,13 +3,15 @@ import { sendPushToUser } from "@/lib/pushSubscriptions";
 
 export type AppNotification = {
   id: string;
-  type: "follow" | "upload";
+  type: "follow" | "upload" | "reaction" | "mention";
   fromUserId: string;
   fromDisplayName: string;
   fromAvatarUrl: string;
   trackTitle?: string;
   trackSrc?: string;
   trackCover?: string;
+  emoji?: string;
+  excerpt?: string;
   createdAt: number;
   read: boolean;
 };
@@ -55,12 +57,16 @@ export async function pushNotification(
   const pushBody =
     notif.type === "follow"
       ? `${notif.fromDisplayName} a commence a vous suivre`
-      : `${notif.fromDisplayName} a partage "${notif.trackTitle}"`;
+      : notif.type === "reaction"
+        ? `${notif.fromDisplayName} a reagi ${notif.emoji ?? ""} a votre ecoute`
+        : notif.type === "mention"
+          ? `${notif.fromDisplayName} vous a mentionne dans le chat`
+          : `${notif.fromDisplayName} a partage "${notif.trackTitle}"`;
 
   void sendPushToUser(userId, {
     title: ".mp3",
     body: pushBody,
-    url: notif.type === "follow" ? `/users/${notif.fromUserId}` : "/library",
+    url: notif.type === "upload" ? "/library" : `/users/${notif.fromUserId}`,
   });
 }
 

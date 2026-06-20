@@ -2,12 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { MessageSquare, Send, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { MessageSquare, Send, Trash2, X } from "lucide-react";
 import { useAuth } from "./AuthProvider";
+import { usePlayer } from "./PlayerContext";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import { getPublicProfileHref } from "@/lib/publicLinks";
+import { isAdminUser } from "@/lib/adminAccess";
+import { playPopSound } from "./sound";
 import type { ChatMessage } from "@/app/api/chat/route";
 
 function formatTime(iso: string) {
@@ -40,6 +43,42 @@ function nameHue(name: string) {
   return HUE_PALETTE[h % HUE_PALETTE.length];
 }
 
+type Participant = { id: string; name: string };
+
+function renderMessageContent(content: string, participants: Participant[]) {
+  if (participants.length === 0) return content;
+
+  const sorted = [...participants].sort((a, b) => b.name.length - a.name.length);
+  const nodes: ReactNode[] = [];
+  const lower = content.toLowerCase();
+  let cursor = 0;
+
+  while (cursor < content.length) {
+    const atIndex = content.indexOf("@", cursor);
+    if (atIndex === -1) {
+      nodes.push(content.slice(cursor));
+      break;
+    }
+
+    const matched = sorted.find((p) => lower.startsWith(`@${p.name.toLowerCase()}`, atIndex));
+
+    if (matched) {
+      nodes.push(content.slice(cursor, atIndex));
+      nodes.push(
+        <span key={`${atIndex}-${matched.name}`} className="text-sky-300 font-medium">
+          @{matched.name}
+        </span>
+      );
+      cursor = atIndex + 1 + matched.name.length;
+    } else {
+      nodes.push(content.slice(cursor, atIndex + 1));
+      cursor = atIndex + 1;
+    }
+  }
+
+  return nodes;
+}
+
 type MessageGroup = { user_id: string; display_name: string; messages: ChatMessage[] };
 
 function groupMessages(messages: ChatMessage[]): MessageGroup[] {
@@ -57,9 +96,15 @@ function groupMessages(messages: ChatMessage[]): MessageGroup[] {
 
 const CHANNEL_NAME = "global-chat";
 const BROADCAST_EVENT = "msg";
+const BROADCAST_DELETE_EVENT = "delete";
+const BROADCAST_TYPING_EVENT = "typing";
+const TYPING_EXPIRY_MS = 3000;
+const TYPING_BROADCAST_INTERVAL_MS = 2000;
 
 export default function GlobalChat() {
-  const { accessToken, isAuthenticated, user } = useAuth();
+  const { accessToken, isAuthenticated, user, displayName } = useAuth();
+  const { uiSounds } = usePlayer();
+  const myId = user?.id ?? "";
 
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -69,11 +114,15 @@ export default function GlobalChat() {
   const [sendError, setSendError] = useState("");
   const [unread, setUnread] = useState(0);
   const [avatarCache, setAvatarCache] = useState<Record<string, string>>({});
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionStart, setMentionStart] = useState(-1);
+  const [typingUsers, setTypingUsers] = useState<Record<string, { name: string; expiresAt: number }>>({});
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const openRef = useRef(false);
+  const lastTypingBroadcastRef = useRef(0);
   const channelRef = useRef<ReturnType<typeof getSupabaseBrowserAuthClient> extends infer C ? (C extends null ? never : NonNullable<C> extends { channel: (...a: never[]) => infer R } ? R : never) : never | null>(null);
 
   openRef.current = open;
@@ -83,6 +132,10 @@ export default function GlobalChat() {
       if (prev.some((m) => m.id === msg.id)) return prev;
       return [...prev, msg];
     });
+  }
+
+  function removeMessage(id: string) {
+    setMessages((prev) => prev.filter((m) => m.id !== id));
   }
 
   // Realtime Broadcast subscription (no table needed)
@@ -99,6 +152,20 @@ export default function GlobalChat() {
         addMessage(msg);
         if (!openRef.current) setUnread((u) => u + 1);
       })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .on("broadcast" as any, { event: BROADCAST_DELETE_EVENT }, (payload: Record<string, unknown>) => {
+        const data = payload.payload as { id?: string } | undefined;
+        if (data?.id) removeMessage(data.id);
+      })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .on("broadcast" as any, { event: BROADCAST_TYPING_EVENT }, (payload: Record<string, unknown>) => {
+        const data = payload.payload as { userId?: string; name?: string } | undefined;
+        if (!data?.userId || !data.name) return;
+        setTypingUsers((prev) => ({
+          ...prev,
+          [data.userId as string]: { name: data.name as string, expiresAt: Date.now() + TYPING_EXPIRY_MS },
+        }));
+      })
       .subscribe();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -109,6 +176,23 @@ export default function GlobalChat() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (channelRef as any).current = null;
     };
+  }, []);
+
+  // Expire stale "typing" entries
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTypingUsers((prev) => {
+        const now = Date.now();
+        const next: typeof prev = {};
+        let changed = false;
+        for (const [id, entry] of Object.entries(prev)) {
+          if (entry.expiresAt > now) next[id] = entry;
+          else changed = true;
+        }
+        return changed ? next : prev;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
   }, []);
 
   // Fetch avatars for all unique user IDs in messages
@@ -203,6 +287,7 @@ export default function GlobalChat() {
       if (json.message) {
         addMessage(json.message);
         setInput("");
+        if (uiSounds) playPopSound();
         // Broadcast to other clients via Realtime
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const ch = (channelRef as any).current;
@@ -217,7 +302,98 @@ export default function GlobalChat() {
     }
   }
 
+  async function deleteMessage(id: string) {
+    if (!accessToken) return;
+    try {
+      const res = await fetch("/api/chat", {
+        method: "DELETE",
+        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) return;
+
+      removeMessage(id);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ch = (channelRef as any).current;
+      if (ch) {
+        void ch.send({ type: "broadcast", event: BROADCAST_DELETE_EVENT, payload: { id } });
+      }
+    } catch {
+      /* silent */
+    }
+  }
+
+  const knownParticipants: Participant[] = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const m of messages) {
+      if (m.user_id !== myId) map.set(m.user_id, m.display_name);
+    }
+    return [...map.entries()].map(([id, name]) => ({ id, name }));
+  }, [messages, myId]);
+
+  const mentionMatches = useMemo(() => {
+    if (mentionQuery === null) return [];
+    const q = mentionQuery.toLowerCase();
+    return knownParticipants.filter((p) => p.name.toLowerCase().startsWith(q)).slice(0, 5);
+  }, [mentionQuery, knownParticipants]);
+
+  function handleInputChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    const value = e.target.value;
+    const cursor = e.target.selectionStart ?? value.length;
+    setInput(value);
+    setSendError("");
+    e.target.style.height = "auto";
+    e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
+
+    const prefix = value.slice(0, cursor);
+    const match = /@([^\s@]*)$/.exec(prefix);
+    if (match) {
+      setMentionQuery(match[1]);
+      setMentionStart(cursor - match[1].length - 1);
+    } else {
+      setMentionQuery(null);
+      setMentionStart(-1);
+    }
+
+    if (value.trim() && myId) {
+      const now = Date.now();
+      if (now - lastTypingBroadcastRef.current > TYPING_BROADCAST_INTERVAL_MS) {
+        lastTypingBroadcastRef.current = now;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ch = (channelRef as any).current;
+        if (ch) {
+          void ch.send({
+            type: "broadcast",
+            event: BROADCAST_TYPING_EVENT,
+            payload: { userId: myId, name: displayName || "Quelqu'un" },
+          });
+        }
+      }
+    }
+  }
+
+  function applyMention(name: string) {
+    if (mentionStart < 0) return;
+    const cursor = inputRef.current?.selectionStart ?? input.length;
+    const before = input.slice(0, mentionStart);
+    const after = input.slice(cursor);
+    const next = `${before}@${name} ${after}`;
+    setInput(next);
+    setMentionQuery(null);
+    setMentionStart(-1);
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      const pos = before.length + name.length + 2;
+      inputRef.current?.setSelectionRange(pos, pos);
+    });
+  }
+
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey && mentionMatches.length > 0) {
+      e.preventDefault();
+      applyMention(mentionMatches[0].name);
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       void sendMessage();
@@ -225,7 +401,10 @@ export default function GlobalChat() {
   }
 
   const groups = useMemo(() => groupMessages(messages), [messages]);
-  const myId = user?.id ?? "";
+  const canModerate = isAdminUser(myId);
+  const typingNames = Object.entries(typingUsers)
+    .filter(([id]) => id !== myId)
+    .map(([, entry]) => entry.name);
 
   return (
     <>
@@ -346,31 +525,65 @@ export default function GlobalChat() {
                         {group.display_name}
                       </Link>
                     )}
-                    {group.messages.map((msg, i) => (
-                      <div key={msg.id} className="flex flex-col">
-                        <div
-                          className={[
-                            "px-3 py-2 text-sm leading-relaxed break-words",
-                            isMe
-                              ? "bg-white/12 text-white/90 rounded-2xl rounded-tr-md"
-                              : "bg-white/6 text-white/80 rounded-2xl rounded-tl-md",
-                            i > 0 && isMe ? "rounded-tr-2xl" : "",
-                            i > 0 && !isMe ? "rounded-tl-2xl" : "",
-                          ].join(" ")}
-                        >
-                          {msg.content}
+                    {group.messages.map((msg, i) => {
+                      const canDelete = msg.user_id === myId || canModerate;
+                      return (
+                        <div key={msg.id} className="flex flex-col">
+                          <div className={["group/msg flex items-center gap-1", isMe ? "flex-row-reverse" : "flex-row"].join(" ")}>
+                            <div
+                              className={[
+                                "px-3 py-2 text-sm leading-relaxed break-words",
+                                isMe
+                                  ? "bg-white/12 text-white/90 rounded-2xl rounded-tr-md"
+                                  : "bg-white/6 text-white/80 rounded-2xl rounded-tl-md",
+                                i > 0 && isMe ? "rounded-tr-2xl" : "",
+                                i > 0 && !isMe ? "rounded-tl-2xl" : "",
+                              ].join(" ")}
+                            >
+                              {renderMessageContent(msg.content, knownParticipants)}
+                            </div>
+                            {canDelete && (
+                              <button
+                                type="button"
+                                onClick={() => void deleteMessage(msg.id)}
+                                title="Supprimer"
+                                aria-label="Supprimer le message"
+                                className="opacity-0 group-hover/msg:opacity-100 transition shrink-0 h-6 w-6 rounded-full flex items-center justify-center text-white/25 hover:text-red-400 hover:bg-white/8"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                          {i === group.messages.length - 1 && (
+                            <p className={["text-[10px] text-white/25 mt-1 px-1", isMe ? "text-right" : "text-left"].join(" ")}>
+                              {formatTime(msg.created_at)}
+                            </p>
+                          )}
                         </div>
-                        {i === group.messages.length - 1 && (
-                          <p className={["text-[10px] text-white/25 mt-1 px-1", isMe ? "text-right" : "text-left"].join(" ")}>
-                            {formatTime(msg.created_at)}
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               );
             })
+          )}
+          {typingNames.length > 0 && (
+            <div className="flex items-center gap-2 pt-2 px-1 text-xs text-white/35 mp3-fade-up">
+              <span className="flex gap-[3px] items-end" style={{ height: 8 }}>
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="w-[5px] h-[5px] rounded-full bg-white/40"
+                    style={{ animation: "mp3TypingDot 1.2s ease-in-out infinite", animationDelay: `${i * 0.18}s` }}
+                  />
+                ))}
+              </span>
+              <span className="truncate">
+                {typingNames.length === 1
+                  ? `${typingNames[0]} écrit…`
+                  : `${typingNames.slice(0, 2).join(", ")} écrivent…`}
+              </span>
+            </div>
           )}
           <div ref={bottomRef} className="h-1" />
         </div>
@@ -387,18 +600,27 @@ export default function GlobalChat() {
               </p>
             </div>
           ) : (
-            <div className="flex items-end gap-2">
+            <div className="relative flex items-end gap-2">
+              {mentionMatches.length > 0 && (
+                <div className="absolute bottom-full left-0 mb-2 w-48 rounded-2xl border border-white/10 bg-zinc-900/95 backdrop-blur-sm shadow-xl overflow-hidden">
+                  {mentionMatches.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => applyMention(p.name)}
+                      className="w-full text-left px-3 py-2 text-sm text-white/80 hover:bg-white/8 transition truncate"
+                    >
+                      @{p.name}
+                    </button>
+                  ))}
+                </div>
+              )}
               <textarea
                 ref={inputRef}
                 value={input}
-                onChange={(e) => {
-                  setInput(e.target.value);
-                  setSendError("");
-                  e.target.style.height = "auto";
-                  e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
-                }}
+                onChange={handleInputChange}
                 onKeyDown={onKeyDown}
-                placeholder="Écrire un message…"
+                placeholder="Écrire un message… (@ pour mentionner)"
                 rows={1}
                 maxLength={500}
                 disabled={sending}

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Copy, ExternalLink, Crown, Music, Play, Shield, Shuffle, UserCheck, UserPlus } from "lucide-react";
+import { Copy, ExternalLink, Crown, Music, Play, Shield, Shuffle, Sparkles, UserCheck, UserPlus } from "lucide-react";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import { BADGE_LABELS, type BadgeKey } from "@/lib/badges";
 import { usePlayer } from "@/app/PlayerContext";
@@ -15,7 +15,10 @@ import { getArtistHref, getInitials, hashStringToHue } from "@/lib/publicLinks";
 const BADGE_STYLES: Record<BadgeKey, { icon: typeof Shield; className: string }> = {
   admin: { icon: Shield, className: "bg-red-500/20 text-red-300 border-red-500/30" },
   "co-founder": { icon: Crown, className: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
+  "early-member": { icon: Sparkles, className: "bg-sky-500/20 text-sky-300 border-sky-500/30" },
 };
+
+const REACTION_EMOJIS = ["🔥", "❤️", "😍", "🎧", "👏"];
 
 type PublicTrack = {
   artist: string;
@@ -138,6 +141,8 @@ export default function PublicUserProfilePage() {
   const [followBusy, setFollowBusy] = useState(false);
   const [nowPlaying, setNowPlaying] = useState<{ title: string; artist?: string | null; cover?: string | null } | null>(null);
   const [copiedSrc, setCopiedSrc] = useState<string | null>(null);
+  const [reactionSent, setReactionSent] = useState<string | null>(null);
+  const [reactionBusy, setReactionBusy] = useState(false);
 
   const isOwnProfile = !!user?.id && user.id === userId;
 
@@ -230,6 +235,23 @@ export default function PublicUserProfilePage() {
       .catch(() => {});
     return () => { cancelled = true; };
   }, [isAuthenticated, accessToken, userId]);
+
+  async function sendReaction(emoji: string) {
+    if (!accessToken || reactionBusy || isOwnProfile || !nowPlaying) return;
+    setReactionBusy(true);
+    try {
+      const res = await fetch("/api/reactions", {
+        method: "POST",
+        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+        body: JSON.stringify({ targetUserId: userId, emoji, trackTitle: nowPlaying.title }),
+      });
+      if (res.ok) {
+        setReactionSent(emoji);
+        setTimeout(() => setReactionSent(null), 1500);
+      }
+    } catch { /* silent */ }
+    finally { setReactionBusy(false); }
+  }
 
   async function toggleFollow() {
     if (!accessToken || followBusy || isOwnProfile) return;
@@ -356,6 +378,28 @@ export default function PublicUserProfilePage() {
                   {nowPlaying.artist && <span className="text-white/55">{nowPlaying.artist} — </span>}
                   <span className="font-medium text-white/85">{nowPlaying.title}</span>
                 </p>
+              </div>
+            )}
+
+            {nowPlaying && isAuthenticated && !isOwnProfile && (
+              <div className="mt-2 flex items-center gap-1.5">
+                {REACTION_EMOJIS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => void sendReaction(emoji)}
+                    disabled={reactionBusy}
+                    className={[
+                      "h-8 w-8 rounded-full text-base transition flex items-center justify-center",
+                      reactionSent === emoji
+                        ? "bg-white/20 scale-110"
+                        : "bg-white/6 hover:bg-white/12 active:scale-95",
+                    ].join(" ")}
+                    title={`Reagir avec ${emoji}`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
               </div>
             )}
 

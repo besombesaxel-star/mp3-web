@@ -13,6 +13,7 @@ import {
   LogOut,
   Menu,
   Search as SearchIcon,
+  Settings,
   Upload,
   UserRound,
   X,
@@ -29,6 +30,7 @@ const nav = [
   { href: "/favorites", label: "Favoris", Icon: Heart },
   { href: "/stats", label: "Stats", Icon: BarChart3 },
   { href: "/account", label: "Compte", Icon: UserRound },
+  { href: "/settings", label: "Parametres", Icon: Settings },
 ];
 
 function isActivePath(pathname: string | null, href: string) {

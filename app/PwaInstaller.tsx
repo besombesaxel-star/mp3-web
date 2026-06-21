@@ -74,7 +74,7 @@ export default function PwaInstaller() {
     <button
       type="button"
       onClick={install}
-      className="fixed left-4 bottom-[84px] z-[90] h-10 px-4 rounded-full border border-white/20 bg-black/85 text-white/90 text-xs backdrop-blur hover:bg-black transition"
+      className="fixed left-4 bottom-[calc(17.5rem+env(safe-area-inset-bottom)+12px)] sm:bottom-[84px] z-[90] h-10 px-4 rounded-full border border-white/20 bg-black/85 text-white/90 text-xs backdrop-blur hover:bg-black transition"
       aria-label="Installer l'application"
       title="Installer l'application"
     >

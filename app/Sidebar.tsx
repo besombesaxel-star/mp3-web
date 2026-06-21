@@ -228,24 +228,26 @@ export default function Sidebar() {
       </aside>
 
       <div className="md:hidden">
-        <header className="fixed top-0 left-0 right-0 z-50 h-16 px-4 border-b border-white/10 bg-black/90 backdrop-blur flex items-center justify-between">
-          <Link
-            href="/"
-            className="text-2xl font-light tracking-widest text-white"
-            onClick={closeMobileMenu}
-          >
-            .mp3
-          </Link>
-          <button
-            type="button"
-            className="h-10 w-10 rounded-full border border-white/15 bg-white/5 text-white/90 flex items-center justify-center"
-            aria-label={mobileOpen ? "Fermer le menu" : "Ouvrir le menu"}
-            aria-expanded={mobileOpen}
-            aria-controls="mobile-sidebar-drawer"
-            onClick={() => setMobileOpen((v) => !v)}
-          >
-            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
+        <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black/90 backdrop-blur pt-[env(safe-area-inset-top)]">
+          <div className="h-16 px-4 flex items-center justify-between">
+            <Link
+              href="/"
+              className="text-2xl font-light tracking-widest text-white"
+              onClick={closeMobileMenu}
+            >
+              .mp3
+            </Link>
+            <button
+              type="button"
+              className="h-10 w-10 rounded-full border border-white/15 bg-white/5 text-white/90 flex items-center justify-center"
+              aria-label={mobileOpen ? "Fermer le menu" : "Ouvrir le menu"}
+              aria-expanded={mobileOpen}
+              aria-controls="mobile-sidebar-drawer"
+              onClick={() => setMobileOpen((v) => !v)}
+            >
+              {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+            </button>
+          </div>
         </header>
 
         <div
@@ -268,7 +270,7 @@ export default function Sidebar() {
             aria-modal="true"
             aria-label="Navigation mobile"
             className={[
-              "absolute right-0 top-0 h-full w-[84vw] max-w-[340px] bg-[#050506] border-l border-white/10 p-4 pt-20",
+              "absolute right-0 top-0 h-full w-[84vw] max-w-[340px] bg-[#050506] border-l border-white/10 p-4 pt-[calc(5rem+env(safe-area-inset-top))]",
               "transition-transform duration-200",
               mobileOpen ? "translate-x-0" : "translate-x-full",
             ].join(" ")}

@@ -4,6 +4,8 @@ export type SharedGraph = {
   ctx: AudioContext;
   analyser: AnalyserNode;
   source: MediaElementAudioSourceNode;
+  normGain: GainNode;
+  limiter: DynamicsCompressorNode;
   connected: boolean;
 };
 
@@ -31,14 +33,29 @@ export function getOrCreateSharedGraph(media: HTMLMediaElement): SharedGraph | n
   // ⚠️ UNE SEULE FOIS PAR media
   const source = ctx.createMediaElementSource(media);
 
-  const graph: SharedGraph = { ctx, analyser, source, connected: false };
+  // Gain de normalisation (ajusté en continu pour lisser les écarts de volume
+  // entre morceaux) suivi d'un limiteur doux qui absorbe les pics quand ce
+  // gain dépasse 1, pour éviter toute saturation.
+  const normGain = ctx.createGain();
+  normGain.gain.value = 1;
+
+  const limiter = ctx.createDynamicsCompressor();
+  limiter.threshold.value = -6;
+  limiter.knee.value = 6;
+  limiter.ratio.value = 4;
+  limiter.attack.value = 0.003;
+  limiter.release.value = 0.25;
+
+  const graph: SharedGraph = { ctx, analyser, source, normGain, limiter, connected: false };
   graphByMedia.set(media, graph);
   return graph;
 }
 
 export function ensureConnected(graph: SharedGraph) {
   if (graph.connected) return;
-  graph.source.connect(graph.analyser);
+  graph.source.connect(graph.normGain);
+  graph.normGain.connect(graph.limiter);
+  graph.limiter.connect(graph.analyser);
   graph.analyser.connect(graph.ctx.destination);
   graph.connected = true;
 }

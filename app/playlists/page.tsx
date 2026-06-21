@@ -8,8 +8,51 @@ import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { usePlayer, Track } from "../PlayerContext";
 import { subscribeTracksUpdated } from "../tracksSync";
 import { toast } from "../Toast";
+import { useLongPress } from "../useLongPress";
+import TrackContextMenu from "../TrackContextMenu";
 
 type TrackWithCover = Track & { cover?: string };
+
+function ActivePlaylistRow({
+  track, onPlay, onOpenMenu,
+}: {
+  track: TrackWithCover;
+  onPlay: (src: string) => void;
+  onOpenMenu: (t: Track) => void;
+}) {
+  const longPress = useLongPress({ onLongPress: () => onOpenMenu(track) });
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (longPress.didLongPress()) return;
+        onPlay(track.src);
+      }}
+      onTouchStart={longPress.onTouchStart}
+      onTouchMove={longPress.onTouchMove}
+      onTouchEnd={longPress.onTouchEnd}
+      onTouchCancel={longPress.onTouchCancel}
+      onContextMenu={longPress.onContextMenu}
+      className="group flex items-center justify-between gap-4 rounded-2xl px-2 py-3 hover:bg-white/5 transition text-left"
+      title="Lire"
+    >
+      <div className="min-w-0 flex items-center gap-4">
+        <div className="relative h-12 w-12 overflow-hidden rounded-xl border border-white/5 bg-[#1A1A22]">
+          {track.cover ? (
+            <Image src={track.cover} alt={track.title} fill className="object-cover" sizes="48px" />
+          ) : null}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm text-white/90 truncate">{track.title}</p>
+          <p className="text-xs text-white/45 truncate">{track.artist ?? "-"}</p>
+        </div>
+      </div>
+
+      <span className="text-xs text-white/35 group-hover:text-white/70 transition">Play</span>
+    </button>
+  );
+}
 
 type ApiTrack = {
   title: string;
@@ -84,6 +127,7 @@ export default function PlaylistsPage() {
   const [newName, setNewName] = useState("");
   const [renameValue, setRenameValue] = useState("");
   const [search, setSearch] = useState("");
+  const [menuTrack, setMenuTrack] = useState<Track | null>(null);
   const [activeTracksSearch, setActiveTracksSearch] = useState("");
   const [deletedSnapshot, setDeletedSnapshot] = useState<{ playlist: Playlist; index: number } | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -518,7 +562,7 @@ export default function PlaylistsPage() {
   }, [activeId]);
 
   return (
-    <div className="pb-28">
+    <div className="pb-[calc(17.5rem+env(safe-area-inset-bottom))] sm:pb-28">
       <div className="flex items-end justify-between mb-8">
         <h2 className="text-3xl font-light">Playlists</h2>
         <span className="text-sm text-white/35">
@@ -733,27 +777,12 @@ export default function PlaylistsPage() {
                 ) : (
                   <div className="flex flex-col">
                     {filteredActiveTracks.map((track, index) => (
-                      <button
+                      <ActivePlaylistRow
                         key={`${track.src}-${index}`}
-                        type="button"
-                        onClick={() => playActiveTrack(track.src)}
-                        className="group flex items-center justify-between gap-4 rounded-2xl px-2 py-3 hover:bg-white/5 transition text-left"
-                        title="Lire"
-                      >
-                        <div className="min-w-0 flex items-center gap-4">
-                          <div className="relative h-12 w-12 overflow-hidden rounded-xl border border-white/5 bg-[#1A1A22]">
-                            {track.cover ? (
-                              <Image src={track.cover} alt={track.title} fill className="object-cover" sizes="48px" />
-                            ) : null}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm text-white/90 truncate">{track.title}</p>
-                            <p className="text-xs text-white/45 truncate">{track.artist ?? "-"}</p>
-                          </div>
-                        </div>
-
-                        <span className="text-xs text-white/35 group-hover:text-white/70 transition">Play</span>
-                      </button>
+                        track={track}
+                        onPlay={playActiveTrack}
+                        onOpenMenu={setMenuTrack}
+                      />
                     ))}
                   </div>
                 )}
@@ -855,6 +884,8 @@ export default function PlaylistsPage() {
           </div>
         </div>
       ) : null}
+
+      <TrackContextMenu track={menuTrack} onClose={() => setMenuTrack(null)} />
     </div>
   );
 }

@@ -104,7 +104,7 @@ export default function ArtistPage() {
   }, [artistSlug]);
 
   return (
-    <div className="pb-28">
+    <div className="pb-[calc(17.5rem+env(safe-area-inset-bottom))] sm:pb-28">
       <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.28em] text-white/35">Page artiste</p>

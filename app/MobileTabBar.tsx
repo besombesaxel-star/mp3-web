@@ -1,0 +1,48 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Heart, Home, LibraryBig, Search as SearchIcon, UserRound } from "lucide-react";
+
+const tabs = [
+  { href: "/", label: "Accueil", Icon: Home },
+  { href: "/library", label: "Bibliotheque", Icon: LibraryBig },
+  { href: "/search", label: "Recherche", Icon: SearchIcon },
+  { href: "/favorites", label: "Favoris", Icon: Heart },
+  { href: "/account", label: "Compte", Icon: UserRound },
+];
+
+function isActivePath(pathname: string | null, href: string) {
+  return pathname === href || (href !== "/" && pathname?.startsWith(href + "/"));
+}
+
+export default function MobileTabBar() {
+  const pathname = usePathname();
+
+  return (
+    <nav
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-black/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
+      aria-label="Navigation principale"
+    >
+      <div className="h-[60px] flex items-stretch">
+        {tabs.map(({ href, label, Icon }) => {
+          const active = isActivePath(pathname, href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={[
+                "flex-1 flex flex-col items-center justify-center gap-1 transition",
+                active ? "text-white" : "text-white/45",
+              ].join(" ")}
+            >
+              <Icon size={20} className={active ? "opacity-100" : "opacity-80"} />
+              <span className="text-[10px]">{label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}

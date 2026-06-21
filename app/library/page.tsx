@@ -244,7 +244,7 @@ export default function LibraryPage() {
   }, [tracks, artistFilter, favoritesOnly, query, sortBy, isFavorite]);
 
   return (
-    <div ref={pageRef} className="p-6 pb-28">
+    <div ref={pageRef} className="p-6 pb-[calc(17.5rem+env(safe-area-inset-bottom))] sm:pb-28">
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-semibold text-white">Bibliotheque</h1>

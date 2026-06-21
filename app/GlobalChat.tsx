@@ -11,6 +11,7 @@ import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import { getPublicProfileHref } from "@/lib/publicLinks";
 import { isAdminUser } from "@/lib/adminAccess";
 import { playPopSound } from "./sound";
+import { vibrate } from "./haptics";
 import type { ChatMessage } from "@/app/api/chat/route";
 
 function formatTime(iso: string) {
@@ -103,7 +104,7 @@ const TYPING_BROADCAST_INTERVAL_MS = 2000;
 
 export default function GlobalChat() {
   const { accessToken, isAuthenticated, user, displayName } = useAuth();
-  const { uiSounds } = usePlayer();
+  const { uiSounds, hapticsEnabled } = usePlayer();
   const myId = user?.id ?? "";
 
   const [open, setOpen] = useState(false);
@@ -125,7 +126,56 @@ export default function GlobalChat() {
   const lastTypingBroadcastRef = useRef(0);
   const channelRef = useRef<ReturnType<typeof getSupabaseBrowserAuthClient> extends infer C ? (C extends null ? never : NonNullable<C> extends { channel: (...a: never[]) => infer R } ? R : never) : never | null>(null);
 
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [panelDragY, setPanelDragY] = useState(0);
+  const panelDragStartRef = useRef<number | null>(null);
+
   openRef.current = open;
+
+  // Sur mobile, le clavier virtuel ne redimensionne pas le viewport "layout"
+  // utilise par position: fixed -> on suit visualViewport pour remonter le
+  // panneau au-dessus du clavier au lieu de le laisser le recouvrir.
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return;
+    const vv = window.visualViewport;
+
+    function onResize() {
+      if (window.innerWidth >= 768) {
+        setKeyboardOffset(0);
+        return;
+      }
+      const offset = Math.max(0, Math.round(window.innerHeight - vv.height));
+      setKeyboardOffset(offset);
+    }
+
+    onResize();
+    vv.addEventListener("resize", onResize);
+    vv.addEventListener("scroll", onResize);
+    return () => {
+      vv.removeEventListener("resize", onResize);
+      vv.removeEventListener("scroll", onResize);
+    };
+  }, []);
+
+  function onPanelHeaderTouchStart(e: React.TouchEvent) {
+    panelDragStartRef.current = e.touches[0].clientY;
+  }
+
+  function onPanelHeaderTouchMove(e: React.TouchEvent) {
+    if (panelDragStartRef.current === null) return;
+    const delta = e.touches[0].clientY - panelDragStartRef.current;
+    if (delta > 0) setPanelDragY(delta);
+  }
+
+  function onPanelHeaderTouchEnd() {
+    if (panelDragStartRef.current === null) return;
+    panelDragStartRef.current = null;
+    if (panelDragY > 90) {
+      if (hapticsEnabled) vibrate(12);
+      setOpen(false);
+    }
+    setPanelDragY(0);
+  }
 
   function addMessage(msg: ChatMessage) {
     setMessages((prev) => {
@@ -447,22 +497,34 @@ export default function GlobalChat() {
           "md:inset-x-auto md:right-0 md:top-0 md:bottom-0 md:w-[360px] md:rounded-none md:rounded-l-3xl",
           "border-t border-white/10 md:border-t-0 md:border-l",
           "bg-[#080809]/95 backdrop-blur-xl",
-          "transition-transform duration-300 ease-in-out",
+          panelDragY ? "" : "transition-transform duration-300 ease-in-out",
           open ? "translate-y-0 md:translate-x-0" : "translate-y-full md:translate-y-0 md:translate-x-full",
         ].join(" ")}
+        style={{
+          bottom: keyboardOffset > 0 ? `${keyboardOffset}px` : undefined,
+          transform: panelDragY ? `translateY(${panelDragY}px)` : undefined,
+        }}
         aria-hidden={!open}
       >
         {/* Header */}
-        <div className="flex items-center gap-3 border-b border-white/8 px-5 py-4 shrink-0">
-          <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
-          <h2 className="flex-1 text-sm font-medium text-white/85">Chat général</h2>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            className="h-8 w-8 rounded-full text-white/40 hover:text-white hover:bg-white/8 transition flex items-center justify-center"
-          >
-            <X size={15} />
-          </button>
+        <div
+          onTouchStart={onPanelHeaderTouchStart}
+          onTouchMove={onPanelHeaderTouchMove}
+          onTouchEnd={onPanelHeaderTouchEnd}
+          className="flex flex-col gap-2 border-b border-white/8 px-5 pt-3 pb-4 shrink-0"
+        >
+          <div className="mx-auto h-1.5 w-10 rounded-full bg-white/15 md:hidden" aria-hidden="true" />
+          <div className="flex items-center gap-3">
+            <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
+            <h2 className="flex-1 text-sm font-medium text-white/85">Chat général</h2>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="h-8 w-8 rounded-full text-white/40 hover:text-white hover:bg-white/8 transition flex items-center justify-center"
+            >
+              <X size={15} />
+            </button>
+          </div>
         </div>
 
         {/* Messages */}

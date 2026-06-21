@@ -137,10 +137,12 @@ type PlayerCtx = {
   smartAutoplay: boolean;
   uiSounds: boolean;
   hapticsEnabled: boolean;
+  loudnessNorm: boolean;
   toggleSmoothTransitions: () => void;
   toggleSmartAutoplay: () => void;
   toggleUiSounds: () => void;
   toggleHaptics: () => void;
+  toggleLoudnessNorm: () => void;
   preloadedTrack: Track | null;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
@@ -206,6 +208,7 @@ type PlayerPrefs = {
   smartAutoplay: boolean;
   uiSounds: boolean;
   hapticsEnabled: boolean;
+  loudnessNorm: boolean;
   theme: ThemeMode;
   eqPreset: EqPreset;
 };
@@ -367,6 +370,7 @@ function safePrefs(parsed: unknown): PlayerPrefs {
       smartAutoplay: true,
       uiSounds: false,
       hapticsEnabled: true,
+      loudnessNorm: true,
       theme: "midnight",
       eqPreset: "off",
     };
@@ -380,6 +384,7 @@ function safePrefs(parsed: unknown): PlayerPrefs {
       typeof parsed.smartAutoplay === "boolean" ? parsed.smartAutoplay : true,
     uiSounds: typeof parsed.uiSounds === "boolean" ? parsed.uiSounds : false,
     hapticsEnabled: typeof parsed.hapticsEnabled === "boolean" ? parsed.hapticsEnabled : true,
+    loudnessNorm: typeof parsed.loudnessNorm === "boolean" ? parsed.loudnessNorm : true,
     theme:
       parsed.theme === "midnight" || parsed.theme === "sunset" || parsed.theme === "ocean"
         ? parsed.theme
@@ -608,6 +613,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
   const hapticsEnabledRef = useRef(hapticsEnabled);
   hapticsEnabledRef.current = hapticsEnabled;
+  const [loudnessNorm, setLoudnessNorm] = useState(true);
   const [preloadedTrack, setPreloadedTrack] = useState<Track | null>(null);
 
   // Browsers only let an AudioContext play sound after a direct user gesture.
@@ -635,9 +641,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeFrameRef = useRef<number | null>(null);
   const fadeInAfterTransitionRef = useRef(false);
+  const startupFadeDoneRef = useRef(false);
   const smartAutoplayBusyRef = useRef(false);
   const sharedGraphRef = useRef<SharedGraph | null>(null);
   const eqFiltersRef = useRef<BiquadFilterNode[]>([]);
+  const normRafRef = useRef<number | null>(null);
+  const normGainSmoothedRef = useRef(1);
 
   // âœ… Favoris
   const [favoritesMap, setFavoritesMap] = useState<Record<string, Track>>({});
@@ -740,6 +749,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       source.disconnect();
     } catch {}
     try {
+      graph.normGain.disconnect();
+    } catch {}
+    try {
+      graph.limiter.disconnect();
+    } catch {}
+    try {
       analyser.disconnect();
     } catch {}
     for (const filter of eqFiltersRef.current) {
@@ -753,7 +768,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       node.connect(filter);
       node = filter;
     }
-    node.connect(analyser);
+    node.connect(graph.normGain);
+    graph.normGain.connect(graph.limiter);
+    graph.limiter.connect(analyser);
     analyser.connect(audioCtx.destination);
     graph.connected = true;
     applyEqPresetToFilters(eqPreset);
@@ -1473,6 +1490,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setSmartAutoplay(prefs.smartAutoplay);
       setUiSounds(prefs.uiSounds);
       setHapticsEnabled(prefs.hapticsEnabled);
+      setLoudnessNorm(prefs.loudnessNorm);
       setTheme(prefs.theme);
       setEqPreset(prefs.eqPreset);
     } catch {}
@@ -1597,13 +1615,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       smartAutoplay,
       uiSounds,
       hapticsEnabled,
+      loudnessNorm,
       theme,
       eqPreset,
     };
     try {
       localStorage.setItem(LS_PREFS, JSON.stringify(payload));
     } catch {}
-  }, [focusMode, smoothTransitions, smartAutoplay, uiSounds, hapticsEnabled, theme, eqPreset]);
+  }, [focusMode, smoothTransitions, smartAutoplay, uiSounds, hapticsEnabled, loudnessNorm, theme, eqPreset]);
 
   // persist playback session
   useEffect(() => {
@@ -1685,9 +1704,144 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || !track) return;
-    if (playing) audio.play().catch(() => setPlaying(false));
-    else audio.pause();
+
+    if (!playing) {
+      audio.pause();
+      return;
+    }
+
+    if (startupFadeDoneRef.current) {
+      audio.play().catch(() => setPlaying(false));
+      return;
+    }
+
+    startupFadeDoneRef.current = true;
+    const targetVolume = muted ? 0 : clamp(volume, 0, 1);
+    if (targetVolume <= 0) {
+      audio.play().catch(() => setPlaying(false));
+      return;
+    }
+
+    audio.volume = 0;
+    audio.play().catch(() => setPlaying(false));
+
+    const fadeMs = 900;
+    const start = performance.now();
+    clearFadeFrame();
+    const fadeIn = (now: number) => {
+      const ratio = clamp((now - start) / fadeMs, 0, 1);
+      audio.volume = clamp(targetVolume * ratio, 0, 1);
+      if (ratio < 1) {
+        fadeFrameRef.current = window.requestAnimationFrame(fadeIn);
+      } else {
+        fadeFrameRef.current = null;
+      }
+    };
+    fadeFrameRef.current = window.requestAnimationFrame(fadeIn);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, track]);
+
+  // normalisation du volume entre morceaux : ajuste en douceur un gain partagÃ©
+  // pour viser un niveau sonore perÃ§u constant, avec un limiteur en sÃ©curitÃ©
+  useEffect(() => {
+    const graph = sharedGraphRef.current;
+
+    if (!playing || !loudnessNorm) {
+      if (normRafRef.current) {
+        window.cancelAnimationFrame(normRafRef.current);
+        normRafRef.current = null;
+      }
+      if (graph) graph.normGain.gain.value = 1;
+      normGainSmoothedRef.current = 1;
+      return;
+    }
+
+    if (!graph) return;
+
+    const data = new Float32Array(graph.analyser.fftSize);
+    const targetRms = 0.12;
+    const minGain = 0.6;
+    const maxGain = 1.6;
+
+    const tick = () => {
+      graph.analyser.getFloatTimeDomainData(data);
+      let sum = 0;
+      for (let i = 0; i < data.length; i += 1) sum += data[i] * data[i];
+      const rms = Math.sqrt(sum / data.length);
+
+      if (rms > 0.002) {
+        const desired = clamp(targetRms / rms, minGain, maxGain);
+        normGainSmoothedRef.current += (desired - normGainSmoothedRef.current) * 0.01;
+        graph.normGain.gain.value = clamp(normGainSmoothedRef.current, minGain, maxGain);
+      }
+
+      normRafRef.current = window.requestAnimationFrame(tick);
+    };
+
+    normRafRef.current = window.requestAnimationFrame(tick);
+
+    return () => {
+      if (normRafRef.current) {
+        window.cancelAnimationFrame(normRafRef.current);
+        normRafRef.current = null;
+      }
+    };
+  }, [playing, loudnessNorm]);
+
+  // intÃ©gration MediaSession : contrÃ´les depuis l'Ã©cran de verrouillage / la
+  // notification mÃ©dia du systÃ¨me (mobile et desktop)
+  const mediaSessionActionsRef = useRef({ togglePlay, next, prev });
+  mediaSessionActionsRef.current = { togglePlay, next, prev };
+
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    const ms = navigator.mediaSession;
+
+    ms.setActionHandler("play", () => mediaSessionActionsRef.current.togglePlay());
+    ms.setActionHandler("pause", () => mediaSessionActionsRef.current.togglePlay());
+    ms.setActionHandler("previoustrack", () => mediaSessionActionsRef.current.prev());
+    ms.setActionHandler("nexttrack", () => mediaSessionActionsRef.current.next());
+    try {
+      ms.setActionHandler("seekto", (details) => {
+        const audio = audioRef.current;
+        if (audio && typeof details.seekTime === "number") {
+          audio.currentTime = details.seekTime;
+        }
+      });
+    } catch {}
+
+    return () => {
+      try {
+        ms.setActionHandler("play", null);
+        ms.setActionHandler("pause", null);
+        ms.setActionHandler("previoustrack", null);
+        ms.setActionHandler("nexttrack", null);
+        ms.setActionHandler("seekto", null);
+      } catch {}
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    navigator.mediaSession.playbackState = playing ? "playing" : "paused";
+  }, [playing]);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+    const ms = navigator.mediaSession;
+
+    if (!track) {
+      ms.metadata = null;
+      return;
+    }
+
+    ms.metadata = new MediaMetadata({
+      title: track.title,
+      artist: track.artist || "",
+      album: ".mp3",
+      artwork: track.cover ? [{ src: track.cover, sizes: "512x512", type: "image/png" }] : [],
+    });
+  }, [track?.title, track?.artist, track?.cover]);
 
   function createQueueSnapshot() {
     return {
@@ -1958,6 +2112,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setSmoothTransitions((value) => !value);
   }
 
+  function toggleLoudnessNorm() {
+    setLoudnessNorm((value) => !value);
+  }
+
   function toggleFocusMode() {
     setFocusMode((value) => !value);
   }
@@ -2226,10 +2384,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     smartAutoplay,
     uiSounds,
     hapticsEnabled,
+    loudnessNorm,
     toggleSmoothTransitions,
     toggleSmartAutoplay,
     toggleUiSounds,
     toggleHaptics,
+    toggleLoudnessNorm,
     preloadedTrack,
     toggleShuffle,
     cycleRepeat,

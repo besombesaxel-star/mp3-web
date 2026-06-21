@@ -1,13 +1,100 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Heart, Play, Shuffle } from "lucide-react";
-import { usePlayer } from "../PlayerContext";
+import { Track, usePlayer } from "../PlayerContext";
 import AudioBars from "../AudioBars";
+import { useLongPress } from "../useLongPress";
+import TrackContextMenu from "../TrackContextMenu";
+
+function FavoriteRow({
+  track, index, sorted, isActive, playing, onOpenMenu,
+}: {
+  track: Track & { cover?: string }; index: number; sorted: (Track & { cover?: string })[];
+  isActive: boolean; playing: boolean;
+  onOpenMenu: (t: Track) => void;
+}) {
+  const { setQueueAndPlay, toggleFavorite } = usePlayer();
+  const longPress = useLongPress({ onLongPress: () => onOpenMenu(track) });
+
+  return (
+    <div
+      className={[
+        "group flex items-center gap-4 rounded-2xl border px-4 py-3 transition-colors duration-200 mp3-fade-up",
+        isActive
+          ? "bg-white/8 border-white/10"
+          : "bg-white/[0.03] border-white/5 hover:bg-white/6 hover:border-white/8",
+      ].join(" ")}
+      style={{ animationDelay: `${Math.min(index, 15) * 30}ms` }}
+      onTouchStart={longPress.onTouchStart}
+      onTouchMove={longPress.onTouchMove}
+      onTouchEnd={longPress.onTouchEnd}
+      onTouchCancel={longPress.onTouchCancel}
+      onContextMenu={longPress.onContextMenu}
+    >
+      {/* Cover */}
+      <div className="relative h-11 w-11 shrink-0 rounded-xl overflow-hidden bg-white/5">
+        {track.cover ? (
+          <Image
+            src={track.cover}
+            alt={track.title}
+            fill
+            className="object-cover"
+            sizes="44px"
+          />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center">
+            <Heart size={16} className="text-white/20" />
+          </div>
+        )}
+      </div>
+
+      {/* Title + artist */}
+      <div className="min-w-0 flex-1">
+        <p className={["text-sm font-medium truncate transition-colors", isActive ? "text-white" : "text-white/85"].join(" ")}>
+          {track.title}
+        </p>
+        <p className="text-xs text-white/40 truncate mt-0.5">{track.artist ?? "—"}</p>
+      </div>
+
+      {/* Audio bars when playing */}
+      {isActive && playing && (
+        <AudioBars bars={10} height={24} className="shrink-0 opacity-60" />
+      )}
+
+      {/* Actions */}
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          onClick={() => toggleFavorite(track)}
+          className="h-8 w-8 rounded-full flex items-center justify-center text-red-400 opacity-0 group-hover:opacity-100 hover:bg-white/8 transition"
+          title="Retirer des favoris"
+          type="button"
+        >
+          <Heart size={15} className="fill-red-400" />
+        </button>
+
+        <button
+          onClick={() => setQueueAndPlay(sorted, index)}
+          className={[
+            "h-8 w-8 rounded-full flex items-center justify-center transition",
+            isActive
+              ? "bg-white text-black"
+              : "bg-white/10 text-white opacity-0 group-hover:opacity-100 hover:bg-white/20",
+          ].join(" ")}
+          title="Lire"
+          type="button"
+        >
+          <Play size={13} className={isActive ? "fill-black ml-0.5" : "fill-white ml-0.5"} />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function FavoritesPage() {
-  const { favorites, setQueueAndPlay, toggleFavorite, track: currentTrack, playing } = usePlayer();
+  const { favorites, setQueueAndPlay, track: currentTrack, playing } = usePlayer();
+  const [menuTrack, setMenuTrack] = useState<Track | null>(null);
 
   const sorted = useMemo(() => {
     return [...favorites].sort((a, b) => a.title.localeCompare(b.title));
@@ -20,7 +107,7 @@ export default function FavoritesPage() {
   }
 
   return (
-    <div className="pb-28">
+    <div className="pb-[calc(17.5rem+env(safe-area-inset-bottom))] sm:pb-28">
       {/* Header */}
       <div className="flex items-end justify-between gap-6 mb-8">
         <div className="min-w-0">
@@ -62,80 +149,21 @@ export default function FavoritesPage() {
         </div>
       ) : (
         <div className="space-y-1">
-          {sorted.map((track, index) => {
-            const isActive = currentTrack?.src === track.src;
-
-            return (
-              <div
-                key={track.src}
-                className={[
-                  "group flex items-center gap-4 rounded-2xl border px-4 py-3 transition-colors duration-200 mp3-fade-up",
-                  isActive
-                    ? "bg-white/8 border-white/10"
-                    : "bg-white/[0.03] border-white/5 hover:bg-white/6 hover:border-white/8",
-                ].join(" ")}
-                style={{ animationDelay: `${Math.min(index, 15) * 30}ms` }}
-              >
-                {/* Cover */}
-                <div className="relative h-11 w-11 shrink-0 rounded-xl overflow-hidden bg-white/5">
-                  {track.cover ? (
-                    <Image
-                      src={track.cover}
-                      alt={track.title}
-                      fill
-                      className="object-cover"
-                      sizes="44px"
-                    />
-                  ) : (
-                    <div className="h-full w-full flex items-center justify-center">
-                      <Heart size={16} className="text-white/20" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Title + artist */}
-                <div className="min-w-0 flex-1">
-                  <p className={["text-sm font-medium truncate transition-colors", isActive ? "text-white" : "text-white/85"].join(" ")}>
-                    {track.title}
-                  </p>
-                  <p className="text-xs text-white/40 truncate mt-0.5">{track.artist ?? "—"}</p>
-                </div>
-
-                {/* Audio bars when playing */}
-                {isActive && playing && (
-                  <AudioBars bars={10} height={24} className="shrink-0 opacity-60" />
-                )}
-
-                {/* Actions */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => toggleFavorite(track)}
-                    className="h-8 w-8 rounded-full flex items-center justify-center text-red-400 opacity-0 group-hover:opacity-100 hover:bg-white/8 transition"
-                    title="Retirer des favoris"
-                    type="button"
-                  >
-                    <Heart size={15} className="fill-red-400" />
-                  </button>
-
-                  <button
-                    onClick={() => setQueueAndPlay(sorted, index)}
-                    className={[
-                      "h-8 w-8 rounded-full flex items-center justify-center transition",
-                      isActive
-                        ? "bg-white text-black"
-                        : "bg-white/10 text-white opacity-0 group-hover:opacity-100 hover:bg-white/20",
-                    ].join(" ")}
-                    title="Lire"
-                    type="button"
-                  >
-                    <Play size={13} className={isActive ? "fill-black ml-0.5" : "fill-white ml-0.5"} />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+          {sorted.map((track, index) => (
+            <FavoriteRow
+              key={track.src}
+              track={track}
+              index={index}
+              sorted={sorted}
+              isActive={currentTrack?.src === track.src}
+              playing={playing}
+              onOpenMenu={setMenuTrack}
+            />
+          ))}
         </div>
       )}
+
+      <TrackContextMenu track={menuTrack} onClose={() => setMenuTrack(null)} />
     </div>
   );
 }

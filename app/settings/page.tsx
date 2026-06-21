@@ -91,6 +91,7 @@ export default function SettingsPage() {
     smoothTransitions, toggleSmoothTransitions,
     smartAutoplay, toggleSmartAutoplay,
     focusMode, toggleFocusMode,
+    loudnessNorm, toggleLoudnessNorm,
     uiSounds, toggleUiSounds,
     hapticsEnabled, toggleHaptics,
     theme, setTheme,
@@ -173,7 +174,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto pb-40">
+    <div className="max-w-2xl mx-auto pb-[calc(17.5rem+env(safe-area-inset-bottom))] sm:pb-40">
       <h2 className="text-3xl font-light mb-8">Parametres</h2>
 
       <SettingsSection title="Lecture">
@@ -188,6 +189,12 @@ export default function SettingsPage() {
           desc="Continue automatiquement avec des morceaux choisis selon tes gouts quand la file se termine."
           checked={smartAutoplay}
           onChange={toggleSmartAutoplay}
+        />
+        <ToggleRow
+          label="Normalisation du volume"
+          desc="Lisse les ecarts de volume entre morceaux pour eviter les sauts brusques."
+          checked={loudnessNorm}
+          onChange={toggleLoudnessNorm}
         />
         <ToggleRow
           label="Mode Focus"

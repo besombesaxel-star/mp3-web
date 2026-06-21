@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { Music, Play, Rss } from "lucide-react";
 import { useAuth } from "@/app/AuthProvider";
-import { usePlayer } from "@/app/PlayerContext";
+import { usePlayer, type Track } from "@/app/PlayerContext";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { getPublicProfileHref } from "@/lib/publicLinks";
+import { useLongPress } from "@/app/useLongPress";
+import TrackContextMenu from "@/app/TrackContextMenu";
 
 type FeedTrack = {
   artist: string;
@@ -21,6 +23,59 @@ type FeedTrack = {
 
 type PlayerTrack = { artist: string; cover?: string; src: string; title: string };
 
+function FeedRow({
+  track, playerTrack, idx, queue, onPlay, onOpenMenu,
+}: {
+  track: FeedTrack; playerTrack: PlayerTrack; idx: number; queue: PlayerTrack[];
+  onPlay: (q: PlayerTrack[], i: number) => void;
+  onOpenMenu: (t: Track) => void;
+}) {
+  const longPress = useLongPress({ onLongPress: () => onOpenMenu(playerTrack) });
+
+  return (
+    <div
+      className="group flex items-center gap-3 rounded-2xl px-3 py-2.5 hover:bg-white/5 transition cursor-pointer"
+      onClick={() => {
+        if (longPress.didLongPress()) return;
+        onPlay(queue, idx);
+      }}
+      onTouchStart={longPress.onTouchStart}
+      onTouchMove={longPress.onTouchMove}
+      onTouchEnd={longPress.onTouchEnd}
+      onTouchCancel={longPress.onTouchCancel}
+      onContextMenu={longPress.onContextMenu}
+    >
+      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-white/5">
+        {track.cover ? (
+          <Image src={track.cover} alt={track.title} fill className="object-cover" sizes="40px" />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center">
+            <Music size={13} className="text-white/20" />
+          </div>
+        )}
+        <div className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 group-hover:opacity-100 transition">
+          <Play size={12} className="fill-white text-white ml-0.5" />
+        </div>
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-white/85 truncate">{track.title}</p>
+        <p className="text-xs text-white/40 truncate">{track.artist}</p>
+      </div>
+
+      {track.ownerId && (
+        <Link
+          href={getPublicProfileHref(track.ownerId)}
+          onClick={(e) => e.stopPropagation()}
+          className="shrink-0 text-xs text-white/25 hover:text-white/60 transition truncate max-w-[80px]"
+        >
+          {track.ownerDisplayName ?? "Profil"}
+        </Link>
+      )}
+    </div>
+  );
+}
+
 export default function FeedPage() {
   const { accessToken, isAuthenticated } = useAuth();
   const { setQueueAndPlay } = usePlayer();
@@ -28,6 +83,7 @@ export default function FeedPage() {
   const [following, setFollowing] = useState<string[]>([]);
   const [tracks, setTracks] = useState<FeedTrack[]>([]);
   const [loading, setLoading] = useState(true);
+  const [menuTrack, setMenuTrack] = useState<Track | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated || !accessToken) { setLoading(false); return; }
@@ -67,7 +123,7 @@ export default function FeedPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="max-w-2xl mx-auto pb-28 pt-12 text-center">
+      <div className="max-w-2xl mx-auto pb-[calc(17.5rem+env(safe-area-inset-bottom))] sm:pb-28 pt-12 text-center">
         <Rss size={32} className="mx-auto mb-4 text-white/15" />
         <p className="text-white/40 text-sm">
           <Link href="/account" className="underline underline-offset-2 hover:text-white/70">Connecte-toi</Link> pour voir le feed de tes abonnements.
@@ -77,7 +133,7 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto pb-28">
+    <div className="max-w-2xl mx-auto pb-[calc(17.5rem+env(safe-area-inset-bottom))] sm:pb-28">
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-3xl font-light">Feed</h2>
         {!loading && tracks.length > 0 && (
@@ -118,42 +174,20 @@ export default function FeedPage() {
       ) : (
         <div className="space-y-0.5">
           {tracks.map((track, idx) => (
-            <div
+            <FeedRow
               key={track.src}
-              className="group flex items-center gap-3 rounded-2xl px-3 py-2.5 hover:bg-white/5 transition cursor-pointer"
-              onClick={() => setQueueAndPlay(queue, idx)}
-            >
-              <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-white/5">
-                {track.cover ? (
-                  <Image src={track.cover} alt={track.title} fill className="object-cover" sizes="40px" />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center">
-                    <Music size={13} className="text-white/20" />
-                  </div>
-                )}
-                <div className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 group-hover:opacity-100 transition">
-                  <Play size={12} className="fill-white text-white ml-0.5" />
-                </div>
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <p className="text-sm text-white/85 truncate">{track.title}</p>
-                <p className="text-xs text-white/40 truncate">{track.artist}</p>
-              </div>
-
-              {track.ownerId && (
-                <Link
-                  href={getPublicProfileHref(track.ownerId)}
-                  onClick={(e) => e.stopPropagation()}
-                  className="shrink-0 text-xs text-white/25 hover:text-white/60 transition truncate max-w-[80px]"
-                >
-                  {track.ownerDisplayName ?? "Profil"}
-                </Link>
-              )}
-            </div>
+              track={track}
+              playerTrack={queue[idx]}
+              idx={idx}
+              queue={queue}
+              onPlay={setQueueAndPlay}
+              onOpenMenu={setMenuTrack}
+            />
           ))}
         </div>
       )}
+
+      <TrackContextMenu track={menuTrack} onClose={() => setMenuTrack(null)} />
     </div>
   );
 }

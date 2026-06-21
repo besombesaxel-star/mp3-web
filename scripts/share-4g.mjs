@@ -76,7 +76,7 @@ function runCommand(command, commandArgs) {
     const child = spawn(command, commandArgs, {
       cwd: process.cwd(),
       stdio: "inherit",
-      shell: false,
+      shell: process.platform === "win32",
       env: process.env,
     });
 
@@ -96,7 +96,7 @@ function startAppServer() {
   const child = spawn(npmCmd, commandArgs, {
     cwd: process.cwd(),
     stdio: ["ignore", "pipe", "pipe"],
-    shell: false,
+    shell: process.platform === "win32",
     env: process.env,
   });
 

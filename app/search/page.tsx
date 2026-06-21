@@ -7,6 +7,8 @@ import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Track, usePlayer } from "../PlayerContext";
 import { subscribeTracksUpdated } from "../tracksSync";
 import { getInitials, hashStringToHue } from "@/lib/publicLinks";
+import { useLongPress } from "../useLongPress";
+import TrackContextMenu from "../TrackContextMenu";
 
 type TrackWithCover = Track & { cover?: string };
 
@@ -133,44 +135,59 @@ function TrackRow({
   onPlay: (q: TrackWithCover[], i: number) => void;
   onHover: (i: number) => void;
 }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const longPress = useLongPress({ onLongPress: () => setMenuOpen(true) });
+
   return (
-    <button
-      type="button"
-      role="option"
-      aria-selected={active}
-      onClick={() => onPlay(queue, idx)}
-      onMouseEnter={() => onHover(idx)}
-      className={[
-        "group flex items-center gap-3 rounded-2xl px-3 py-2.5 transition w-full text-left",
-        active ? "bg-white/10" : "hover:bg-white/5",
-      ].join(" ")}
-    >
-      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-white/5">
-        {track.cover ? (
-          <Image src={track.cover} alt={track.title} fill className="object-cover" sizes="40px" />
-        ) : (
-          <div className="h-full w-full flex items-center justify-center">
-            <Music size={11} className="text-white/20" />
+    <>
+      <button
+        type="button"
+        role="option"
+        aria-selected={active}
+        onClick={() => {
+          if (longPress.didLongPress()) return;
+          onPlay(queue, idx);
+        }}
+        onMouseEnter={() => onHover(idx)}
+        onTouchStart={longPress.onTouchStart}
+        onTouchMove={longPress.onTouchMove}
+        onTouchEnd={longPress.onTouchEnd}
+        onTouchCancel={longPress.onTouchCancel}
+        onContextMenu={longPress.onContextMenu}
+        className={[
+          "group flex items-center gap-3 rounded-2xl px-3 py-2.5 transition w-full text-left",
+          active ? "bg-white/10" : "hover:bg-white/5",
+        ].join(" ")}
+      >
+        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-white/5">
+          {track.cover ? (
+            <Image src={track.cover} alt={track.title} fill className="object-cover" sizes="40px" />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center">
+              <Music size={11} className="text-white/20" />
+            </div>
+          )}
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition">
+            <Play size={11} className="fill-white text-white ml-0.5" />
           </div>
-        )}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition">
-          <Play size={11} className="fill-white text-white ml-0.5" />
         </div>
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm text-white/90 truncate">
-          <HighlightedText text={track.title} query={query} />
-        </p>
-        <p className="text-xs text-white/40 truncate">
-          <HighlightedText text={track.artist ?? "—"} query={query} />
-        </p>
-      </div>
-      {isFav && (
-        <span className="text-[9px] rounded-full border border-white/15 bg-white/8 px-2 py-0.5 text-white/45 shrink-0">
-          ♥
-        </span>
-      )}
-    </button>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-white/90 truncate">
+            <HighlightedText text={track.title} query={query} />
+          </p>
+          <p className="text-xs text-white/40 truncate">
+            <HighlightedText text={track.artist ?? "—"} query={query} />
+          </p>
+        </div>
+        {isFav && (
+          <span className="text-[9px] rounded-full border border-white/15 bg-white/8 px-2 py-0.5 text-white/45 shrink-0">
+            ♥
+          </span>
+        )}
+      </button>
+
+      {menuOpen ? <TrackContextMenu track={track} onClose={() => setMenuOpen(false)} /> : null}
+    </>
   );
 }
 
@@ -514,7 +531,7 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="pb-28">
+    <div className="pb-[calc(17.5rem+env(safe-area-inset-bottom))] sm:pb-28">
       {/* Header */}
       <div className="mb-6 flex items-end justify-between mp3-fade-up">
         <h2 className="text-3xl font-light">Recherche</h2>

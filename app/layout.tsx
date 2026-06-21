@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import Sidebar from "../app/Sidebar";
+import MobileTabBar from "../app/MobileTabBar";
 import DynamicBackdrop from "../app/DynamicBackdrop";
 import MiniPlayer from "../app/MiniPlayer";
 import PlayerOverlay from "../app/PlayerOverlay";
@@ -70,7 +71,7 @@ export default function RootLayout({
 
             <div className="relative z-10 flex h-screen">
               <Sidebar />
-              <main id="main-content" className="flex-1 overflow-y-auto p-4 pt-20 md:p-8" tabIndex={-1}>
+              <main id="main-content" className="flex-1 overflow-y-auto p-4 pt-[calc(5rem+env(safe-area-inset-top))] md:p-8" tabIndex={-1}>
                 {children}
               </main>
             </div>
@@ -78,6 +79,7 @@ export default function RootLayout({
             <KeyboardShortcuts />
             <PwaInstaller />
             <LauncherHeartbeat />
+            <MobileTabBar />
             <MiniPlayer />
             <PlayerOverlay />
             <GlobalChat />

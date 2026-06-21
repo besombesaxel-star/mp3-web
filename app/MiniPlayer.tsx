@@ -22,6 +22,7 @@ import {
 import AudioEqualizer from "./AudioEqualizer";
 import { usePlayer } from "./PlayerContext";
 import { useFocusTrap } from "./useFocusTrap";
+import { vibrate } from "./haptics";
 
 function withAlpha(color: string | undefined, alpha: number) {
   if (!color) return `rgba(255,255,255,${alpha})`;
@@ -82,6 +83,7 @@ export default function MiniPlayer() {
     undoLastAction,
     dismissUndoToast,
     stats,
+    hapticsEnabled,
   } = usePlayer();
 
   const [queueOpen, setQueueOpen] = useState(false);
@@ -89,6 +91,28 @@ export default function MiniPlayer() {
   const drawerRef = useRef<HTMLDivElement | null>(null);
   const smartTipSeenRef = useRef<Set<string>>(new Set());
   useFocusTrap(queueOpen, drawerRef);
+
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  function onMobileBarTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    swipeStartRef.current = { x: t.clientX, y: t.clientY };
+  }
+
+  function onMobileBarTouchEnd(e: React.TouchEvent) {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    if (!start || !track) return;
+
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+
+    if (hapticsEnabled) vibrate(12);
+    if (dx < 0) next();
+    else prev();
+  }
 
   const liked = track ? isFavorite(track.src) : false;
 
@@ -349,7 +373,7 @@ export default function MiniPlayer() {
 
       {achievementToast ? (
         <div
-          className="fixed bottom-[calc(env(safe-area-inset-bottom)+180px)] sm:bottom-[88px] left-1/2 -translate-x-1/2 z-[60] px-4 w-full max-w-lg"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+240px)] sm:bottom-[88px] left-1/2 -translate-x-1/2 z-[60] px-4 w-full max-w-lg"
           role="status"
           aria-live="polite"
         >
@@ -380,7 +404,7 @@ export default function MiniPlayer() {
 
       {undoToast ? (
         <div
-          className="fixed bottom-[calc(env(safe-area-inset-bottom)+254px)] sm:bottom-[162px] left-1/2 -translate-x-1/2 z-[61] px-4 w-full max-w-lg"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+314px)] sm:bottom-[162px] left-1/2 -translate-x-1/2 z-[61] px-4 w-full max-w-lg"
           role="status"
           aria-live="polite"
         >
@@ -411,7 +435,7 @@ export default function MiniPlayer() {
 
       {smartToast ? (
         <div
-          className="fixed bottom-[calc(env(safe-area-inset-bottom)+328px)] sm:bottom-[236px] left-1/2 -translate-x-1/2 z-[62] px-4 w-full max-w-lg"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+388px)] sm:bottom-[236px] left-1/2 -translate-x-1/2 z-[62] px-4 w-full max-w-lg"
           role="status"
           aria-live="polite"
         >
@@ -435,7 +459,7 @@ export default function MiniPlayer() {
       ) : null}
 
       <div
-        className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-black/90 backdrop-blur"
+        className="fixed bottom-[60px] sm:bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-black/90 backdrop-blur"
         role="region"
         aria-label="Mini lecteur"
       >
@@ -524,8 +548,10 @@ export default function MiniPlayer() {
           </div>
         ) : null}
 
-        <div className="sm:hidden px-3 pt-3 pb-[calc(env(safe-area-inset-bottom)+10px)]">
+        <div className="sm:hidden px-3 pt-3 pb-[10px]">
           <div
+            onTouchStart={onMobileBarTouchStart}
+            onTouchEnd={onMobileBarTouchEnd}
             className="relative overflow-hidden rounded-[28px] border border-white/10 shadow-[0_22px_64px_rgba(0,0,0,0.42)] backdrop-blur-2xl"
             style={mobileCardStyle}
           >
@@ -644,42 +670,42 @@ export default function MiniPlayer() {
                     onClick={toggleShuffle}
                     aria-pressed={shuffle}
                     className={[
-                      "h-8 w-8 rounded-full transition active:scale-95",
+                      "h-10 w-10 rounded-full transition active:scale-95",
                       shuffle ? "bg-white/12 ring-1 ring-white/20" : "text-white/75",
                     ].join(" ")}
                     title="Lecture aleatoire"
                     type="button"
                   >
-                    <Shuffle size={15} className={["mx-auto", shuffle ? "text-white/88" : "opacity-90"].join(" ")} />
+                    <Shuffle size={16} className={["mx-auto", shuffle ? "text-white/88" : "opacity-90"].join(" ")} />
                   </button>
 
                   <button
                     onClick={cycleRepeat}
                     aria-pressed={Boolean(repeat)}
                     className={[
-                      "h-8 w-8 rounded-full transition active:scale-95",
+                      "h-10 w-10 rounded-full transition active:scale-95",
                       repeat ? "bg-white/12 ring-1 ring-white/20" : "text-white/75",
                     ].join(" ")}
                     title="Repeat"
                     type="button"
                   >
                     {repeat === "one" ? (
-                      <Repeat1 size={15} className={["mx-auto", repeat ? "text-white/88" : "opacity-90"].join(" ")} />
+                      <Repeat1 size={16} className={["mx-auto", repeat ? "text-white/88" : "opacity-90"].join(" ")} />
                     ) : (
-                      <Repeat size={15} className={["mx-auto", repeat ? "text-white/88" : "opacity-90"].join(" ")} />
+                      <Repeat size={16} className={["mx-auto", repeat ? "text-white/88" : "opacity-90"].join(" ")} />
                     )}
                   </button>
                 </div>
 
                 <div className="flex min-w-0 items-center justify-center rounded-full border border-white/12 bg-black/28 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
                   <button
-                    className="h-9 w-9 rounded-full transition active:scale-95 disabled:opacity-40"
+                    className="h-11 w-11 rounded-full transition active:scale-95 disabled:opacity-40"
                     onClick={prev}
                     disabled={!track}
                     title="Precedent"
                     type="button"
                   >
-                    <SkipBack size={17} className="mx-auto opacity-90" />
+                    <SkipBack size={18} className="mx-auto opacity-90" />
                   </button>
 
                   <button
@@ -702,13 +728,13 @@ export default function MiniPlayer() {
 
                   <div className="relative group">
                     <button
-                      className="h-9 w-9 rounded-full transition active:scale-95 disabled:opacity-40"
+                      className="h-11 w-11 rounded-full transition active:scale-95 disabled:opacity-40"
                       onClick={next}
                       disabled={!track}
                       title="Suivant"
                       type="button"
                     >
-                      <SkipForward size={17} className="mx-auto opacity-90" />
+                      <SkipForward size={18} className="mx-auto opacity-90" />
                     </button>
                     {preloadedTrack && preloadedTrack.src !== track?.src && (
                       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 scale-95 group-hover:scale-100 transition-all duration-200 ease-out whitespace-nowrap z-20">
@@ -724,7 +750,7 @@ export default function MiniPlayer() {
                 <div className="flex items-center justify-end rounded-full border border-white/10 bg-white/[0.06] p-1">
                   <button
                     className={[
-                      "h-8 w-8 rounded-full transition active:scale-95",
+                      "h-10 w-10 rounded-full transition active:scale-95",
                       liked ? "bg-white/12 ring-1 ring-white/20" : "text-white/75",
                     ].join(" ")}
                     onClick={() => {
@@ -736,7 +762,7 @@ export default function MiniPlayer() {
                     type="button"
                   >
                     <Heart
-                      size={15}
+                      size={16}
                       className={["mx-auto opacity-90", liked ? "fill-white/85 text-white/85" : "fill-transparent"].join(" ")}
                     />
                   </button>
@@ -747,7 +773,7 @@ export default function MiniPlayer() {
                       setQueueOpen((v) => !v);
                     }}
                     className={[
-                      "h-8 w-8 rounded-full transition active:scale-95",
+                      "h-10 w-10 rounded-full transition active:scale-95",
                       queueOpen ? "bg-white/12 ring-1 ring-white/20" : "text-white/75",
                     ].join(" ")}
                     title="File d'attente"
@@ -755,7 +781,7 @@ export default function MiniPlayer() {
                     aria-controls="queue-drawer"
                     aria-expanded={queueOpen}
                   >
-                    <ListMusic size={15} className="mx-auto opacity-90" />
+                    <ListMusic size={16} className="mx-auto opacity-90" />
                   </button>
                 </div>
               </div>

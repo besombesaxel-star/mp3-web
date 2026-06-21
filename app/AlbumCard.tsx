@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { Track, usePlayer } from "./PlayerContext";
+import { useLongPress } from "./useLongPress";
+import TrackContextMenu from "./TrackContextMenu";
 
 type AlbumCardProps = {
   title: string;
@@ -23,6 +26,8 @@ export default function AlbumCard({
   animationDelay,
 }: AlbumCardProps) {
   const { playTrack } = usePlayer();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const longPress = useLongPress({ onLongPress: () => setMenuOpen(true) });
 
   return (
     <div
@@ -31,7 +36,15 @@ export default function AlbumCard({
     >
       <button
         type="button"
-        onClick={() => playTrack(track)}
+        onClick={() => {
+          if (longPress.didLongPress()) return;
+          playTrack(track);
+        }}
+        onTouchStart={longPress.onTouchStart}
+        onTouchMove={longPress.onTouchMove}
+        onTouchEnd={longPress.onTouchEnd}
+        onTouchCancel={longPress.onTouchCancel}
+        onContextMenu={longPress.onContextMenu}
         title="Lire"
         aria-label={`Lire ${title}`}
         className="cursor-pointer w-full text-left"
@@ -95,6 +108,8 @@ export default function AlbumCard({
         <p className="text-sm text-white/90 truncate transition-colors duration-200 group-hover:text-white">{title}</p>
         <p className="text-xs text-white/45 truncate transition-colors duration-200 group-hover:text-white/60">{subtitle}</p>
       </div>
+
+      {menuOpen ? <TrackContextMenu track={track} onClose={() => setMenuOpen(false)} /> : null}
     </div>
   );
 }

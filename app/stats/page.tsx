@@ -183,7 +183,7 @@ export default function StatsPage() {
   const uniqueArtists = Object.keys(stats.byArtist).filter((k) => k !== "-").length;
 
   return (
-    <div className="max-w-3xl mx-auto pb-40">
+    <div className="max-w-3xl mx-auto pb-[calc(17.5rem+env(safe-area-inset-bottom))] sm:pb-40">
       <h2 className="text-3xl font-light mb-8">Statistiques</h2>
 
       {stats.totalPlays === 0 ? (

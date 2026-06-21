@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePlayer } from "./PlayerContext";
 import AudioBars from "./AudioBars";
 import { useFocusTrap } from "./useFocusTrap";
+import { vibrate } from "./haptics";
 import { getArtistHref, getPublicProfileHref } from "@/lib/publicLinks";
 import {
   Shuffle,
@@ -179,6 +180,7 @@ export default function PlayerOverlay() {
     toggleFavorite,
     focusMode,
     preloadedTrack,
+    hapticsEnabled,
   } = usePlayer();
 
   const overlayRef = useRef<HTMLDivElement | null>(null);
@@ -187,6 +189,45 @@ export default function PlayerOverlay() {
   const [isMobileViewport, setIsMobileViewport] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   useFocusTrap(expanded, overlayRef);
+
+  const [dragDownY, setDragDownY] = useState(0);
+  const dragStartYRef = useRef<number | null>(null);
+
+  const [heartBurst, setHeartBurst] = useState(false);
+  const lastCoverTapRef = useRef(0);
+
+  function onCoverTap() {
+    const now = Date.now();
+    const isDoubleTap = now - lastCoverTapRef.current < 350;
+    lastCoverTapRef.current = now;
+    if (!isDoubleTap || !track) return;
+    lastCoverTapRef.current = 0;
+
+    if (!isFavorite(track.src)) toggleFavorite(track);
+    if (hapticsEnabled) vibrate(15);
+    setHeartBurst(true);
+    setTimeout(() => setHeartBurst(false), 700);
+  }
+
+  function onDragHandleTouchStart(e: React.TouchEvent) {
+    dragStartYRef.current = e.touches[0].clientY;
+  }
+
+  function onDragHandleTouchMove(e: React.TouchEvent) {
+    if (dragStartYRef.current === null) return;
+    const delta = e.touches[0].clientY - dragStartYRef.current;
+    if (delta > 0) setDragDownY(delta);
+  }
+
+  function onDragHandleTouchEnd() {
+    if (dragStartYRef.current === null) return;
+    dragStartYRef.current = null;
+    if (dragDownY > 110) {
+      if (hapticsEnabled) vibrate(12);
+      closeOverlay();
+    }
+    setDragDownY(0);
+  }
 
   function closeOverlay() {
     setIsClosing(true);
@@ -286,6 +327,11 @@ export default function PlayerOverlay() {
         role="dialog"
         aria-modal="true"
         aria-label="Lecteur plein ecran"
+        style={
+          dragDownY
+            ? { transform: `translateY(${dragDownY}px)`, transition: "none" }
+            : undefined
+        }
       >
         {/* Background */}
         <div className="absolute inset-0">
@@ -346,6 +392,9 @@ export default function PlayerOverlay() {
 
         {/* Top bar mobile */}
         <div
+          onTouchStart={onDragHandleTouchStart}
+          onTouchMove={onDragHandleTouchMove}
+          onTouchEnd={onDragHandleTouchEnd}
           className={[
             "relative z-10 md:hidden px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3 mp3-ov-panel transition-all duration-300",
             controlsHidden
@@ -353,6 +402,8 @@ export default function PlayerOverlay() {
               : "opacity-100",
           ].join(" ")}
         >
+          <div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-white/20" aria-hidden="true" />
+
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[11px] uppercase tracking-wide text-white/40">Lecture</p>
@@ -448,10 +499,11 @@ export default function PlayerOverlay() {
             >
               <div
                 key={track?.src ?? "empty"}
-                className="mp3-ov-cover aspect-square rounded-[26px] md:rounded-[38px] lg:rounded-[44px] overflow-hidden border border-white/10 bg-white/5"
+                className="relative mp3-ov-cover aspect-square rounded-[26px] md:rounded-[38px] lg:rounded-[44px] overflow-hidden border border-white/10 bg-white/5"
                 style={{
                   boxShadow: `0 0 0 1px rgba(255,255,255,0.06), 0 0 78px ${glow}`,
                 }}
+                onClick={onCoverTap}
               >
                 {track?.cover ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -467,6 +519,12 @@ export default function PlayerOverlay() {
                 ) : (
                   <div className="h-full w-full" />
                 )}
+
+                {heartBurst ? (
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <Heart size={96} className="mp3-heart-burst fill-white text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.45)]" />
+                  </div>
+                ) : null}
               </div>
             </div>
 

@@ -372,7 +372,7 @@ export default function AccountPage() {
 
   // ─────────────────────────────────────────────────────────
   return (
-    <div className="pb-28">
+    <div className="pb-[calc(17.5rem+env(safe-area-inset-bottom))] sm:pb-28">
       <div className="mx-auto max-w-2xl">
         <div className="mb-8 mp3-fade-up">
           <h1 className="text-3xl font-light text-white/95">Compte</h1>

@@ -133,7 +133,7 @@ export default function AdminBadgesPage() {
           value={userId}
           onChange={(e) => setUserId(e.target.value)}
           placeholder="ID utilisateur (UUID)"
-          className="w-full rounded-2xl bg-[#111118] border border-white/5 px-3 py-2.5 text-sm text-white/90 outline-none placeholder:text-white/35 mb-3"
+          className="w-full rounded-2xl bg-[#111118] border border-white/5 px-3 py-2.5 text-base sm:text-sm text-white/90 outline-none placeholder:text-white/35 mb-3"
         />
 
         <div className="flex items-center gap-2 mb-4">

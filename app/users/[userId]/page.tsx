@@ -90,7 +90,7 @@ function TrackRow({
 }) {
   return (
     <div
-      className="group flex items-center gap-3 rounded-2xl px-3 py-2.5 hover:bg-white/5 transition cursor-pointer"
+      className="group flex items-center gap-3 rounded-2xl px-3 py-3 sm:py-2.5 hover:bg-white/5 transition cursor-pointer"
       onClick={() => onPlay(queue, index)}
     >
       <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl bg-white/5">

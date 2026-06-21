@@ -643,7 +643,7 @@ export default function PlaylistsPage() {
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               placeholder="Nouvelle playlist..."
-              className="flex-1 rounded-2xl bg-[#111118] border border-white/5 px-3 py-2 text-sm text-white/90 outline-none placeholder:text-white/35"
+              className="flex-1 rounded-2xl bg-[#111118] border border-white/5 px-3 py-2 text-base sm:text-sm text-white/90 outline-none placeholder:text-white/35"
             />
             <button
               onClick={createPlaylist}
@@ -723,7 +723,7 @@ export default function PlaylistsPage() {
                   value={renameValue}
                   onChange={(e) => setRenameValue(e.target.value)}
                   placeholder="Renommer..."
-                  className="flex-1 rounded-2xl bg-[#111118] border border-white/5 px-3 py-2 text-sm text-white/90 outline-none placeholder:text-white/35"
+                  className="flex-1 rounded-2xl bg-[#111118] border border-white/5 px-3 py-2 text-base sm:text-sm text-white/90 outline-none placeholder:text-white/35"
                 />
                 <button
                   onClick={() => renamePlaylist(active.id)}
@@ -747,7 +747,7 @@ export default function PlaylistsPage() {
                         value={activeTracksSearch}
                         onChange={(e) => setActiveTracksSearch(e.target.value)}
                         placeholder="Rechercher dans cette playlist..."
-                        className="w-full bg-transparent outline-none text-sm text-white/90 placeholder:text-white/35"
+                        className="w-full bg-transparent outline-none text-base sm:text-sm text-white/90 placeholder:text-white/35"
                         aria-label="Recherche dans la playlist active"
                       />
                       {activeTracksSearch ? (
@@ -816,7 +816,7 @@ export default function PlaylistsPage() {
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       placeholder="Rechercher un titre..."
-                      className="w-full bg-transparent outline-none text-sm text-white/90 placeholder:text-white/35"
+                      className="w-full bg-transparent outline-none text-base sm:text-sm text-white/90 placeholder:text-white/35"
                     />
                     {search ? (
                       <button

@@ -275,7 +275,7 @@ export default function LibraryPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Titre ou artiste..."
-              className="w-full rounded-xl border border-white/10 bg-[#0E0E14] px-3 py-2 text-sm text-white/90 outline-none"
+              className="w-full rounded-xl border border-white/10 bg-[#0E0E14] px-3 py-2 text-base sm:text-sm text-white/90 outline-none"
             />
           </div>
 
@@ -287,7 +287,7 @@ export default function LibraryPage() {
               id="library-artist"
               value={artistFilter}
               onChange={(e) => setArtistFilter(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-[#0E0E14] px-3 py-2 text-sm text-white/90 outline-none"
+              className="w-full rounded-xl border border-white/10 bg-[#0E0E14] px-3 py-2 text-base sm:text-sm text-white/90 outline-none"
             >
               <option value="all">Tous</option>
               {artists.map((artist) => (
@@ -306,7 +306,7 @@ export default function LibraryPage() {
               id="library-sort"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortKey)}
-              className="w-full rounded-xl border border-white/10 bg-[#0E0E14] px-3 py-2 text-sm text-white/90 outline-none"
+              className="w-full rounded-xl border border-white/10 bg-[#0E0E14] px-3 py-2 text-base sm:text-sm text-white/90 outline-none"
             >
               <option value="added_desc">Recents</option>
               <option value="title_asc">Titre A-Z</option>
@@ -437,7 +437,7 @@ export default function LibraryPage() {
                   id="edit-title"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full rounded-2xl bg-[#111118] border border-white/10 px-3 py-2 text-sm text-white/90 outline-none"
+                  className="w-full rounded-2xl bg-[#111118] border border-white/10 px-3 py-2 text-base sm:text-sm text-white/90 outline-none"
                   placeholder="Titre..."
                 />
               </div>
@@ -450,7 +450,7 @@ export default function LibraryPage() {
                   id="edit-artist"
                   value={editArtist}
                   onChange={(e) => setEditArtist(e.target.value)}
-                  className="w-full rounded-2xl bg-[#111118] border border-white/10 px-3 py-2 text-sm text-white/90 outline-none"
+                  className="w-full rounded-2xl bg-[#111118] border border-white/10 px-3 py-2 text-base sm:text-sm text-white/90 outline-none"
                   placeholder="Artiste..."
                 />
               </div>

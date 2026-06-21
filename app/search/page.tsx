@@ -155,7 +155,7 @@ function TrackRow({
         onTouchCancel={longPress.onTouchCancel}
         onContextMenu={longPress.onContextMenu}
         className={[
-          "group flex items-center gap-3 rounded-2xl px-3 py-2.5 transition w-full text-left",
+          "group flex items-center gap-3 rounded-2xl px-3 py-3 sm:py-2.5 transition w-full text-left",
           active ? "bg-white/10" : "hover:bg-white/5",
         ].join(" ")}
       >
@@ -235,7 +235,7 @@ function UserRow({ user, query }: { user: UserEntry; query: string }) {
   return (
     <Link
       href={`/users/${user.id}`}
-      className="group flex items-center gap-3 rounded-2xl px-3 py-2.5 hover:bg-white/5 transition"
+      className="group flex items-center gap-3 rounded-2xl px-3 py-3 sm:py-2.5 hover:bg-white/5 transition"
     >
       <div
         className="h-10 w-10 shrink-0 rounded-full flex items-center justify-center text-sm font-semibold text-white"
@@ -550,7 +550,7 @@ export default function SearchPage() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder="Titre, artiste, utilisateur…"
-            className="w-full bg-transparent outline-none text-sm text-white/90 placeholder:text-white/30"
+            className="w-full bg-transparent outline-none text-base sm:text-sm text-white/90 placeholder:text-white/30"
           />
           {query && (
             <button

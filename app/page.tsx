@@ -851,7 +851,7 @@ export default function Home() {
                         value={openedPlaylistQuery}
                         onChange={(e) => setOpenedPlaylistQuery(e.target.value)}
                         placeholder="Rechercher dans la playlist..."
-                        className="w-full bg-transparent outline-none text-sm text-white/90 placeholder:text-white/35"
+                        className="w-full bg-transparent outline-none text-base sm:text-sm text-white/90 placeholder:text-white/35"
                         aria-label="Recherche dans la playlist"
                       />
                       {openedPlaylistQuery ? (

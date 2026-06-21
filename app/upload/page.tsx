@@ -357,7 +357,7 @@ export default function UploadPage() {
                     id="meta-title"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full rounded-xl bg-[#111118] border border-white/10 px-3 py-2 text-sm text-white/90 outline-none"
+                    className="w-full rounded-xl bg-[#111118] border border-white/10 px-3 py-2 text-base sm:text-sm text-white/90 outline-none"
                     placeholder="Titre..."
                   />
                 </div>
@@ -370,7 +370,7 @@ export default function UploadPage() {
                     id="meta-artist"
                     value={artist}
                     onChange={(e) => setArtist(e.target.value)}
-                    className="w-full rounded-xl bg-[#111118] border border-white/10 px-3 py-2 text-sm text-white/90 outline-none"
+                    className="w-full rounded-xl bg-[#111118] border border-white/10 px-3 py-2 text-base sm:text-sm text-white/90 outline-none"
                     placeholder="Artiste..."
                   />
                 </div>

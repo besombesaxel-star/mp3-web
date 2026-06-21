@@ -23,6 +23,8 @@ import AudioEqualizer from "./AudioEqualizer";
 import { usePlayer } from "./PlayerContext";
 import { useFocusTrap } from "./useFocusTrap";
 import { vibrate } from "./haptics";
+import { useLongPress } from "./useLongPress";
+import TrackContextMenu from "./TrackContextMenu";
 
 function withAlpha(color: string | undefined, alpha: number) {
   if (!color) return `rgba(255,255,255,${alpha})`;
@@ -88,9 +90,12 @@ export default function MiniPlayer() {
 
   const [queueOpen, setQueueOpen] = useState(false);
   const [smartToast, setSmartToast] = useState<{ id: string; message: string } | null>(null);
+  const [nowPlayingMenuOpen, setNowPlayingMenuOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement | null>(null);
   const smartTipSeenRef = useRef<Set<string>>(new Set());
   useFocusTrap(queueOpen, drawerRef);
+
+  const nowPlayingLongPress = useLongPress({ onLongPress: () => setNowPlayingMenuOpen(true) });
 
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -458,6 +463,10 @@ export default function MiniPlayer() {
         </div>
       ) : null}
 
+      {nowPlayingMenuOpen ? (
+        <TrackContextMenu track={track} onClose={() => setNowPlayingMenuOpen(false)} />
+      ) : null}
+
       <div
         className="fixed bottom-[60px] sm:bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-black/90 backdrop-blur"
         role="region"
@@ -567,7 +576,15 @@ export default function MiniPlayer() {
                 <button
                   type="button"
                   className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-white/12 bg-black/35 disabled:opacity-85"
-                  onClick={() => track && setExpanded(true)}
+                  onClick={() => {
+                    if (nowPlayingLongPress.didLongPress()) return;
+                    if (track) setExpanded(true);
+                  }}
+                  onTouchStart={nowPlayingLongPress.onTouchStart}
+                  onTouchMove={nowPlayingLongPress.onTouchMove}
+                  onTouchEnd={nowPlayingLongPress.onTouchEnd}
+                  onTouchCancel={nowPlayingLongPress.onTouchCancel}
+                  onContextMenu={nowPlayingLongPress.onContextMenu}
                   title={track ? "Ouvrir le player" : "Choisis un morceau"}
                   aria-label={track ? "Ouvrir le lecteur plein ecran" : "Aucun morceau en lecture"}
                   disabled={!track}
@@ -596,7 +613,15 @@ export default function MiniPlayer() {
                 <button
                   type="button"
                   className="min-w-0 flex-1 text-left disabled:opacity-80"
-                  onClick={() => track && setExpanded(true)}
+                  onClick={() => {
+                    if (nowPlayingLongPress.didLongPress()) return;
+                    if (track) setExpanded(true);
+                  }}
+                  onTouchStart={nowPlayingLongPress.onTouchStart}
+                  onTouchMove={nowPlayingLongPress.onTouchMove}
+                  onTouchEnd={nowPlayingLongPress.onTouchEnd}
+                  onTouchCancel={nowPlayingLongPress.onTouchCancel}
+                  onContextMenu={nowPlayingLongPress.onContextMenu}
                   disabled={!track}
                   title={track ? "Ouvrir le player" : "Choisis un morceau"}
                 >

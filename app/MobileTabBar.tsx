@@ -33,10 +33,17 @@ export default function MobileTabBar() {
               href={href}
               aria-current={active ? "page" : undefined}
               className={[
-                "flex-1 flex flex-col items-center justify-center gap-1 transition",
+                "relative flex-1 flex flex-col items-center justify-center gap-1 transition",
                 active ? "text-white" : "text-white/45",
               ].join(" ")}
             >
+              <span
+                className={[
+                  "absolute top-0 h-[3px] w-8 rounded-full bg-white transition-all duration-200",
+                  active ? "opacity-100 scale-x-100" : "opacity-0 scale-x-0",
+                ].join(" ")}
+                aria-hidden="true"
+              />
               <Icon size={20} className={active ? "opacity-100" : "opacity-80"} />
               <span className="text-[10px]">{label}</span>
             </Link>

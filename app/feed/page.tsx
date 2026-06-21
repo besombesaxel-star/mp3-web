@@ -34,7 +34,7 @@ function FeedRow({
 
   return (
     <div
-      className="group flex items-center gap-3 rounded-2xl px-3 py-2.5 hover:bg-white/5 transition cursor-pointer"
+      className="group flex items-center gap-3 rounded-2xl px-3 py-3 sm:py-2.5 hover:bg-white/5 transition cursor-pointer"
       onClick={() => {
         if (longPress.didLongPress()) return;
         onPlay(queue, idx);
@@ -151,7 +151,7 @@ export default function FeedPage() {
       {loading ? (
         <div className="space-y-2">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="flex items-center gap-3 rounded-2xl px-3 py-2.5">
+            <div key={i} className="flex items-center gap-3 rounded-2xl px-3 py-3 sm:py-2.5">
               <div className="h-10 w-10 shrink-0 rounded-xl bg-white/5 animate-pulse" />
               <div className="flex-1 space-y-1.5">
                 <div className="h-3 w-1/2 rounded-full bg-white/5 animate-pulse" />

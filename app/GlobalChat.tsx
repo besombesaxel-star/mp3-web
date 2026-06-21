@@ -493,7 +493,7 @@ export default function GlobalChat() {
       <div
         className={[
           "fixed z-[56] flex flex-col",
-          "inset-x-0 bottom-0 top-16 rounded-t-3xl",
+          "inset-x-0 bottom-0 top-[calc(3rem+env(safe-area-inset-top))] rounded-t-3xl",
           "md:inset-x-auto md:right-0 md:top-0 md:bottom-0 md:w-[360px] md:rounded-none md:rounded-l-3xl",
           "border-t border-white/10 md:border-t-0 md:border-l",
           "bg-[#080809]/95 backdrop-blur-xl",
@@ -686,7 +686,7 @@ export default function GlobalChat() {
                 rows={1}
                 maxLength={500}
                 disabled={sending}
-                className="flex-1 resize-none overflow-hidden rounded-2xl border border-white/10 bg-white/6 px-3.5 py-2.5 text-sm text-white/90 outline-none placeholder:text-white/25 focus:border-white/20 focus:bg-white/8 transition-colors disabled:opacity-50"
+                className="flex-1 resize-none overflow-hidden rounded-2xl border border-white/10 bg-white/6 px-3.5 py-2.5 text-base sm:text-sm text-white/90 outline-none placeholder:text-white/25 focus:border-white/20 focus:bg-white/8 transition-colors disabled:opacity-50"
                 style={{ minHeight: "42px", maxHeight: "120px" }}
               />
               <button

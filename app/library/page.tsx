@@ -206,11 +206,6 @@ export default function LibraryPage() {
     <div ref={pageRef} className="p-6 pb-[calc(17.5rem+env(safe-area-inset-bottom))] sm:pb-28">
       <div className="mb-4">
         <h1 className="text-2xl font-semibold text-white">Bibliotheque</h1>
-        <p className="text-sm text-white/40 mt-1">
-          {isAuthenticated
-            ? "Survole une cover pour modifier le titre ou l'artiste."
-            : "Connecte-toi pour modifier le titre ou l'artiste."}
-        </p>
       </div>
 
       {loading ? <p className="text-white/60">Chargement...</p> : null}

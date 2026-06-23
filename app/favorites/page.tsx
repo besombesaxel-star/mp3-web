@@ -107,7 +107,7 @@ export default function FavoritesPage() {
   }
 
   return (
-    <div className="pb-[calc(17.5rem+env(safe-area-inset-bottom))] sm:pb-28">
+    <div className="pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
       {/* Header */}
       <div className="flex items-end justify-between gap-6 mb-8">
         <div className="min-w-0">

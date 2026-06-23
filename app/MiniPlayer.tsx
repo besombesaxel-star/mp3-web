@@ -71,6 +71,8 @@ export default function MiniPlayer() {
     seekTo,
     expanded,
     setExpanded,
+    queueOpen,
+    setQueueOpen,
     shuffle,
     repeat,
     preloadedTrack,
@@ -91,7 +93,6 @@ export default function MiniPlayer() {
     hapticsEnabled,
   } = usePlayer();
 
-  const [queueOpen, setQueueOpen] = useState(false);
   const [smartToast, setSmartToast] = useState<{ id: string; message: string } | null>(null);
   const [nowPlayingMenuOpen, setNowPlayingMenuOpen] = useState(false);
   const drawerRef = useRef<HTMLDivElement | null>(null);
@@ -419,7 +420,7 @@ export default function MiniPlayer() {
 
       {achievementToast ? (
         <div
-          className="fixed bottom-[calc(env(safe-area-inset-bottom)+240px)] sm:bottom-[88px] left-1/2 -translate-x-1/2 z-[60] px-4 w-full max-w-lg"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+160px)] sm:bottom-[88px] left-1/2 -translate-x-1/2 z-[60] px-4 w-full max-w-lg"
           role="status"
           aria-live="polite"
         >
@@ -450,7 +451,7 @@ export default function MiniPlayer() {
 
       {undoToast ? (
         <div
-          className="fixed bottom-[calc(env(safe-area-inset-bottom)+314px)] sm:bottom-[162px] left-1/2 -translate-x-1/2 z-[61] px-4 w-full max-w-lg"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+234px)] sm:bottom-[162px] left-1/2 -translate-x-1/2 z-[61] px-4 w-full max-w-lg"
           role="status"
           aria-live="polite"
         >
@@ -481,7 +482,7 @@ export default function MiniPlayer() {
 
       {smartToast ? (
         <div
-          className="fixed bottom-[calc(env(safe-area-inset-bottom)+388px)] sm:bottom-[236px] left-1/2 -translate-x-1/2 z-[62] px-4 w-full max-w-lg"
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+308px)] sm:bottom-[236px] left-1/2 -translate-x-1/2 z-[62] px-4 w-full max-w-lg"
           role="status"
           aria-live="polite"
         >
@@ -514,7 +515,7 @@ export default function MiniPlayer() {
         aria-label="Mini lecteur"
       >
         {queueOpen ? (
-          <div className="absolute left-0 right-0 bottom-[calc(env(safe-area-inset-bottom)+164px)] sm:bottom-[72px] px-4 sm:px-6">
+          <div className="absolute left-0 right-0 bottom-[calc(env(safe-area-inset-bottom)+75px)] sm:bottom-[72px] px-4 sm:px-6">
             <div
               ref={drawerRef}
               id="queue-drawer"
@@ -655,269 +656,93 @@ export default function MiniPlayer() {
           </div>
         ) : null}
 
-        <div className="sm:hidden px-3 pt-3 pb-[10px]">
+        <div className="sm:hidden px-3 pt-2 pb-[10px]">
           <div
             onTouchStart={onMobileBarTouchStart}
             onTouchEnd={onMobileBarTouchEnd}
-            className="relative overflow-hidden rounded-[28px] border border-white/10 shadow-[0_22px_64px_rgba(0,0,0,0.42)] backdrop-blur-2xl"
+            className="relative overflow-hidden rounded-2xl border border-white/10 shadow-[0_14px_36px_rgba(0,0,0,0.4)] backdrop-blur-2xl"
             style={mobileCardStyle}
           >
-            <div
-              className="pointer-events-none absolute inset-0 rounded-[28px]"
-              style={{
-                boxShadow: `inset 0 1px 0 rgba(255,255,255,0.08), 0 18px 36px ${mobileAccentSoft}`,
-              }}
-            />
+            <div className="absolute inset-x-0 top-0 h-[3px] bg-white/10">
+              <div
+                className="h-full"
+                style={{
+                  width: `${(progress || 0) * 100}%`,
+                  background: `linear-gradient(90deg, ${mobileAccent} 0%, rgba(255,255,255,0.95) 100%)`,
+                }}
+              />
+            </div>
 
-            <div className="relative px-3.5 pt-3.5 pb-3">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-white/12 bg-black/35 disabled:opacity-85"
-                  onClick={() => {
-                    if (nowPlayingLongPress.didLongPress()) return;
-                    if (track) setExpanded(true);
-                  }}
-                  onTouchStart={nowPlayingLongPress.onTouchStart}
-                  onTouchMove={nowPlayingLongPress.onTouchMove}
-                  onTouchEnd={nowPlayingLongPress.onTouchEnd}
-                  onTouchCancel={nowPlayingLongPress.onTouchCancel}
-                  onContextMenu={nowPlayingLongPress.onContextMenu}
-                  title={track ? "Ouvrir le player" : "Choisis un morceau"}
-                  aria-label={track ? "Ouvrir le lecteur plein ecran" : "Aucun morceau en lecture"}
-                  disabled={!track}
-                  style={{
-                    boxShadow: track ? `0 12px 28px ${mobileAccentSoft}` : undefined,
-                  }}
-                >
-                  {track?.cover ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      key={track.src}
-                      src={track.cover}
-                      alt={track.title}
-                      className={[
-                        "h-full w-full object-cover mp3-now-cover",
-                        playing ? "mp3-now-cover--playing" : "mp3-now-cover--idle",
-                      ].join(" ")}
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-white/5">
-                      <Play size={16} className="text-white/30" />
-                    </div>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  className="min-w-0 flex-1 text-left disabled:opacity-80"
-                  onClick={() => {
-                    if (nowPlayingLongPress.didLongPress()) return;
-                    if (track) setExpanded(true);
-                  }}
-                  onTouchStart={nowPlayingLongPress.onTouchStart}
-                  onTouchMove={nowPlayingLongPress.onTouchMove}
-                  onTouchEnd={nowPlayingLongPress.onTouchEnd}
-                  onTouchCancel={nowPlayingLongPress.onTouchCancel}
-                  onContextMenu={nowPlayingLongPress.onContextMenu}
-                  disabled={!track}
-                  title={track ? "Ouvrir le player" : "Choisis un morceau"}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <p className="text-[10px] uppercase tracking-[0.28em] text-white/38">Lecture</p>
-                    <span className="rounded-full border border-white/10 bg-white/6 px-2 py-0.5 text-[10px] text-white/58">
-                      {track ? "En cours" : "Pret"}
-                    </span>
-                  </div>
-
-                  <p key={track?.src} className="mt-1 truncate text-sm font-semibold text-white/94 mp3-fade-up">
-                    {track?.title ?? "Aucune lecture"}
-                  </p>
-
-                  <div className="mt-1 flex items-center gap-2 min-w-0">
-                    <p key={`artist-${track?.src}`} className="min-w-0 flex-1 truncate text-[12px] text-white/50 mp3-fade-up" style={{ animationDelay: "30ms" }}>
-                      {track?.artist ?? "Choisis un morceau pour commencer"}
-                    </p>
-
-                    {track ? (
-                      <AudioEqualizer
-                        bars={8}
-                        height={14}
-                        accent={track.accent}
-                        thinWidth={2}
-                        gap={2}
-                        minBar={2}
-                        smoothing={0.25}
-                        punch={1.9}
-                        className="opacity-85 shrink-0"
-                        idle
-                      />
-                    ) : null}
-                  </div>
-                </button>
-              </div>
-
-              <div className="mt-3.5 flex items-center gap-2">
-                <span className="w-10 text-right text-[10px] text-white/42 tabular-nums">{formatTime(currentTime)}</span>
-
-                <div className="relative flex-1">
-                  <div className="pointer-events-none absolute inset-y-1 left-0 right-0 rounded-full bg-white/8" />
-                  <div
-                    className="pointer-events-none absolute inset-y-1 left-0 rounded-full"
-                    style={{
-                      width: `${(progress || 0) * 100}%`,
-                      background: `linear-gradient(90deg, ${mobileAccent} 0%, rgba(255,255,255,0.95) 100%)`,
-                      boxShadow: `0 0 20px ${mobileAccentSoft}`,
-                    }}
+            <div className="relative flex items-center gap-3 px-3 py-2.5">
+              <button
+                type="button"
+                className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-white/12 bg-black/35 disabled:opacity-85"
+                onClick={() => {
+                  if (nowPlayingLongPress.didLongPress()) return;
+                  if (track) setExpanded(true);
+                }}
+                onTouchStart={nowPlayingLongPress.onTouchStart}
+                onTouchMove={nowPlayingLongPress.onTouchMove}
+                onTouchEnd={nowPlayingLongPress.onTouchEnd}
+                onTouchCancel={nowPlayingLongPress.onTouchCancel}
+                onContextMenu={nowPlayingLongPress.onContextMenu}
+                title={track ? "Ouvrir le player" : "Choisis un morceau"}
+                aria-label={track ? "Ouvrir le lecteur plein ecran" : "Aucun morceau en lecture"}
+                disabled={!track}
+              >
+                {track?.cover ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={track.src}
+                    src={track.cover}
+                    alt={track.title}
+                    className={[
+                      "h-full w-full object-cover mp3-now-cover",
+                      playing ? "mp3-now-cover--playing" : "mp3-now-cover--idle",
+                    ].join(" ")}
                   />
-
-                  <input
-                    type="range"
-                    min={0}
-                    max={1000}
-                    value={Math.round((progress || 0) * 1000)}
-                    onChange={(e) => seekTo(Number(e.target.value) / 1000)}
-                    className="mp3-mobile-progress relative z-10 h-4 w-full"
-                    aria-label="Progression"
-                    disabled={!track}
-                    title="Progression"
-                  />
-                </div>
-
-                <span className="w-10 text-[10px] text-white/42 tabular-nums">{formatTime(duration)}</span>
-              </div>
-
-              <div className="mt-3 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
-                <div className="flex items-center rounded-full border border-white/10 bg-white/[0.06] p-1">
-                  <button
-                    onClick={toggleShuffle}
-                    aria-pressed={shuffle}
-                    className={[
-                      "h-10 w-10 rounded-full transition active:scale-95",
-                      shuffle ? "bg-white/12 ring-1 ring-white/20" : "text-white/75",
-                    ].join(" ")}
-                    title="Lecture aleatoire"
-                    type="button"
-                  >
-                    <Shuffle size={16} className={["mx-auto", shuffle ? "text-white/88" : "opacity-90"].join(" ")} />
-                  </button>
-
-                  <button
-                    onClick={cycleRepeat}
-                    aria-pressed={Boolean(repeat)}
-                    className={[
-                      "h-10 w-10 rounded-full transition active:scale-95",
-                      repeat ? "bg-white/12 ring-1 ring-white/20" : "text-white/75",
-                    ].join(" ")}
-                    title="Repeat"
-                    type="button"
-                  >
-                    {repeat === "one" ? (
-                      <Repeat1 size={16} className={["mx-auto", repeat ? "text-white/88" : "opacity-90"].join(" ")} />
-                    ) : (
-                      <Repeat size={16} className={["mx-auto", repeat ? "text-white/88" : "opacity-90"].join(" ")} />
-                    )}
-                  </button>
-                </div>
-
-                <div className="flex min-w-0 items-center justify-center rounded-full border border-white/12 bg-black/28 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                  <button
-                    className="h-11 w-11 rounded-full transition active:scale-95 disabled:opacity-40"
-                    onClick={() => {
-                      tapHaptic();
-                      prev();
-                    }}
-                    disabled={!track}
-                    title="Precedent"
-                    type="button"
-                  >
-                    <SkipBack size={18} className="mx-auto opacity-90" />
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      tapHaptic();
-                      togglePlay();
-                    }}
-                    disabled={!track}
-                    title={playing ? "Pause" : "Lecture"}
-                    className={[
-                      "mx-1 h-11 w-11 rounded-full text-sm font-semibold disabled:opacity-60",
-                      "transition-transform duration-150 active:scale-95",
-                      "flex items-center justify-center",
-                      "bg-white text-black",
-                    ].join(" ")}
-                    style={{
-                      boxShadow: `0 0 26px ${mobileAccentSoft}`,
-                    }}
-                    type="button"
-                  >
-                    {playing ? <Pause size={18} /> : <Play size={18} />}
-                  </button>
-
-                  <div className="relative group">
-                    <button
-                      className="h-11 w-11 rounded-full transition active:scale-95 disabled:opacity-40"
-                      onClick={() => {
-                        tapHaptic();
-                        next();
-                      }}
-                      disabled={!track}
-                      title="Suivant"
-                      type="button"
-                    >
-                      <SkipForward size={18} className="mx-auto opacity-90" />
-                    </button>
-                    {preloadedTrack && preloadedTrack.src !== track?.src && (
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 scale-95 group-hover:scale-100 transition-all duration-200 ease-out whitespace-nowrap z-20">
-                        <div className="bg-black/80 backdrop-blur-md rounded-lg px-3 py-1.5 text-left ring-1 ring-white/10">
-                          <p className="text-xs text-white/90 font-medium max-w-[160px] truncate">{preloadedTrack.title}</p>
-                          <p className="text-[11px] text-white/50 max-w-[160px] truncate">{preloadedTrack.artist}</p>
-                        </div>
-                      </div>
-                    )}
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-white/5">
+                    <Play size={14} className="text-white/30" />
                   </div>
-                </div>
+                )}
+              </button>
 
-                <div className="flex items-center justify-end rounded-full border border-white/10 bg-white/[0.06] p-1">
-                  <button
-                    className={[
-                      "h-10 w-10 rounded-full transition active:scale-95",
-                      liked ? "bg-white/12 ring-1 ring-white/20" : "text-white/75",
-                    ].join(" ")}
-                    onClick={() => {
-                      tapHaptic();
-                      if (track) toggleFavorite(track);
-                    }}
-                    aria-pressed={liked}
-                    disabled={!track}
-                    title={liked ? "Retirer des favoris" : "Ajouter aux favoris"}
-                    type="button"
-                  >
-                    <Heart
-                      size={16}
-                      className={["mx-auto opacity-90", liked ? "fill-white/85 text-white/85" : "fill-transparent"].join(" ")}
-                    />
-                  </button>
+              <button
+                type="button"
+                className="min-w-0 flex-1 text-left disabled:opacity-80"
+                onClick={() => {
+                  if (nowPlayingLongPress.didLongPress()) return;
+                  if (track) setExpanded(true);
+                }}
+                onTouchStart={nowPlayingLongPress.onTouchStart}
+                onTouchMove={nowPlayingLongPress.onTouchMove}
+                onTouchEnd={nowPlayingLongPress.onTouchEnd}
+                onTouchCancel={nowPlayingLongPress.onTouchCancel}
+                onContextMenu={nowPlayingLongPress.onContextMenu}
+                disabled={!track}
+                title={track ? "Ouvrir le player" : "Choisis un morceau"}
+              >
+                <p key={track?.src} className="truncate text-sm font-semibold text-white/94 mp3-fade-up">
+                  {track?.title ?? "Aucune lecture"}
+                </p>
+                <p key={`artist-${track?.src}`} className="truncate text-[12px] text-white/50 mp3-fade-up" style={{ animationDelay: "30ms" }}>
+                  {track?.artist ?? "Choisis un morceau"}
+                </p>
+              </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setQueueOpen((v) => !v);
-                    }}
-                    className={[
-                      "h-10 w-10 rounded-full transition active:scale-95",
-                      queueOpen ? "bg-white/12 ring-1 ring-white/20" : "text-white/75",
-                    ].join(" ")}
-                    title="File d'attente"
-                    aria-label={queueOpen ? "Fermer la file d'attente" : "Ouvrir la file d'attente"}
-                    aria-controls="queue-drawer"
-                    aria-expanded={queueOpen}
-                  >
-                    <ListMusic size={16} className="mx-auto opacity-90" />
-                  </button>
-                </div>
-              </div>
+              <button
+                onClick={() => {
+                  tapHaptic();
+                  togglePlay();
+                }}
+                disabled={!track}
+                title={playing ? "Pause" : "Lecture"}
+                className="h-10 w-10 shrink-0 rounded-full text-sm font-semibold disabled:opacity-60 transition-transform duration-150 active:scale-95 flex items-center justify-center bg-white text-black"
+                type="button"
+              >
+                {playing ? <Pause size={17} /> : <Play size={17} />}
+              </button>
             </div>
           </div>
         </div>
@@ -1038,7 +863,7 @@ export default function MiniPlayer() {
             <button
               type="button"
               onClick={() => {
-                setQueueOpen((v) => !v);
+                setQueueOpen(!queueOpen);
               }}
               className={[
                 "h-10 w-10 rounded-full transition",

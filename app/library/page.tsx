@@ -203,7 +203,7 @@ export default function LibraryPage() {
   }
 
   return (
-    <div ref={pageRef} className="px-2 pt-6 sm:px-6 pb-[calc(17.5rem+env(safe-area-inset-bottom))] sm:pb-28">
+    <div ref={pageRef} className="px-2 pt-6 sm:px-6 pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
       <div className="mb-4">
         <h1 className="text-2xl font-semibold text-white">Bibliotheque</h1>
       </div>

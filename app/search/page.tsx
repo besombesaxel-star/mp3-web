@@ -584,7 +584,7 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="pb-[calc(17.5rem+env(safe-area-inset-bottom))] sm:pb-28">
+    <div className="pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
       {/* Header */}
       <div className="mb-6 flex items-end justify-between mp3-fade-up">
         <h2 className="text-3xl font-light">Recherche</h2>
@@ -706,7 +706,7 @@ export default function SearchPage() {
       {renderContent()}
 
       {selectMode && selectedSrcs.size > 0 ? (
-        <div className="fixed bottom-[calc(17.5rem+env(safe-area-inset-bottom))] sm:bottom-8 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-lg">
+        <div className="fixed bottom-[calc(11rem+env(safe-area-inset-bottom))] sm:bottom-8 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-lg">
           <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] px-4 py-3">
             <p className="text-sm text-white/85 shrink-0">{selectedSrcs.size} selectionne{selectedSrcs.size > 1 ? "s" : ""}</p>
             <div className="flex-1 flex items-center justify-end gap-2">

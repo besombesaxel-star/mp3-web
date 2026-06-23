@@ -16,6 +16,7 @@ import {
   Repeat,
   Repeat1,
   Heart,
+  ListMusic,
   Maximize2,
   X,
   VolumeX,
@@ -172,6 +173,7 @@ export default function PlayerOverlay() {
     prev,
     expanded,
     setExpanded,
+    setQueueOpen,
     shuffle,
     repeat,
     toggleShuffle,
@@ -657,6 +659,85 @@ export default function PlayerOverlay() {
                 >
                   <SkipForward size={24} className="opacity-90 text-white/90" />
                 </button>
+              </div>
+
+              <div
+                className={[
+                  "mt-4 flex items-center justify-between mp3-ov-controls transition-all duration-300",
+                  controlsHidden
+                    ? "opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0"
+                    : "opacity-100",
+                ].join(" ")}
+              >
+                <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] p-1">
+                  <button
+                    onClick={() => {
+                      tapHaptic();
+                      toggleShuffle();
+                    }}
+                    aria-pressed={shuffle}
+                    className={[
+                      "h-10 w-10 rounded-full transition active:scale-95",
+                      shuffle ? "bg-white/12 ring-1 ring-white/20" : "text-white/75",
+                    ].join(" ")}
+                    title="Lecture aleatoire"
+                    type="button"
+                  >
+                    <Shuffle size={17} className={["mx-auto", shuffle ? "text-white/90" : "opacity-80"].join(" ")} />
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      tapHaptic();
+                      cycleRepeat();
+                    }}
+                    aria-pressed={Boolean(repeat)}
+                    className={[
+                      "h-10 w-10 rounded-full transition active:scale-95",
+                      repeat ? "bg-white/12 ring-1 ring-white/20" : "text-white/75",
+                    ].join(" ")}
+                    title="Repeat"
+                    type="button"
+                  >
+                    {repeat === "one" ? (
+                      <Repeat1 size={17} className={["mx-auto", repeat ? "text-white/90" : "opacity-80"].join(" ")} />
+                    ) : (
+                      <Repeat size={17} className={["mx-auto", repeat ? "text-white/90" : "opacity-80"].join(" ")} />
+                    )}
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] p-1">
+                  <button
+                    onClick={() => {
+                      tapHaptic();
+                      if (track) toggleFavorite(track);
+                    }}
+                    aria-pressed={liked}
+                    disabled={!track}
+                    className={[
+                      "h-10 w-10 rounded-full transition active:scale-95",
+                      liked ? "bg-white/12 ring-1 ring-white/20" : "text-white/75",
+                    ].join(" ")}
+                    title={liked ? "Retirer des favoris" : "Ajouter aux favoris"}
+                    type="button"
+                  >
+                    <Heart size={17} className={liked ? "mx-auto fill-white/90 text-white/90" : "mx-auto opacity-80"} />
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      tapHaptic();
+                      closeOverlay();
+                      setQueueOpen(true);
+                    }}
+                    className="h-10 w-10 rounded-full transition active:scale-95 text-white/75"
+                    title="File d'attente"
+                    type="button"
+                  >
+                    <ListMusic size={17} className="mx-auto opacity-80" />
+                  </button>
+                </div>
               </div>
 
             </div>

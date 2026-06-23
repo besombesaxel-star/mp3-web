@@ -109,6 +109,9 @@ type PlayerCtx = {
   expanded: boolean;
   setExpanded: (v: boolean) => void;
 
+  queueOpen: boolean;
+  setQueueOpen: (v: boolean) => void;
+
   setTracks: (t: Track[]) => void;
 
   playIndex: (i: number) => void;
@@ -592,6 +595,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const [playing, setPlaying] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [queueOpen, setQueueOpen] = useState(false);
 
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -2370,6 +2374,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
     expanded,
     setExpanded,
+
+    queueOpen,
+    setQueueOpen,
 
     setTracks,
 

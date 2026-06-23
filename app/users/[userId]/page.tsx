@@ -285,7 +285,7 @@ export default function PublicUserProfilePage() {
     : `radial-gradient(ellipse at 50% 0%, hsla(${fallbackHue}, 25%, 10%, 0.45) 0%, transparent 65%)`;
 
   return (
-    <div className="pb-[calc(17.5rem+env(safe-area-inset-bottom))] sm:pb-28" style={{ backgroundImage: bgGradient, backgroundAttachment: "local" }}>
+    <div className="pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28" style={{ backgroundImage: bgGradient, backgroundAttachment: "local" }}>
       {/* Top nav */}
       <div className="mb-8 flex items-center justify-between mp3-fade-up">
         <p className="text-xs uppercase tracking-[0.28em] text-white/25">Profil public</p>

@@ -195,6 +195,10 @@ export default function PlayerOverlay() {
 
   const [progressHover, setProgressHover] = useState<{ x: number; time: number } | null>(null);
 
+  function tapHaptic() {
+    if (hapticsEnabled) vibrate(8);
+  }
+
   function onProgressHover(e: React.MouseEvent) {
     if (!duration) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -450,7 +454,10 @@ export default function PlayerOverlay() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => track && toggleFavorite(track)}
+              onClick={() => {
+                tapHaptic();
+                if (track) toggleFavorite(track);
+              }}
               disabled={!track}
               aria-pressed={liked}
               className={[
@@ -613,7 +620,10 @@ export default function PlayerOverlay() {
                 ].join(" ")}
               >
                 <button
-                  onClick={prev}
+                  onClick={() => {
+                    tapHaptic();
+                    prev();
+                  }}
                   className="h-[56px] w-full transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center"
                   disabled={!track}
                   title="Precedent"
@@ -623,7 +633,10 @@ export default function PlayerOverlay() {
                 </button>
 
                 <button
-                  onClick={togglePlay}
+                  onClick={() => {
+                    tapHaptic();
+                    togglePlay();
+                  }}
                   className="h-[64px] w-full text-white transition active:scale-[0.98] disabled:opacity-60 flex items-center justify-center"
                   disabled={!track}
                   title={playing ? "Pause" : "Lecture"}
@@ -633,7 +646,10 @@ export default function PlayerOverlay() {
                 </button>
 
                 <button
-                  onClick={next}
+                  onClick={() => {
+                    tapHaptic();
+                    next();
+                  }}
                   className="h-[56px] w-full transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center"
                   disabled={!track}
                   title="Suivant"
@@ -748,17 +764,23 @@ export default function PlayerOverlay() {
                 </button>
 
                 <button
-                  onClick={prev}
+                  onClick={() => {
+                    tapHaptic();
+                    prev();
+                  }}
                   className="h-[60px] w-[60px] lg:h-16 lg:w-16 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98] disabled:opacity-50"
                   disabled={!track}
-                  title="PrÃ©cÃ©dent"
+                  title="Precedent"
                   type="button"
                 >
                   <SkipBack size={24} className="mx-auto opacity-90 text-white/85" />
                 </button>
 
                 <button
-                  onClick={togglePlay}
+                  onClick={() => {
+                    tapHaptic();
+                    togglePlay();
+                  }}
                   className={[
                     "h-[72px] w-[72px] lg:h-20 lg:w-20 rounded-full text-lg font-semibold transition active:scale-[0.98] disabled:opacity-60 flex items-center justify-center",
                     "bg-white text-black",
@@ -774,7 +796,10 @@ export default function PlayerOverlay() {
                 </button>
 
                 <button
-                  onClick={next}
+                  onClick={() => {
+                    tapHaptic();
+                    next();
+                  }}
                   className="h-[60px] w-[60px] lg:h-16 lg:w-16 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98] disabled:opacity-50"
                   disabled={!track}
                   title="Suivant"

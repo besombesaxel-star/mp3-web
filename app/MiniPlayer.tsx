@@ -100,6 +100,10 @@ export default function MiniPlayer() {
 
   const nowPlayingLongPress = useLongPress({ onLongPress: () => setNowPlayingMenuOpen(true) });
 
+  function tapHaptic() {
+    if (hapticsEnabled) vibrate(8);
+  }
+
   const [progressHover, setProgressHover] = useState<{ x: number; time: number } | null>(null);
 
   function onProgressHover(e: React.MouseEvent<HTMLInputElement>) {
@@ -819,7 +823,10 @@ export default function MiniPlayer() {
                 <div className="flex min-w-0 items-center justify-center rounded-full border border-white/12 bg-black/28 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
                   <button
                     className="h-11 w-11 rounded-full transition active:scale-95 disabled:opacity-40"
-                    onClick={prev}
+                    onClick={() => {
+                      tapHaptic();
+                      prev();
+                    }}
                     disabled={!track}
                     title="Precedent"
                     type="button"
@@ -828,7 +835,10 @@ export default function MiniPlayer() {
                   </button>
 
                   <button
-                    onClick={togglePlay}
+                    onClick={() => {
+                      tapHaptic();
+                      togglePlay();
+                    }}
                     disabled={!track}
                     title={playing ? "Pause" : "Lecture"}
                     className={[
@@ -848,7 +858,10 @@ export default function MiniPlayer() {
                   <div className="relative group">
                     <button
                       className="h-11 w-11 rounded-full transition active:scale-95 disabled:opacity-40"
-                      onClick={next}
+                      onClick={() => {
+                        tapHaptic();
+                        next();
+                      }}
                       disabled={!track}
                       title="Suivant"
                       type="button"
@@ -873,6 +886,7 @@ export default function MiniPlayer() {
                       liked ? "bg-white/12 ring-1 ring-white/20" : "text-white/75",
                     ].join(" ")}
                     onClick={() => {
+                      tapHaptic();
                       if (track) toggleFavorite(track);
                     }}
                     aria-pressed={liked}
@@ -1007,6 +1021,7 @@ export default function MiniPlayer() {
                 liked ? "bg-white/10 ring-1 ring-white/20" : "hover:bg-white/5",
               ].join(" ")}
               onClick={() => {
+                tapHaptic();
                 if (track) toggleFavorite(track);
               }}
               aria-pressed={liked}
@@ -1039,7 +1054,10 @@ export default function MiniPlayer() {
 
             <button
               className="h-10 w-10 rounded-full hover:bg-white/5 transition disabled:opacity-40"
-              onClick={prev}
+              onClick={() => {
+                tapHaptic();
+                prev();
+              }}
               disabled={!track}
               title="Precedent"
               type="button"
@@ -1057,7 +1075,10 @@ export default function MiniPlayer() {
               />
 
               <button
-                onClick={togglePlay}
+                onClick={() => {
+                  tapHaptic();
+                  togglePlay();
+                }}
                 disabled={!track}
                 title={playing ? "Pause" : "Lecture"}
                 className={[
@@ -1077,7 +1098,10 @@ export default function MiniPlayer() {
             <div className="relative group">
               <button
                 className="h-10 w-10 rounded-full hover:bg-white/5 transition disabled:opacity-40"
-                onClick={next}
+                onClick={() => {
+                  tapHaptic();
+                  next();
+                }}
                 disabled={!track}
                 title="Suivant"
                 type="button"

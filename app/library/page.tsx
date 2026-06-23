@@ -203,7 +203,7 @@ export default function LibraryPage() {
   }
 
   return (
-    <div ref={pageRef} className="p-6 pb-[calc(17.5rem+env(safe-area-inset-bottom))] sm:pb-28">
+    <div ref={pageRef} className="px-3 pt-6 sm:px-6 pb-[calc(17.5rem+env(safe-area-inset-bottom))] sm:pb-28">
       <div className="mb-4">
         <h1 className="text-2xl font-semibold text-white">Bibliotheque</h1>
       </div>
@@ -224,7 +224,7 @@ export default function LibraryPage() {
         <p className="text-white/60">Aucun son pour le moment.</p>
       ) : null}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6">
         {tracks.map((track, i) => (
           <AlbumCard
             key={track.src}

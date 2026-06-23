@@ -5,6 +5,7 @@ import "./globals.css";
 import Sidebar from "../app/Sidebar";
 import MobileTabBar from "../app/MobileTabBar";
 import LandscapeGuard from "../app/LandscapeGuard";
+import OfflineBanner from "../app/OfflineBanner";
 import PageTransition from "../app/PageTransition";
 import DynamicBackdrop from "../app/DynamicBackdrop";
 import MiniPlayer from "../app/MiniPlayer";
@@ -70,6 +71,7 @@ export default function RootLayout({
         <AuthProvider>
           <PlayerProvider>
             <DynamicBackdrop />
+            <OfflineBanner />
 
             <div className="relative z-10 flex h-screen">
               <Sidebar />

@@ -166,6 +166,7 @@ export default function UploadPage() {
     if (!audio || busy) return;
     if (!accessToken) {
       setMessage("Connecte-toi depuis l'onglet Compte pour uploader un son.");
+      setStep(4);
       return;
     }
 
@@ -181,6 +182,7 @@ export default function UploadPage() {
       const { status, json } = await uploadWithProgress(formData, setProgress, accessToken);
       if (status < 200 || status >= 300 || !json.ok || !json.track?.src) {
         setMessage(`Erreur: ${json.error ?? `Upload impossible (HTTP ${status})`}`);
+        setStep(4);
         return;
       }
 
@@ -220,6 +222,7 @@ export default function UploadPage() {
       setStep(4);
     } catch (errorValue: unknown) {
       setMessage(`Erreur: ${getErrorMessage(errorValue, "Echec de l'upload")}`);
+      setStep(4);
     } finally {
       setBusy(false);
     }

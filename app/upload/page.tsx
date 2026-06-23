@@ -6,6 +6,25 @@ import { useAuth } from "../AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { dispatchTracksUpdated, subscribeTracksUpdated } from "../tracksSync";
 import { toast } from "../Toast";
+import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
+
+type SignUploadResponse = {
+  ok?: boolean;
+  error?: string;
+  bucket?: string;
+  audio?: { path: string; token: string };
+  cover?: { path: string; token: string } | null;
+};
+
+type CompleteUploadResponse = {
+  ok?: boolean;
+  error?: string;
+  track?: {
+    src?: string;
+    title?: string;
+    artist?: string;
+  };
+};
 
 type UploadResponse = {
   ok?: boolean;
@@ -162,6 +181,121 @@ export default function UploadPage() {
     return existingNames.includes(normalized);
   }, [title, existingNames]);
 
+  async function saveMetaAndFinish(trackSrc: string) {
+    const cleanTitle = title.trim();
+    const cleanArtist = artist.trim();
+
+    if (cleanTitle || cleanArtist) {
+      const metaRes = await fetch("/api/meta", {
+        method: "POST",
+        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          src: trackSrc,
+          title: cleanTitle || guessTitleFromFile(audio?.name ?? "track"),
+          artist: cleanArtist || "Local upload",
+        }),
+      });
+
+      let metaJson: MetaResponse = {};
+      try {
+        metaJson = (await metaRes.json()) as MetaResponse;
+      } catch {
+        metaJson = {};
+      }
+
+      if (!metaRes.ok || !metaJson.ok) {
+        await loadExistingNames();
+        dispatchTracksUpdated();
+        setMessage(`Upload OK, mais meta non sauvegardee: ${metaJson.error ?? `HTTP ${metaRes.status}`}`);
+        setStep(4);
+        return;
+      }
+    }
+
+    await loadExistingNames();
+    dispatchTracksUpdated();
+    setMessage("Upload termine. Ton son est disponible dans la bibliotheque.");
+    toast("Son ajouté à la bibliothèque", "music");
+    setStep(4);
+  }
+
+  async function uploadDirectToStorage(): Promise<boolean> {
+    if (!audio || !accessToken) return false;
+
+    const signRes = await fetch("/api/upload/sign", {
+      method: "POST",
+      headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        audioName: audio.name,
+        audioSize: audio.size,
+        coverName: cover?.name ?? null,
+      }),
+    });
+
+    const signJson: SignUploadResponse = await signRes.json().catch(() => ({}));
+    if (!signRes.ok || !signJson.ok || !signJson.audio) {
+      if (signRes.status !== 500 && signJson.error) {
+        setMessage(`Erreur: ${signJson.error}`);
+        setStep(4);
+        return true;
+      }
+      return false;
+    }
+
+    const supabase = getSupabaseBrowserAuthClient();
+    if (!supabase) {
+      setMessage("Erreur: client de stockage indisponible.");
+      setStep(4);
+      return true;
+    }
+
+    setProgress(0.15);
+    const { error: audioUploadError } = await supabase.storage
+      .from(signJson.bucket!)
+      .uploadToSignedUrl(signJson.audio.path, signJson.audio.token, audio);
+
+    if (audioUploadError) {
+      setMessage(`Erreur: ${audioUploadError.message}`);
+      setStep(4);
+      return true;
+    }
+
+    setProgress(0.6);
+
+    let coverPath: string | null = null;
+    if (cover && signJson.cover) {
+      const { error: coverUploadError } = await supabase.storage
+        .from(signJson.bucket!)
+        .uploadToSignedUrl(signJson.cover.path, signJson.cover.token, cover);
+
+      if (coverUploadError) {
+        setMessage(`Erreur: ${coverUploadError.message}`);
+        setStep(4);
+        return true;
+      }
+      coverPath = signJson.cover.path;
+    }
+
+    setProgress(0.8);
+
+    const completeRes = await fetch("/api/upload/complete", {
+      method: "POST",
+      headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ audioPath: signJson.audio.path, coverPath }),
+    });
+
+    const completeJson: CompleteUploadResponse = await completeRes.json().catch(() => ({}));
+    if (!completeRes.ok || !completeJson.ok || !completeJson.track?.src) {
+      setMessage(`Erreur: ${completeJson.error ?? `Finalisation impossible (HTTP ${completeRes.status})`}`);
+      setStep(4);
+      return true;
+    }
+
+    setProgress(1);
+    await saveMetaAndFinish(completeJson.track.src);
+    return true;
+  }
+
   async function onUpload() {
     if (!audio || busy) return;
     if (!accessToken) {
@@ -175,6 +309,9 @@ export default function UploadPage() {
     setProgress(0);
 
     try {
+      const handled = await uploadDirectToStorage();
+      if (handled) return;
+
       const formData = new FormData();
       formData.append("audio", audio);
       if (cover) formData.append("cover", cover);
@@ -186,40 +323,7 @@ export default function UploadPage() {
         return;
       }
 
-      const cleanTitle = title.trim();
-      const cleanArtist = artist.trim();
-      if (cleanTitle || cleanArtist) {
-        const metaRes = await fetch("/api/meta", {
-          method: "POST",
-          headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
-          body: JSON.stringify({
-            src: json.track.src,
-            title: cleanTitle || guessTitleFromFile(audio.name),
-            artist: cleanArtist || "Local upload",
-          }),
-        });
-
-        let metaJson: MetaResponse = {};
-        try {
-          metaJson = (await metaRes.json()) as MetaResponse;
-        } catch {
-          metaJson = {};
-        }
-
-        if (!metaRes.ok || !metaJson.ok) {
-          await loadExistingNames();
-          dispatchTracksUpdated();
-          setMessage(`Upload OK, mais meta non sauvegardee: ${metaJson.error ?? `HTTP ${metaRes.status}`}`);
-          setStep(4);
-          return;
-        }
-      }
-
-      await loadExistingNames();
-      dispatchTracksUpdated();
-      setMessage("Upload termine. Ton son est disponible dans la bibliotheque.");
-      toast("Son ajouté à la bibliothèque", "music");
-      setStep(4);
+      await saveMetaAndFinish(json.track.src);
     } catch (errorValue: unknown) {
       setMessage(`Erreur: ${getErrorMessage(errorValue, "Echec de l'upload")}`);
       setStep(4);

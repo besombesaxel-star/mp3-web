@@ -5,7 +5,9 @@ import { listLocalTracks, saveLocalTrackMeta, uploadLocalTrack } from "@/lib/loc
 import { isValidLibraryAudioSrc } from "@/lib/libraryStorage";
 import { isSupabaseConfigured } from "@/lib/supabaseAdmin";
 import {
+  createSupabaseUploadTargets,
   deleteSupabaseTrack,
+  finalizeSupabaseTrackUpload,
   isSupabaseTrackSrc,
   listSupabaseTracks,
   saveSupabaseTrackMeta,
@@ -100,6 +102,30 @@ export async function uploadTrackForApi(
   }
 
   return uploadLocalTrack(audio, cover);
+}
+
+export async function createUploadTargetsForApi(audioName: string, coverName: string | null) {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Upload direct non disponible sans Supabase.");
+  }
+
+  return createSupabaseUploadTargets(audioName, coverName);
+}
+
+export async function finalizeUploadForApi(
+  audioPath: string,
+  coverPath: string | null,
+  owner: TrackOwnerInput
+): Promise<LibraryTrack> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Upload direct non disponible sans Supabase.");
+  }
+
+  if (!owner?.id) {
+    throw new Error("Compte requis pour l'upload Supabase.");
+  }
+
+  return finalizeSupabaseTrackUpload({ audioPath, coverPath, owner });
 }
 
 export async function saveTrackMetaForApi(

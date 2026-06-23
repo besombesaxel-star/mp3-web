@@ -410,6 +410,98 @@ export async function uploadSupabaseTrack(audio: File, cover: File | null, owner
   return libraryTrack;
 }
 
+export async function createSupabaseUploadTargets(audioName: string, coverName: string | null) {
+  const admin = getSupabaseAdmin();
+  if (!admin) {
+    throw new Error("Supabase n'est pas configure.");
+  }
+
+  await ensureSupabaseBucketReady(admin.client, admin.bucket);
+
+  const id = crypto.randomUUID().slice(0, 8);
+  const base = safeBaseName(audioName || "track.mp3");
+  const finalBase = `${base}-${id}`;
+
+  const audioPath = `audio/${finalBase}.mp3`;
+  const { data: audioSigned, error: audioError } = await admin.client.storage
+    .from(admin.bucket)
+    .createSignedUploadUrl(audioPath);
+
+  if (audioError || !audioSigned) {
+    throw audioError ?? new Error("Impossible de preparer l'upload audio.");
+  }
+
+  let coverTarget: { path: string; token: string } | null = null;
+  if (coverName) {
+    const coverPath = `cover/${finalBase}${getCoverExtension(coverName)}`;
+    const { data: coverSigned, error: coverError } = await admin.client.storage
+      .from(admin.bucket)
+      .createSignedUploadUrl(coverPath);
+
+    if (coverError || !coverSigned) {
+      throw coverError ?? new Error("Impossible de preparer l'upload de la cover.");
+    }
+
+    coverTarget = { path: coverPath, token: coverSigned.token };
+  }
+
+  return {
+    bucket: admin.bucket,
+    audio: { path: audioPath, token: audioSigned.token },
+    cover: coverTarget,
+  };
+}
+
+export async function finalizeSupabaseTrackUpload(params: {
+  audioPath: string;
+  coverPath: string | null;
+  owner: SupabaseTrackOwner;
+}) {
+  const admin = getSupabaseAdmin();
+  if (!admin) {
+    throw new Error("Supabase n'est pas configure.");
+  }
+
+  if (!params.audioPath.startsWith("audio/") || (params.coverPath && !params.coverPath.startsWith("cover/"))) {
+    throw new Error("Chemin de fichier invalide.");
+  }
+
+  const audioPublicUrl = getPublicUrl(admin.client.storage.from(admin.bucket).getPublicUrl(params.audioPath).data);
+  const coverPublicUrl = params.coverPath
+    ? getPublicUrl(admin.client.storage.from(admin.bucket).getPublicUrl(params.coverPath).data)
+    : null;
+
+  const createdAt = Date.now();
+  const fileName = params.audioPath.split("/").pop() || "track.mp3";
+  const base = fileName.replace(/\.mp3$/i, "").replace(/-\w{8}$/i, "");
+
+  const catalog = await readSupabaseCatalog();
+  const nextTrack: SupabaseCatalogTrack = {
+    title: base.replace(/-/g, " "),
+    artist: "Local upload",
+    src: audioPublicUrl,
+    cover: coverPublicUrl,
+    createdAt,
+    ownerDisplayName: params.owner.displayName?.trim() || null,
+    ownerEmail: params.owner.email?.trim() || null,
+    ownerId: params.owner.id,
+    updatedAt: createdAt,
+    fileName,
+    audioPath: params.audioPath,
+    coverPath: params.coverPath,
+  };
+
+  catalog.tracks = dedupeCatalogTracks([nextTrack, ...catalog.tracks]);
+  await writeSupabaseCatalog(catalog);
+
+  const libraryTrack = toLibraryTrack(nextTrack);
+  if (!libraryTrack) {
+    throw new Error("Impossible de construire la piste partagee.");
+  }
+
+  return libraryTrack;
+}
+
 export async function saveSupabaseTrackMeta(
   src: string,
   title: string,

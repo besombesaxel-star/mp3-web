@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import AlbumCard from "../AlbumCard";
 import { useAuth } from "../AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
-import { usePlayer } from "../PlayerContext";
 import { dispatchTracksUpdated, subscribeTracksUpdated } from "../tracksSync";
 import { COVER_SCROLL_TRANSFORM, useCoverScrollEffect } from "../useCoverScrollEffect";
 import { useFocusTrap } from "../useFocusTrap";
@@ -37,24 +36,15 @@ type DeleteTrackResponse = {
   error?: string;
 };
 
-type SortKey = "added_desc" | "title_asc" | "title_desc" | "artist_asc" | "artist_desc";
-
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
 export default function LibraryPage() {
   const { accessToken, isAuthenticated } = useAuth();
-  const { isFavorite, addToQueueEnd, toggleFavorite } = usePlayer();
-  const [selectMode, setSelectMode] = useState(false);
-  const [selectedSrcs, setSelectedSrcs] = useState<Set<string>>(new Set());
   const [tracks, setTracks] = useState<ApiTrack[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [query, setQuery] = useState("");
-  const [artistFilter, setArtistFilter] = useState("all");
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const [sortBy, setSortBy] = useState<SortKey>("added_desc");
 
   const [editing, setEditing] = useState<ApiTrack | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -66,40 +56,6 @@ export default function LibraryPage() {
   const dialogRef = useRef<HTMLDivElement | null>(null);
   useCoverScrollEffect(pageRef);
   useFocusTrap(Boolean(editing), dialogRef);
-
-  function toggleSelect(src: string) {
-    setSelectedSrcs((prev) => {
-      const next = new Set(prev);
-      if (next.has(src)) next.delete(src);
-      else next.add(src);
-      return next;
-    });
-  }
-
-  function exitSelectMode() {
-    setSelectMode(false);
-    setSelectedSrcs(new Set());
-  }
-
-  function selectedAsTracks() {
-    return tracks.filter((t) => selectedSrcs.has(t.src));
-  }
-
-  function addSelectedToQueue() {
-    for (const t of selectedAsTracks()) {
-      addToQueueEnd({ title: t.title, artist: t.artist, src: t.src, cover: t.cover ?? undefined });
-    }
-    exitSelectMode();
-  }
-
-  function favoriteSelected() {
-    for (const t of selectedAsTracks()) {
-      if (!isFavorite(t.src)) {
-        toggleFavorite({ title: t.title, artist: t.artist, src: t.src, cover: t.cover ?? undefined });
-      }
-    }
-    exitSelectMode();
-  }
 
   const loadTracks = useCallback(async () => {
     try {
@@ -246,142 +202,15 @@ export default function LibraryPage() {
     }
   }
 
-  const artists = useMemo(() => {
-    const set = new Set<string>();
-    for (const track of tracks) {
-      const artist = (track.artist ?? "").trim();
-      if (artist) set.add(artist);
-    }
-    return [...set].sort((a, b) => a.localeCompare(b, "fr"));
-  }, [tracks]);
-
-  const visibleTracks = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-
-    const filtered = tracks.filter((track) => {
-      if (artistFilter !== "all" && track.artist !== artistFilter) return false;
-      if (favoritesOnly && !isFavorite(track.src)) return false;
-      if (!normalizedQuery) return true;
-
-      const text = `${track.title} ${track.artist ?? ""}`.toLowerCase();
-      return text.includes(normalizedQuery);
-    });
-
-    const sorted = [...filtered];
-    sorted.sort((a, b) => {
-      if (sortBy === "added_desc") return 0;
-      if (sortBy === "title_asc") return a.title.localeCompare(b.title, "fr");
-      if (sortBy === "title_desc") return b.title.localeCompare(a.title, "fr");
-      if (sortBy === "artist_asc") return (a.artist ?? "").localeCompare(b.artist ?? "", "fr");
-      return (b.artist ?? "").localeCompare(a.artist ?? "", "fr");
-    });
-
-    return sorted;
-  }, [tracks, artistFilter, favoritesOnly, query, sortBy, isFavorite]);
-
   return (
     <div ref={pageRef} className="p-6 pb-[calc(17.5rem+env(safe-area-inset-bottom))] sm:pb-28">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-white">Bibliotheque</h1>
-          <p className="text-sm text-white/40 mt-1">
-            {isAuthenticated
-              ? "Survole une cover pour modifier le titre ou l'artiste."
-              : "Connecte-toi pour modifier le titre ou l'artiste."}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
-            aria-pressed={selectMode}
-            className={[
-              "h-9 px-3 rounded-lg text-sm font-medium transition",
-              selectMode ? "bg-white/15 text-white border border-white/30" : "bg-white/5 text-white/80 border border-white/10 hover:bg-white/10",
-            ].join(" ")}
-            type="button"
-          >
-            {selectMode ? "Annuler" : "Selectionner"}
-          </button>
-
-          <button
-            onClick={loadTracks}
-            className="h-9 px-3 rounded-lg bg-white text-black text-sm font-medium hover:opacity-90"
-            type="button"
-          >
-            Recharger
-          </button>
-        </div>
-      </div>
-
-      <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <label htmlFor="library-query" className="mb-1 block text-xs text-white/45">
-              Recherche
-            </label>
-            <input
-              id="library-query"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Titre ou artiste..."
-              className="w-full rounded-xl border border-white/10 bg-[#0E0E14] px-3 py-2 text-base sm:text-sm text-white/90 outline-none"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="library-artist" className="mb-1 block text-xs text-white/45">
-              Artiste
-            </label>
-            <select
-              id="library-artist"
-              value={artistFilter}
-              onChange={(e) => setArtistFilter(e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-[#0E0E14] px-3 py-2 text-base sm:text-sm text-white/90 outline-none"
-            >
-              <option value="all">Tous</option>
-              {artists.map((artist) => (
-                <option key={artist} value={artist}>
-                  {artist}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="library-sort" className="mb-1 block text-xs text-white/45">
-              Trier par
-            </label>
-            <select
-              id="library-sort"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortKey)}
-              className="w-full rounded-xl border border-white/10 bg-[#0E0E14] px-3 py-2 text-base sm:text-sm text-white/90 outline-none"
-            >
-              <option value="added_desc">Recents</option>
-              <option value="title_asc">Titre A-Z</option>
-              <option value="title_desc">Titre Z-A</option>
-              <option value="artist_asc">Artiste A-Z</option>
-              <option value="artist_desc">Artiste Z-A</option>
-            </select>
-          </div>
-
-          <div className="flex items-end">
-            <button
-              type="button"
-              onClick={() => setFavoritesOnly((value) => !value)}
-              aria-pressed={favoritesOnly}
-              className={[
-                "h-10 w-full rounded-xl border text-sm transition",
-                favoritesOnly
-                  ? "border-white/30 bg-white/15 text-white"
-                  : "border-white/10 bg-white/5 text-white/80 hover:bg-white/10",
-              ].join(" ")}
-            >
-              {favoritesOnly ? "Favoris uniquement: ON" : "Favoris uniquement: OFF"}
-            </button>
-          </div>
-        </div>
+      <div className="mb-4">
+        <h1 className="text-2xl font-semibold text-white">Bibliotheque</h1>
+        <p className="text-sm text-white/40 mt-1">
+          {isAuthenticated
+            ? "Survole une cover pour modifier le titre ou l'artiste."
+            : "Connecte-toi pour modifier le titre ou l'artiste."}
+        </p>
       </div>
 
       {loading ? <p className="text-white/60">Chargement...</p> : null}
@@ -399,12 +228,9 @@ export default function LibraryPage() {
       {!loading && !error && tracks.length === 0 ? (
         <p className="text-white/60">Aucun son pour le moment.</p>
       ) : null}
-      {!loading && !error && tracks.length > 0 && visibleTracks.length === 0 ? (
-        <p className="text-white/55 mb-4">Aucun resultat avec ces filtres.</p>
-      ) : null}
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-        {visibleTracks.map((track, i) => (
+        {tracks.map((track, i) => (
           <AlbumCard
             key={track.src}
             title={track.title}
@@ -421,36 +247,9 @@ export default function LibraryPage() {
             hoverEffect="shrink"
             coverTransform={COVER_SCROLL_TRANSFORM}
             animationDelay={`${Math.min(i, 9) * 40}ms`}
-            selectMode={selectMode}
-            selected={selectedSrcs.has(track.src)}
-            onToggleSelect={() => toggleSelect(track.src)}
           />
         ))}
       </div>
-
-      {selectMode && selectedSrcs.size > 0 ? (
-        <div className="fixed bottom-[calc(17.5rem+env(safe-area-inset-bottom))] sm:bottom-8 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-lg">
-          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] px-4 py-3">
-            <p className="text-sm text-white/85 shrink-0">{selectedSrcs.size} selectionne{selectedSrcs.size > 1 ? "s" : ""}</p>
-            <div className="flex-1 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={favoriteSelected}
-                className="h-9 px-3 rounded-full bg-white/10 text-white text-xs font-medium hover:bg-white/15 transition"
-              >
-                Favoris
-              </button>
-              <button
-                type="button"
-                onClick={addSelectedToQueue}
-                className="h-9 px-3 rounded-full bg-white text-black text-xs font-medium hover:opacity-90 transition"
-              >
-                Ajouter a la file
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {editing ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">

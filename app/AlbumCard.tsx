@@ -134,7 +134,7 @@ export default function AlbumCard({
         </button>
       ) : null}
 
-      <div className="mt-3 pointer-events-none transition-transform duration-200 group-hover:-translate-y-0.5">
+      <div className="mt-1.5 sm:mt-3 pointer-events-none transition-transform duration-200 group-hover:-translate-y-0.5">
         <p className="text-sm text-white/90 truncate transition-colors duration-200 group-hover:text-white">{title}</p>
         <p className="text-xs text-white/45 truncate transition-colors duration-200 group-hover:text-white/60">{subtitle}</p>
       </div>

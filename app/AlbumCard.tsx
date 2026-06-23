@@ -14,6 +14,9 @@ type AlbumCardProps = {
   hoverEffect?: "grow" | "shrink";
   coverTransform?: string;
   animationDelay?: string;
+  selectMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 };
 
 export default function AlbumCard({
@@ -24,6 +27,9 @@ export default function AlbumCard({
   hoverEffect = "grow",
   coverTransform,
   animationDelay,
+  selectMode = false,
+  selected = false,
+  onToggleSelect,
 }: AlbumCardProps) {
   const { playTrack } = usePlayer();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -34,10 +40,31 @@ export default function AlbumCard({
       className="group text-left relative mp3-fade-up"
       style={animationDelay ? { animationDelay } : undefined}
     >
+      {selectMode ? (
+        <button
+          type="button"
+          onClick={() => onToggleSelect?.()}
+          aria-label={selected ? "Deselectionner" : "Selectionner"}
+          aria-pressed={selected}
+          className={[
+            "absolute top-3 left-3 z-10 h-7 w-7 rounded-full border flex items-center justify-center transition",
+            selected ? "bg-white border-white text-black" : "bg-black/55 border-white/30 text-transparent",
+          ].join(" ")}
+        >
+          <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={3}>
+            <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      ) : null}
+
       <button
         type="button"
         onClick={() => {
           if (longPress.didLongPress()) return;
+          if (selectMode) {
+            onToggleSelect?.();
+            return;
+          }
           playTrack(track);
         }}
         onTouchStart={longPress.onTouchStart}
@@ -47,7 +74,10 @@ export default function AlbumCard({
         onContextMenu={longPress.onContextMenu}
         title="Lire"
         aria-label={`Lire ${title}`}
-        className="cursor-pointer w-full text-left"
+        className={[
+          "cursor-pointer w-full text-left",
+          selected ? "ring-2 ring-white rounded-3xl" : "",
+        ].join(" ")}
       >
         <div
           data-scroll-cover="1"

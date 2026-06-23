@@ -1843,6 +1843,19 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     });
   }, [track?.title, track?.artist, track?.cover]);
 
+  // titre de l'onglet : montre ce qui joue sans avoir besoin de cliquer sur l'onglet
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    if (!track) {
+      document.title = ".mp3";
+      return;
+    }
+
+    const icon = playing ? "▶" : "❚❚";
+    document.title = `${icon} ${track.title}${track.artist ? ` - ${track.artist}` : ""} . mp3`;
+  }, [track?.title, track?.artist, playing]);
+
   function createQueueSnapshot() {
     return {
       tracks: [...tracks],

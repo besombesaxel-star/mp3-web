@@ -88,6 +88,21 @@ export default function UploadPage() {
   const [artist, setArtist] = useState("Local upload");
   const [coverPreview, setCoverPreview] = useState<string>("");
   const [existingNames, setExistingNames] = useState<string[]>([]);
+  const [dragActive, setDragActive] = useState(false);
+
+  function onDropAudio(e: React.DragEvent) {
+    e.preventDefault();
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) setAudio(file);
+  }
+
+  function onDropCover(e: React.DragEvent) {
+    e.preventDefault();
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) setCover(file);
+  }
 
   async function loadExistingNames() {
     const res = await fetch("/api/tracks", { cache: "no-store" });
@@ -260,14 +275,28 @@ export default function UploadPage() {
               <label htmlFor="audio-input" className="block text-sm text-white/70 mb-2">
                 1) Selectionne ton MP3
               </label>
-              <input
-                id="audio-input"
-                type="file"
-                accept=".mp3,audio/mpeg"
-                onChange={(e) => setAudio(e.target.files?.[0] ?? null)}
-                className="block w-full text-sm text-white/70"
-                disabled={busy || loading || !isAuthenticated}
-              />
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragActive(true);
+                }}
+                onDragLeave={() => setDragActive(false)}
+                onDrop={onDropAudio}
+                className={[
+                  "rounded-2xl border-2 border-dashed p-4 transition",
+                  dragActive ? "border-white/40 bg-white/8" : "border-white/15",
+                ].join(" ")}
+              >
+                <input
+                  id="audio-input"
+                  type="file"
+                  accept=".mp3,audio/mpeg"
+                  onChange={(e) => setAudio(e.target.files?.[0] ?? null)}
+                  className="block w-full text-sm text-white/70"
+                  disabled={busy || loading || !isAuthenticated}
+                />
+                <p className="mt-2 text-xs text-white/30">ou glisse-depose le fichier ici</p>
+              </div>
 
               {audio ? (
                 <div className="mt-2 text-xs text-white/50">
@@ -295,14 +324,28 @@ export default function UploadPage() {
               <label htmlFor="cover-input" className="block text-sm text-white/70 mb-2">
                 2) Ajoute une cover (optionnel)
               </label>
-              <input
-                id="cover-input"
-                type="file"
-                accept="image/*,.jpg,.jpeg,.png,.webp"
-                onChange={(e) => setCover(e.target.files?.[0] ?? null)}
-                className="block w-full text-sm text-white/70"
-                disabled={busy || loading || !isAuthenticated}
-              />
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragActive(true);
+                }}
+                onDragLeave={() => setDragActive(false)}
+                onDrop={onDropCover}
+                className={[
+                  "rounded-2xl border-2 border-dashed p-4 transition",
+                  dragActive ? "border-white/40 bg-white/8" : "border-white/15",
+                ].join(" ")}
+              >
+                <input
+                  id="cover-input"
+                  type="file"
+                  accept="image/*,.jpg,.jpeg,.png,.webp"
+                  onChange={(e) => setCover(e.target.files?.[0] ?? null)}
+                  className="block w-full text-sm text-white/70"
+                  disabled={busy || loading || !isAuthenticated}
+                />
+                <p className="mt-2 text-xs text-white/30">ou glisse-depose l&apos;image ici</p>
+              </div>
 
               <div className="mt-4 flex items-start gap-4">
                 <div className="h-28 w-28 rounded-2xl overflow-hidden border border-white/10 bg-[#111118] shrink-0">

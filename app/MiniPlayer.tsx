@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Bell,
+  GripVertical,
   Heart,
   ListMusic,
   Maximize2,
@@ -79,6 +80,8 @@ export default function MiniPlayer() {
     toggleFavorite,
     playIndex,
     clearQueue,
+    moveInQueue,
+    removeFromQueue,
     achievementToast,
     dismissAchievementToast,
     undoToast,
@@ -96,6 +99,40 @@ export default function MiniPlayer() {
   useFocusTrap(queueOpen, drawerRef);
 
   const nowPlayingLongPress = useLongPress({ onLongPress: () => setNowPlayingMenuOpen(true) });
+
+  const [progressHover, setProgressHover] = useState<{ x: number; time: number } | null>(null);
+
+  function onProgressHover(e: React.MouseEvent<HTMLInputElement>) {
+    if (!duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    setProgressHover({ x: e.clientX - rect.left, time: ratio * duration });
+  }
+
+  const [dragQueueIndex, setDragQueueIndex] = useState<number | null>(null);
+  const [dragOverQueueIndex, setDragOverQueueIndex] = useState<number | null>(null);
+
+  function onQueueRowDragStart(absoluteIndex: number) {
+    setDragQueueIndex(absoluteIndex);
+  }
+
+  function onQueueRowDragOver(e: React.DragEvent, absoluteIndex: number) {
+    e.preventDefault();
+    if (dragOverQueueIndex !== absoluteIndex) setDragOverQueueIndex(absoluteIndex);
+  }
+
+  function onQueueRowDrop(absoluteIndex: number) {
+    if (dragQueueIndex !== null && dragQueueIndex !== absoluteIndex) {
+      moveInQueue(dragQueueIndex, absoluteIndex);
+    }
+    setDragQueueIndex(null);
+    setDragOverQueueIndex(null);
+  }
+
+  function onQueueRowDragEnd() {
+    setDragQueueIndex(null);
+    setDragOverQueueIndex(null);
+  }
 
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -515,7 +552,7 @@ export default function MiniPlayer() {
                 </div>
               </div>
 
-              <div className="max-h-[390px] overflow-y-auto p-3 space-y-3">
+              <div className="max-h-[420px] overflow-y-auto p-3 space-y-3">
                 {currentQueueTrack ? (
                   <div className="space-y-2">
                     <p className="px-2 text-xs text-white/40">En cours</p>
@@ -537,6 +574,63 @@ export default function MiniPlayer() {
                   </div>
                 ) : null}
 
+                {tracks.length > index + 1 ? (
+                  <div className="space-y-2">
+                    <p className="px-2 text-xs text-white/40">A suivre</p>
+                    <div className="space-y-1.5">
+                      {tracks.slice(index + 1).map((queuedTrack, offset) => {
+                        const absoluteIndex = index + 1 + offset;
+                        return (
+                          <div
+                            key={`${queuedTrack.src}-${absoluteIndex}`}
+                            draggable
+                            onDragStart={() => onQueueRowDragStart(absoluteIndex)}
+                            onDragOver={(e) => onQueueRowDragOver(e, absoluteIndex)}
+                            onDrop={() => onQueueRowDrop(absoluteIndex)}
+                            onDragEnd={onQueueRowDragEnd}
+                            className={[
+                              "flex items-center gap-2 rounded-2xl border px-2 py-2 transition",
+                              dragOverQueueIndex === absoluteIndex
+                                ? "border-white/30 bg-white/10"
+                                : "border-white/8 bg-white/[0.03] hover:bg-white/6",
+                              dragQueueIndex === absoluteIndex ? "opacity-40" : "",
+                            ].join(" ")}
+                          >
+                            <span className="cursor-grab active:cursor-grabbing text-white/25 hover:text-white/55 transition shrink-0">
+                              <GripVertical size={15} />
+                            </span>
+
+                            <button
+                              type="button"
+                              className="min-w-0 flex-1 text-left"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                playIndex(absoluteIndex);
+                              }}
+                              title="Lire ce morceau"
+                            >
+                              <p className="text-sm text-white/85 truncate">{queuedTrack.title}</p>
+                              <p className="text-xs text-white/40 truncate">{queuedTrack.artist ?? "-"}</p>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeFromQueue(queuedTrack.src);
+                              }}
+                              className="h-7 w-7 rounded-full text-white/30 hover:text-white/70 hover:bg-white/8 transition shrink-0"
+                              title="Retirer de la file"
+                              aria-label="Retirer de la file"
+                            >
+                              <X size={13} className="mx-auto" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               <div className="px-4 py-3 border-t border-white/10 flex items-center justify-end">
@@ -875,20 +969,32 @@ export default function MiniPlayer() {
             <div className="hidden md:flex items-center gap-3 w-[240px]">
               <span className="text-[11px] text-white/40 tabular-nums w-[42px] text-right">{formatTime(currentTime)}</span>
 
-              <input
-                type="range"
-                min={0}
-                max={1000}
-                value={Math.round((progress || 0) * 1000)}
-                onChange={(e) => seekTo(Number(e.target.value) / 1000)}
-                className="mp3-slider flex-1"
-                style={{
-                  background: `linear-gradient(to right, rgba(255,255,255,0.95) ${Math.round((progress || 0) * 100)}%, rgba(255,255,255,0.14) ${Math.round((progress || 0) * 100)}%)`,
-                }}
-                aria-label="Progression"
-                disabled={!track}
-                title="Progression"
-              />
+              <div className="relative flex-1">
+                {progressHover ? (
+                  <div
+                    className="pointer-events-none absolute -top-7 -translate-x-1/2 rounded-md border border-white/15 bg-black/90 px-1.5 py-0.5 text-[10px] text-white/85 tabular-nums"
+                    style={{ left: progressHover.x }}
+                  >
+                    {formatTime(progressHover.time)}
+                  </div>
+                ) : null}
+                <input
+                  type="range"
+                  min={0}
+                  max={1000}
+                  value={Math.round((progress || 0) * 1000)}
+                  onChange={(e) => seekTo(Number(e.target.value) / 1000)}
+                  onMouseMove={onProgressHover}
+                  onMouseLeave={() => setProgressHover(null)}
+                  className="mp3-slider w-full"
+                  style={{
+                    background: `linear-gradient(to right, rgba(255,255,255,0.95) ${Math.round((progress || 0) * 100)}%, rgba(255,255,255,0.14) ${Math.round((progress || 0) * 100)}%)`,
+                  }}
+                  aria-label="Progression"
+                  disabled={!track}
+                  title="Progression"
+                />
+              </div>
 
               <span className="text-[11px] text-white/40 tabular-nums w-[42px]">{formatTime(duration)}</span>
             </div>

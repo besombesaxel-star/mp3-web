@@ -128,12 +128,15 @@ function EmptyState({ icon, text }: { icon: ReactNode; text: string }) {
 }
 
 function TrackRow({
-  track, idx, queue, active, query, isFav, onPlay, onHover,
+  track, idx, queue, active, query, isFav, onPlay, onHover, selectMode, selected, onToggleSelect,
 }: {
   track: TrackWithCover; idx: number; queue: TrackWithCover[]; active: boolean;
   query: string; isFav: boolean;
   onPlay: (q: TrackWithCover[], i: number) => void;
   onHover: (i: number) => void;
+  selectMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const longPress = useLongPress({ onLongPress: () => setMenuOpen(true) });
@@ -146,6 +149,10 @@ function TrackRow({
         aria-selected={active}
         onClick={() => {
           if (longPress.didLongPress()) return;
+          if (selectMode) {
+            onToggleSelect?.();
+            return;
+          }
           onPlay(queue, idx);
         }}
         onMouseEnter={() => onHover(idx)}
@@ -159,6 +166,19 @@ function TrackRow({
           active ? "bg-white/10" : "hover:bg-white/5",
         ].join(" ")}
       >
+        {selectMode ? (
+          <span
+            className={[
+              "h-5 w-5 rounded-full border flex items-center justify-center shrink-0 transition",
+              selected ? "bg-white border-white text-black" : "border-white/25 text-transparent",
+            ].join(" ")}
+          >
+            <svg viewBox="0 0 24 24" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={3}>
+              <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        ) : null}
+
         <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-white/5">
           {track.cover ? (
             <Image src={track.cover} alt={track.title} fill className="object-cover" sizes="40px" />
@@ -266,7 +286,7 @@ const TABS: { value: SearchTab; label: string }[] = [
 ];
 
 export default function SearchPage() {
-  const { setQueueAndPlay, isFavorite } = usePlayer();
+  const { setQueueAndPlay, isFavorite, addToQueueEnd, toggleFavorite } = usePlayer();
 
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<SearchTab>("all");
@@ -276,6 +296,36 @@ export default function SearchPage() {
   const [tracks, setTracks] = useState<TrackWithCover[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedSrcs, setSelectedSrcs] = useState<Set<string>>(new Set());
+
+  function toggleSelect(src: string) {
+    setSelectedSrcs((prev) => {
+      const next = new Set(prev);
+      if (next.has(src)) next.delete(src);
+      else next.add(src);
+      return next;
+    });
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false);
+    setSelectedSrcs(new Set());
+  }
+
+  function addSelectedToQueue() {
+    for (const t of tracks) {
+      if (selectedSrcs.has(t.src)) addToQueueEnd(t);
+    }
+    exitSelectMode();
+  }
+
+  function favoriteSelected() {
+    for (const t of tracks) {
+      if (selectedSrcs.has(t.src) && !isFavorite(t.src)) toggleFavorite(t);
+    }
+    exitSelectMode();
+  }
 
   async function loadTracks() {
     try {
@@ -406,6 +456,9 @@ export default function SearchPage() {
             isFav={isFavorite(t.src)}
             onPlay={setQueueAndPlay}
             onHover={setActiveIndex}
+            selectMode={selectMode}
+            selected={selectedSrcs.has(t.src)}
+            onToggleSelect={() => toggleSelect(t.src)}
           />
         ))}
       </div>
@@ -535,9 +588,22 @@ export default function SearchPage() {
       {/* Header */}
       <div className="mb-6 flex items-end justify-between mp3-fade-up">
         <h2 className="text-3xl font-light">Recherche</h2>
-        <span className="text-sm text-white/35">
-          {loading ? "Chargement…" : error ? "Erreur" : `${tracks.length} son${tracks.length > 1 ? "s" : ""}`}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-white/35">
+            {loading ? "Chargement…" : error ? "Erreur" : `${tracks.length} son${tracks.length > 1 ? "s" : ""}`}
+          </span>
+          <button
+            type="button"
+            onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+            aria-pressed={selectMode}
+            className={[
+              "h-8 px-3 rounded-lg text-xs font-medium transition",
+              selectMode ? "bg-white/15 text-white border border-white/30" : "bg-white/5 text-white/70 border border-white/10 hover:bg-white/10",
+            ].join(" ")}
+          >
+            {selectMode ? "Annuler" : "Selectionner"}
+          </button>
+        </div>
       </div>
 
       {/* Search input */}
@@ -638,6 +704,30 @@ export default function SearchPage() {
       )}
 
       {renderContent()}
+
+      {selectMode && selectedSrcs.size > 0 ? (
+        <div className="fixed bottom-[calc(17.5rem+env(safe-area-inset-bottom))] sm:bottom-8 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-lg">
+          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] px-4 py-3">
+            <p className="text-sm text-white/85 shrink-0">{selectedSrcs.size} selectionne{selectedSrcs.size > 1 ? "s" : ""}</p>
+            <div className="flex-1 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={favoriteSelected}
+                className="h-9 px-3 rounded-full bg-white/10 text-white text-xs font-medium hover:bg-white/15 transition"
+              >
+                Favoris
+              </button>
+              <button
+                type="button"
+                onClick={addSelectedToQueue}
+                className="h-9 px-3 rounded-full bg-white text-black text-xs font-medium hover:opacity-90 transition"
+              >
+                Ajouter a la file
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

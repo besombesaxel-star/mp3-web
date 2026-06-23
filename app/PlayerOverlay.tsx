@@ -193,6 +193,15 @@ export default function PlayerOverlay() {
   const [dragDownY, setDragDownY] = useState(0);
   const dragStartYRef = useRef<number | null>(null);
 
+  const [progressHover, setProgressHover] = useState<{ x: number; time: number } | null>(null);
+
+  function onProgressHover(e: React.MouseEvent) {
+    if (!duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    setProgressHover({ x: e.clientX - rect.left, time: ratio * duration });
+  }
+
   const [heartBurst, setHeartBurst] = useState(false);
   const lastCoverTapRef = useRef(0);
 
@@ -675,8 +684,18 @@ export default function PlayerOverlay() {
                     const ratio = rect.width > 0 ? x / rect.width : 0;
                     seekTo(ratio);
                   }}
-                  title="Cliquer pour se dÃ©placer"
+                  onMouseMove={onProgressHover}
+                  onMouseLeave={() => setProgressHover(null)}
+                  title="Cliquer pour se deplacer"
                 >
+                  {progressHover ? (
+                    <div
+                      className="pointer-events-none absolute -top-8 -translate-x-1/2 rounded-md border border-white/15 bg-black/90 px-2 py-1 text-xs text-white/85 tabular-nums"
+                      style={{ left: progressHover.x }}
+                    >
+                      {formatTime(progressHover.time)}
+                    </div>
+                  ) : null}
                   <div
                     className="h-full transition-[width] duration-150 ease-out"
                     style={{

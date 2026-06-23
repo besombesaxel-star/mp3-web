@@ -46,7 +46,10 @@ export function useLongPress({ onLongPress, delay = 480 }: LongPressOptions) {
     onTouchMove: (e: React.TouchEvent) => move(e.touches[0].clientX, e.touches[0].clientY),
     onTouchEnd: end,
     onTouchCancel: end,
-    onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+    onContextMenu: (e: React.MouseEvent) => {
+      e.preventDefault();
+      onLongPress();
+    },
     didLongPress: () => firedRef.current,
   };
 }

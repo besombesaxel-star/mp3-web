@@ -45,7 +45,9 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 export default function LibraryPage() {
   const { accessToken, isAuthenticated } = useAuth();
-  const { isFavorite } = usePlayer();
+  const { isFavorite, addToQueueEnd, toggleFavorite } = usePlayer();
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedSrcs, setSelectedSrcs] = useState<Set<string>>(new Set());
   const [tracks, setTracks] = useState<ApiTrack[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -64,6 +66,40 @@ export default function LibraryPage() {
   const dialogRef = useRef<HTMLDivElement | null>(null);
   useCoverScrollEffect(pageRef);
   useFocusTrap(Boolean(editing), dialogRef);
+
+  function toggleSelect(src: string) {
+    setSelectedSrcs((prev) => {
+      const next = new Set(prev);
+      if (next.has(src)) next.delete(src);
+      else next.add(src);
+      return next;
+    });
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false);
+    setSelectedSrcs(new Set());
+  }
+
+  function selectedAsTracks() {
+    return tracks.filter((t) => selectedSrcs.has(t.src));
+  }
+
+  function addSelectedToQueue() {
+    for (const t of selectedAsTracks()) {
+      addToQueueEnd({ title: t.title, artist: t.artist, src: t.src, cover: t.cover ?? undefined });
+    }
+    exitSelectMode();
+  }
+
+  function favoriteSelected() {
+    for (const t of selectedAsTracks()) {
+      if (!isFavorite(t.src)) {
+        toggleFavorite({ title: t.title, artist: t.artist, src: t.src, cover: t.cover ?? undefined });
+      }
+    }
+    exitSelectMode();
+  }
 
   const loadTracks = useCallback(async () => {
     try {
@@ -255,13 +291,27 @@ export default function LibraryPage() {
           </p>
         </div>
 
-        <button
-          onClick={loadTracks}
-          className="h-9 px-3 rounded-lg bg-white text-black text-sm font-medium hover:opacity-90"
-          type="button"
-        >
-          Recharger
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+            aria-pressed={selectMode}
+            className={[
+              "h-9 px-3 rounded-lg text-sm font-medium transition",
+              selectMode ? "bg-white/15 text-white border border-white/30" : "bg-white/5 text-white/80 border border-white/10 hover:bg-white/10",
+            ].join(" ")}
+            type="button"
+          >
+            {selectMode ? "Annuler" : "Selectionner"}
+          </button>
+
+          <button
+            onClick={loadTracks}
+            className="h-9 px-3 rounded-lg bg-white text-black text-sm font-medium hover:opacity-90"
+            type="button"
+          >
+            Recharger
+          </button>
+        </div>
       </div>
 
       <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4">
@@ -371,9 +421,36 @@ export default function LibraryPage() {
             hoverEffect="shrink"
             coverTransform={COVER_SCROLL_TRANSFORM}
             animationDelay={`${Math.min(i, 9) * 40}ms`}
+            selectMode={selectMode}
+            selected={selectedSrcs.has(track.src)}
+            onToggleSelect={() => toggleSelect(track.src)}
           />
         ))}
       </div>
+
+      {selectMode && selectedSrcs.size > 0 ? (
+        <div className="fixed bottom-[calc(17.5rem+env(safe-area-inset-bottom))] sm:bottom-8 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-lg">
+          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] px-4 py-3">
+            <p className="text-sm text-white/85 shrink-0">{selectedSrcs.size} selectionne{selectedSrcs.size > 1 ? "s" : ""}</p>
+            <div className="flex-1 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={favoriteSelected}
+                className="h-9 px-3 rounded-full bg-white/10 text-white text-xs font-medium hover:bg-white/15 transition"
+              >
+                Favoris
+              </button>
+              <button
+                type="button"
+                onClick={addSelectedToQueue}
+                className="h-9 px-3 rounded-full bg-white text-black text-xs font-medium hover:opacity-90 transition"
+              >
+                Ajouter a la file
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {editing ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">

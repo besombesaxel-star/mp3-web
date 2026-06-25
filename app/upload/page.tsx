@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Image as ImageIcon, UploadCloud } from "lucide-react";
 import { useAuth } from "../AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { dispatchTracksUpdated, subscribeTracksUpdated } from "../tracksSync";
@@ -382,7 +383,8 @@ export default function UploadPage() {
               <label htmlFor="audio-input" className="block text-sm text-white/70 mb-2">
                 1) Selectionne ton MP3
               </label>
-              <div
+              <label
+                htmlFor="audio-input"
                 onDragOver={(e) => {
                   e.preventDefault();
                   setDragActive(true);
@@ -390,20 +392,24 @@ export default function UploadPage() {
                 onDragLeave={() => setDragActive(false)}
                 onDrop={onDropAudio}
                 className={[
-                  "rounded-2xl border-2 border-dashed p-4 transition",
-                  dragActive ? "border-white/40 bg-white/8" : "border-white/15",
+                  "flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-6 md:min-h-[180px] text-center transition cursor-pointer",
+                  dragActive ? "border-white/40 bg-white/8" : "border-white/15 hover:border-white/25 hover:bg-white/[0.03]",
                 ].join(" ")}
               >
+                <UploadCloud size={28} className="text-white/40" />
+                <p className="text-sm text-white/70">
+                  <span className="font-medium text-white/90">Clique pour choisir</span> ou glisse-depose ton MP3 ici
+                </p>
+                <p className="text-xs text-white/30">Fichier .mp3 uniquement</p>
                 <input
                   id="audio-input"
                   type="file"
                   accept=".mp3,audio/mpeg"
                   onChange={(e) => setAudio(e.target.files?.[0] ?? null)}
-                  className="block w-full text-sm text-white/70"
+                  className="sr-only"
                   disabled={busy || loading || !isAuthenticated}
                 />
-                <p className="mt-2 text-xs text-white/30">ou glisse-depose le fichier ici</p>
-              </div>
+              </label>
 
               {audio ? (
                 <div className="mt-2 text-xs text-white/50">
@@ -431,7 +437,8 @@ export default function UploadPage() {
               <label htmlFor="cover-input" className="block text-sm text-white/70 mb-2">
                 2) Ajoute une cover (optionnel)
               </label>
-              <div
+              <label
+                htmlFor="cover-input"
                 onDragOver={(e) => {
                   e.preventDefault();
                   setDragActive(true);
@@ -439,20 +446,24 @@ export default function UploadPage() {
                 onDragLeave={() => setDragActive(false)}
                 onDrop={onDropCover}
                 className={[
-                  "rounded-2xl border-2 border-dashed p-4 transition",
-                  dragActive ? "border-white/40 bg-white/8" : "border-white/15",
+                  "flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-6 md:min-h-[160px] text-center transition cursor-pointer",
+                  dragActive ? "border-white/40 bg-white/8" : "border-white/15 hover:border-white/25 hover:bg-white/[0.03]",
                 ].join(" ")}
               >
+                <ImageIcon size={26} className="text-white/40" />
+                <p className="text-sm text-white/70">
+                  <span className="font-medium text-white/90">Clique pour choisir</span> ou glisse-depose une image ici
+                </p>
+                <p className="text-xs text-white/30">Optionnel - JPG, PNG, WebP</p>
                 <input
                   id="cover-input"
                   type="file"
                   accept="image/*,.jpg,.jpeg,.png,.webp"
                   onChange={(e) => setCover(e.target.files?.[0] ?? null)}
-                  className="block w-full text-sm text-white/70"
+                  className="sr-only"
                   disabled={busy || loading || !isAuthenticated}
                 />
-                <p className="mt-2 text-xs text-white/30">ou glisse-depose l&apos;image ici</p>
-              </div>
+              </label>
 
               <div className="mt-4 flex items-start gap-4">
                 <div className="h-28 w-28 rounded-2xl overflow-hidden border border-white/10 bg-[#111118] shrink-0">

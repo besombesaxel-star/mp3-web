@@ -302,7 +302,7 @@ export default function PublicUserProfilePage() {
 
       {loading ? (
         /* Skeleton */
-        <div className="mx-auto max-w-[520px] space-y-4 mp3-fade-up">
+        <div className="mx-auto max-w-[520px] lg:max-w-[680px] space-y-4 mp3-fade-up">
           <div className="flex flex-col items-center gap-3 py-8">
             <div className="h-24 w-24 rounded-full bg-white/8 animate-pulse" />
             <div className="h-7 w-44 rounded-full bg-white/8 animate-pulse" />
@@ -313,7 +313,7 @@ export default function PublicUserProfilePage() {
           ))}
         </div>
       ) : profile ? (
-        <div className="mx-auto max-w-[520px] space-y-5">
+        <div className="mx-auto max-w-[520px] lg:max-w-[680px] space-y-5">
 
           {/* Avatar + identity */}
           <div className="flex flex-col items-center text-center pt-4 pb-2 mp3-fade-up">
@@ -491,7 +491,7 @@ export default function PublicUserProfilePage() {
           {profile.pinnedTracks.length > 0 && (
             <section className="rounded-3xl border border-white/8 bg-white/[0.03] p-5 mp3-fade-up" style={{ animationDelay: "90ms" }}>
               <p className="text-xs uppercase tracking-[0.22em] text-white/25 mb-4">Sons mis en avant</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
                 {profile.pinnedTracks.map((track, idx) => (
                   <button
                     key={track.src}

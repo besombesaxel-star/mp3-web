@@ -201,11 +201,60 @@ body[data-mp3-theme="ocean"] {
   animation: mp3HeartBurst 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.mp3-ov-volume-slider { -webkit-appearance: none; appearance: none; background: transparent; }
-.mp3-ov-volume-slider::-webkit-slider-runnable-track { height: 4px; border-radius: 999px; background: rgba(255,255,255,0.16); }
-.mp3-ov-volume-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 12px; height: 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.45); background: rgba(255,255,255,0.68); margin-top: -4px; }
-.mp3-ov-volume-slider::-moz-range-track { height: 4px; border-radius: 999px; background: rgba(255,255,255,0.16); }
-.mp3-ov-volume-slider::-moz-range-thumb { width: 12px; height: 12px; border: 1px solid rgba(255,255,255,0.45); border-radius: 999px; background: rgba(255,255,255,0.68); }
+.mp3-ov-volume-slider {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+  transition: height 120ms ease;
+}
+.mp3-ov-volume-slider:hover,
+.mp3-ov-volume-slider:active {
+  height: 8px;
+}
+.mp3-ov-volume-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: transparent;
+}
+.mp3-ov-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  margin-top: -5px;
+  background: #ffffff;
+  border: 2px solid rgba(10, 10, 14, 0.85);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+.mp3-ov-volume-slider:hover::-webkit-slider-thumb,
+.mp3-ov-volume-slider:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.45);
+}
+.mp3-ov-volume-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: transparent;
+}
+.mp3-ov-volume-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 2px solid rgba(10, 10, 14, 0.85);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+.mp3-ov-volume-slider:hover::-moz-range-thumb,
+.mp3-ov-volume-slider:active::-moz-range-thumb {
+  transform: scale(1.15);
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.45);
+}
 
 .mp3-ov-enter    { animation: mp3OvEnter      280ms ease                          both; }
 .mp3-ov-exit     { animation: mp3OvExit       240ms cubic-bezier(0.4, 0, 1, 1)   both; }

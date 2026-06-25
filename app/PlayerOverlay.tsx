@@ -940,11 +940,14 @@ export default function PlayerOverlay() {
                   max={100}
                   value={Math.round(volume * 100)}
                   onChange={(e) => setVolume(Number(e.target.value) / 100)}
-                  className="w-full mp3-ov-volume-slider opacity-45 hover:opacity-60 transition"
+                  className="w-full mp3-ov-volume-slider"
+                  style={{
+                    background: `linear-gradient(to right, ${accent} ${muted ? 0 : Math.round(volume * 100)}%, rgba(255,255,255,0.14) ${muted ? 0 : Math.round(volume * 100)}%)`,
+                  }}
                   aria-label="Volume"
                 />
 
-                <span className="text-xs text-white/35 tabular-nums w-12 text-right">
+                <span className="text-xs text-white/55 tabular-nums w-12 text-right">
                   {Math.round(volume * 100)}
                 </span>
               </div>

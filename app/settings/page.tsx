@@ -12,9 +12,14 @@ function urlBase64ToUint8Array(base64String: string) {
   return Uint8Array.from(rawData, (char) => char.charCodeAt(0));
 }
 
-function SettingsSection({ title, children }: { title: string; children: React.ReactNode }) {
+function SettingsSection({
+  title, children, delay = 0,
+}: { title: string; children: React.ReactNode; delay?: number }) {
   return (
-    <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 mb-5">
+    <section
+      className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 mb-5 mp3-fade-up"
+      style={{ animationDelay: `${delay}ms` }}
+    >
       <p className="text-xs uppercase tracking-[0.22em] text-white/25 mb-4">{title}</p>
       <div className="space-y-4">{children}</div>
     </section>
@@ -175,9 +180,9 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-40">
-      <h2 className="text-3xl font-light mb-8">Parametres</h2>
+      <h2 className="text-3xl font-light mb-8 mp3-fade-up">Parametres</h2>
 
-      <SettingsSection title="Lecture">
+      <SettingsSection title="Lecture" delay={0}>
         <ToggleRow
           label="Transitions douces"
           desc="Fondu audio entre les morceaux."
@@ -204,7 +209,7 @@ export default function SettingsPage() {
         />
       </SettingsSection>
 
-      <SettingsSection title="Egaliseur">
+      <SettingsSection title="Egaliseur" delay={60}>
         <SegmentedRow
           label="Preset"
           value={eqPreset}
@@ -218,7 +223,7 @@ export default function SettingsPage() {
         />
       </SettingsSection>
 
-      <SettingsSection title="Ambiance">
+      <SettingsSection title="Ambiance" delay={120}>
         <SegmentedRow
           label="Theme"
           value={theme}
@@ -231,7 +236,7 @@ export default function SettingsPage() {
         />
       </SettingsSection>
 
-      <SettingsSection title="Confort">
+      <SettingsSection title="Confort" delay={180}>
         <ToggleRow
           label="Sons d'interface"
           desc="Petits sons doux sur les favoris, succes et messages."
@@ -246,7 +251,7 @@ export default function SettingsPage() {
         />
       </SettingsSection>
 
-      <SettingsSection title="Notifications">
+      <SettingsSection title="Notifications" delay={240}>
         {!isAuthenticated ? (
           <p className="text-sm text-white/45">Connecte-toi pour gerer les notifications push.</p>
         ) : !pushSupported ? (

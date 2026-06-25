@@ -39,16 +39,17 @@ function VerticalBars({
     <div>
       {/* Bars */}
       <div className="flex items-end gap-[3px] h-28">
-        {data.map(({ label, value }) => (
+        {data.map(({ label, value }, i) => (
           <div
             key={label}
             title={`${label} · ${value} écoute${value > 1 ? "s" : ""}`}
-            className="flex-1 rounded-t-[3px] transition-all duration-500 cursor-default"
+            className="flex-1 rounded-t-[3px] transition-all duration-500 cursor-default mp3-bar-grow"
             style={{
               height: `${maxValue > 0 ? Math.max((value / maxValue) * 100, value > 0 ? 3 : 0) : 0}%`,
               background: color,
               opacity: value === 0 ? 0.12 : 1,
               minHeight: 2,
+              animationDelay: `${Math.min(i, 23) * 12}ms`,
             }}
           />
         ))}
@@ -84,7 +85,10 @@ function HorizontalBar({
 }) {
   const pct = maxValue > 0 ? (value / maxValue) * 100 : 0;
   return (
-    <div className="flex items-center gap-3">
+    <div
+      className="flex items-center gap-3 mp3-fade-up"
+      style={{ animationDelay: `${Math.min(rank - 1, 9) * 35}ms` }}
+    >
       <span className="text-xs text-white/20 w-4 text-right shrink-0">{rank}</span>
       <div className="w-36 md:w-48 truncate text-sm text-white/75 shrink-0">{label}</div>
       <div className="flex-1 h-1.5 rounded-full bg-white/8 overflow-hidden">
@@ -184,7 +188,7 @@ export default function StatsPage() {
 
   return (
     <div className="max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-40">
-      <h2 className="text-3xl font-light mb-8">Statistiques</h2>
+      <h2 className="text-3xl font-light mb-8 mp3-fade-up">Statistiques</h2>
 
       {stats.totalPlays === 0 ? (
         <p className="text-center text-white/25 text-sm py-32">
@@ -200,8 +204,12 @@ export default function StatsPage() {
               { label: "Temps total", value: formatSeconds(stats.totalListenSeconds) },
               { label: "Sons joués", value: stats.uniqueTracksPlayed },
               { label: "Artistes", value: uniqueArtists },
-            ].map(({ label, value }) => (
-              <div key={label} className="rounded-2xl border border-white/10 bg-white/4 px-4 py-4">
+            ].map(({ label, value }, i) => (
+              <div
+                key={label}
+                className="rounded-2xl border border-white/10 bg-white/4 px-4 py-4 transition hover:-translate-y-0.5 hover:bg-white/6 mp3-pop"
+                style={{ animationDelay: `${i * 50}ms` }}
+              >
                 <p className="text-2xl font-light text-white/90 tabular-nums">{value}</p>
                 <p className="text-xs text-white/35 mt-1">{label}</p>
               </div>
@@ -209,7 +217,7 @@ export default function StatsPage() {
           </div>
 
           {/* Plays per day */}
-          <div className="rounded-2xl border border-white/10 bg-white/3 px-5 py-5">
+          <div className="rounded-2xl border border-white/10 bg-white/3 px-5 py-5 mp3-fade-up" style={{ animationDelay: "120ms" }}>
             <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-4">
               Écoutes · 14 derniers jours
             </p>
@@ -225,7 +233,7 @@ export default function StatsPage() {
           </div>
 
           {/* Hourly distribution */}
-          <div className="rounded-2xl border border-white/10 bg-white/3 px-5 py-5">
+          <div className="rounded-2xl border border-white/10 bg-white/3 px-5 py-5 mp3-fade-up" style={{ animationDelay: "160ms" }}>
             <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-4">
               Distribution horaire
             </p>
@@ -238,7 +246,7 @@ export default function StatsPage() {
           </div>
 
           {/* Top tracks + Top artists */}
-          <div className="grid md:grid-cols-2 gap-5">
+          <div className="grid md:grid-cols-2 gap-5 mp3-fade-up" style={{ animationDelay: "200ms" }}>
             {topTracks.length > 0 && (
               <div className="rounded-2xl border border-white/10 bg-white/3 px-5 py-5">
                 <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-4">
@@ -284,7 +292,7 @@ export default function StatsPage() {
 
           {/* Top tracks this month */}
           {topTracksMonth.length > 0 && (
-            <div className="rounded-2xl border border-white/10 bg-white/3 px-5 py-5">
+            <div className="rounded-2xl border border-white/10 bg-white/3 px-5 py-5 mp3-fade-up" style={{ animationDelay: "240ms" }}>
               <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-4">
                 Top morceaux · 30 derniers jours
               </p>
@@ -306,13 +314,17 @@ export default function StatsPage() {
 
           {/* Recent listening history */}
           {recentHistory.length > 0 && (
-            <div className="rounded-2xl border border-white/10 bg-white/3 px-5 py-5">
+            <div className="rounded-2xl border border-white/10 bg-white/3 px-5 py-5 mp3-fade-up" style={{ animationDelay: "280ms" }}>
               <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-4">
                 Historique récent
               </p>
               <div className="space-y-2.5">
                 {recentHistory.map((play, i) => (
-                  <div key={`${play.src}-${play.playedAt}-${i}`} className="flex items-center justify-between gap-3">
+                  <div
+                    key={`${play.src}-${play.playedAt}-${i}`}
+                    className="flex items-center justify-between gap-3 mp3-fade-up"
+                    style={{ animationDelay: `${280 + Math.min(i, 14) * 20}ms` }}
+                  >
                     <div className="min-w-0">
                       <p className="text-sm text-white/80 truncate">{play.title}</p>
                       {play.artist && <p className="text-xs text-white/35 truncate">{play.artist}</p>}
@@ -328,7 +340,10 @@ export default function StatsPage() {
 
           {/* Highlight: top track */}
           {stats.topTrack && (
-            <div className="rounded-2xl border border-white/10 bg-white/3 px-5 py-4 flex items-center justify-between gap-4">
+            <div
+              className="rounded-2xl border border-white/10 bg-white/3 px-5 py-4 flex items-center justify-between gap-4 mp3-fade-up"
+              style={{ animationDelay: "320ms" }}
+            >
               <div>
                 <p className="text-xs text-white/30 mb-1">Morceau le plus écouté</p>
                 <p className="text-sm font-medium text-white/85">{stats.topTrack.title}</p>

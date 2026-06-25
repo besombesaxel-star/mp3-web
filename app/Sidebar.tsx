@@ -123,12 +123,12 @@ export default function Sidebar() {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={[
-                  "flex items-center rounded-2xl px-4 py-3 text-sm transition mp3-slide-right",
+                  "group flex items-center rounded-2xl px-4 py-3 text-sm transition mp3-slide-right",
                   `mp3-d-${i}`,
                   compact ? "justify-center gap-0 px-0" : "gap-3",
                   active
                     ? "bg-white/10 text-white"
-                    : "text-white/60 hover:text-white hover:bg-white/5",
+                    : "text-white/60 hover:text-white hover:bg-white/5 hover:translate-x-0.5",
                 ].join(" ")}
                 title={label}
               >
@@ -136,7 +136,7 @@ export default function Sidebar() {
                   <Icon size={18} className={active ? "text-white" : "opacity-80"} />
                 </span>
 
-                {!compact ? <span className="flex-1">{label}</span> : null}
+                {!compact ? <span className="flex-1 transition-transform duration-150">{label}</span> : null}
 
                 {!compact && href === "/favorites" && favorites.length > 0 ? (
                   <span className="text-[11px] rounded-full bg-white/10 border border-white/10 px-2 py-[2px] text-white/80">

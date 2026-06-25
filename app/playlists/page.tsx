@@ -14,9 +14,10 @@ import TrackContextMenu from "../TrackContextMenu";
 type TrackWithCover = Track & { cover?: string };
 
 function ActivePlaylistRow({
-  track, onPlay, onOpenMenu,
+  track, index = 0, onPlay, onOpenMenu,
 }: {
   track: TrackWithCover;
+  index?: number;
   onPlay: (src: string) => void;
   onOpenMenu: (t: Track) => void;
 }) {
@@ -34,7 +35,8 @@ function ActivePlaylistRow({
       onTouchEnd={longPress.onTouchEnd}
       onTouchCancel={longPress.onTouchCancel}
       onContextMenu={longPress.onContextMenu}
-      className="group flex items-center justify-between gap-4 rounded-2xl px-2 py-3 hover:bg-white/5 transition text-left"
+      className="group flex items-center justify-between gap-4 rounded-2xl px-2 py-3 hover:bg-white/5 transition text-left mp3-fade-up"
+      style={{ animationDelay: `${Math.min(index, 14) * 25}ms` }}
       title="Lire"
     >
       <div className="min-w-0 flex items-center gap-4">
@@ -563,7 +565,7 @@ export default function PlaylistsPage() {
 
   return (
     <div className="pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
-      <div className="flex items-end justify-between mb-8">
+      <div className="flex items-end justify-between mb-8 mp3-fade-up">
         <h2 className="text-3xl font-light">Playlists</h2>
         <span className="text-sm text-white/35">
           {isAuthenticated ? "Synchronisees avec ton compte" : "Locales sur cet appareil"}
@@ -576,7 +578,7 @@ export default function PlaylistsPage() {
         </p>
       ) : null}
 
-      <section className="mb-6 rounded-3xl border border-white/10 bg-[#121218] p-4">
+      <section className="mb-6 rounded-3xl border border-white/10 bg-[#121218] p-4 mp3-fade-up" style={{ animationDelay: "40ms" }}>
         <div className="flex items-end justify-between mb-3">
           <div>
             <p className="text-xs text-white/45">Playlists dynamiques</p>
@@ -585,11 +587,15 @@ export default function PlaylistsPage() {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {dynamicPlaylists.map((playlist) => {
+          {dynamicPlaylists.map((playlist, index) => {
             const badges = dynamicPlaylistBadgesById[playlist.id] ?? [];
 
             return (
-            <div key={playlist.id} className="rounded-2xl border border-white/10 bg-white/5 p-3">
+            <div
+              key={playlist.id}
+              className="rounded-2xl border border-white/10 bg-white/5 p-3 transition hover:-translate-y-0.5 hover:bg-white/8 mp3-fade-up"
+              style={{ animationDelay: `${80 + index * 30}ms` }}
+            >
               <div className="flex items-start justify-between gap-3">
                 <p className="text-sm text-white/90">{playlist.name}</p>
                 {badges.length > 0 ? (
@@ -635,7 +641,7 @@ export default function PlaylistsPage() {
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
-        <section className="rounded-3xl bg-[#15151C] border border-white/5 p-4">
+        <section className="rounded-3xl bg-[#15151C] border border-white/5 p-4 mp3-fade-up" style={{ animationDelay: "120ms" }}>
           <p className="text-xs text-white/45 px-2 mb-3">Mes playlists</p>
 
           <div className="flex gap-2 mb-3">
@@ -655,16 +661,17 @@ export default function PlaylistsPage() {
           </div>
 
           <div className="flex flex-col gap-2">
-            {playlists.map((playlist) => {
+            {playlists.map((playlist, index) => {
               const isActive = playlist.id === (active?.id ?? "");
 
               return (
                 <div
                   key={playlist.id}
                   className={[
-                    "rounded-2xl border transition",
+                    "rounded-2xl border transition mp3-fade-up",
                     isActive ? "bg-white/8 border-white/10" : "bg-transparent border-white/5",
                   ].join(" ")}
+                  style={{ animationDelay: `${150 + Math.min(index, 14) * 25}ms` }}
                 >
                   <div className="flex items-stretch gap-1 p-1">
                     <button
@@ -696,7 +703,7 @@ export default function PlaylistsPage() {
           </div>
         </section>
 
-        <section className="rounded-3xl bg-[#15151C] border border-white/5 p-4">
+        <section className="rounded-3xl bg-[#15151C] border border-white/5 p-4 mp3-fade-up" style={{ animationDelay: "160ms" }}>
           {!active ? (
             <div className="px-3 py-10 text-sm text-white/45">Cree une playlist pour commencer.</div>
           ) : (
@@ -780,6 +787,7 @@ export default function PlaylistsPage() {
                       <ActivePlaylistRow
                         key={`${track.src}-${index}`}
                         track={track}
+                        index={index}
                         onPlay={playActiveTrack}
                         onOpenMenu={setMenuTrack}
                       />
@@ -832,7 +840,7 @@ export default function PlaylistsPage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 px-2">
-                  {filteredLibrary.map((track) => {
+                  {filteredLibrary.map((track, index) => {
                     const inPlaylist = active.trackSrcs.includes(track.src);
                     return (
                       <button
@@ -840,9 +848,10 @@ export default function PlaylistsPage() {
                         type="button"
                         onClick={() => toggleTrackInActive(track.src)}
                         className={[
-                          "flex items-center gap-3 rounded-2xl border px-3 py-2 text-left transition",
+                          "flex items-center gap-3 rounded-2xl border px-3 py-2 text-left transition mp3-fade-up",
                           inPlaylist ? "border-white/15 bg-white/8" : "border-white/5 hover:bg-white/5",
                         ].join(" ")}
+                        style={{ animationDelay: `${Math.min(index, 19) * 20}ms` }}
                         title={inPlaylist ? "Retirer" : "Ajouter"}
                         aria-pressed={inPlaylist}
                       >

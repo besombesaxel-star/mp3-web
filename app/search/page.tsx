@@ -162,9 +162,10 @@ function TrackRow({
         onTouchCancel={longPress.onTouchCancel}
         onContextMenu={longPress.onContextMenu}
         className={[
-          "group flex items-center gap-3 rounded-2xl px-3 py-3 sm:py-2.5 transition w-full text-left",
+          "group flex items-center gap-3 rounded-2xl px-3 py-3 sm:py-2.5 transition w-full text-left mp3-fade-up",
           active ? "bg-white/10" : "hover:bg-white/5",
         ].join(" ")}
+        style={{ animationDelay: `${Math.min(idx, 14) * 25}ms` }}
       >
         {selectMode ? (
           <span
@@ -212,16 +213,17 @@ function TrackRow({
 }
 
 function ArtistCard({
-  artist, query, onPlay,
+  artist, query, onPlay, index = 0,
 }: {
-  artist: ArtistEntry; query: string; onPlay: (name: string) => void;
+  artist: ArtistEntry; query: string; onPlay: (name: string) => void; index?: number;
 }) {
   const hue = hashStringToHue(artist.name);
   return (
     <button
       type="button"
       onClick={() => onPlay(artist.name)}
-      className="group relative aspect-square rounded-2xl overflow-hidden border border-white/8 hover:border-white/20 transition"
+      className="group relative aspect-square rounded-2xl overflow-hidden border border-white/8 hover:border-white/20 hover:-translate-y-0.5 transition mp3-fade-up"
+      style={{ animationDelay: `${Math.min(index, 14) * 25}ms` }}
     >
       {artist.cover ? (
         <Image src={artist.cover} alt={artist.name} fill className="object-cover" sizes="160px" />
@@ -250,16 +252,17 @@ function ArtistCard({
 }
 
 function ArtistRow({
-  artist, query, onPlay,
+  artist, query, onPlay, index = 0,
 }: {
-  artist: ArtistEntry; query: string; onPlay: (name: string) => void;
+  artist: ArtistEntry; query: string; onPlay: (name: string) => void; index?: number;
 }) {
   const hue = hashStringToHue(artist.name);
   return (
     <button
       type="button"
       onClick={() => onPlay(artist.name)}
-      className="group flex w-full items-center gap-3 rounded-2xl px-3 py-3 sm:py-2.5 text-left hover:bg-white/5 transition"
+      className="group flex w-full items-center gap-3 rounded-2xl px-3 py-3 sm:py-2.5 text-left hover:bg-white/5 transition mp3-fade-up"
+      style={{ animationDelay: `${Math.min(index, 14) * 25}ms` }}
     >
       <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-white/5">
         {artist.cover ? (
@@ -288,13 +291,14 @@ function ArtistRow({
   );
 }
 
-function UserRow({ user, query }: { user: UserEntry; query: string }) {
+function UserRow({ user, query, index = 0 }: { user: UserEntry; query: string; index?: number }) {
   const hue = hashStringToHue(user.id);
   const initials = getInitials(user.displayName, "");
   return (
     <Link
       href={`/users/${user.id}`}
-      className="group flex items-center gap-3 rounded-2xl px-3 py-3 sm:py-2.5 hover:bg-white/5 transition"
+      className="group flex items-center gap-3 rounded-2xl px-3 py-3 sm:py-2.5 hover:bg-white/5 transition mp3-fade-up"
+      style={{ animationDelay: `${Math.min(index, 14) * 25}ms` }}
     >
       <div
         className="h-10 w-10 shrink-0 rounded-full flex items-center justify-center text-sm font-semibold text-white"
@@ -551,8 +555,8 @@ export default function SearchPage() {
         return (
           <div className="rounded-3xl border border-white/8 bg-white/[0.03] p-3">
             <div className="space-y-0.5">
-              {list.map((a) => (
-                <ArtistRow key={a.name} artist={a} query={query} onPlay={playArtist} />
+              {list.map((a, i) => (
+                <ArtistRow key={a.name} artist={a} query={query} onPlay={playArtist} index={i} />
               ))}
             </div>
           </div>
@@ -560,8 +564,8 @@ export default function SearchPage() {
       }
       return (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
-          {list.map((a) => (
-            <ArtistCard key={a.name} artist={a} query={query} onPlay={playArtist} />
+          {list.map((a, i) => (
+            <ArtistCard key={a.name} artist={a} query={query} onPlay={playArtist} index={i} />
           ))}
         </div>
       );
@@ -574,7 +578,7 @@ export default function SearchPage() {
       return (
         <div className="rounded-3xl border border-white/8 bg-white/[0.03] p-4">
           <div className="space-y-0.5">
-            {list.map((u) => <UserRow key={u.id} user={u} query={query} />)}
+            {list.map((u, i) => <UserRow key={u.id} user={u} query={query} index={i} />)}
           </div>
         </div>
       );
@@ -621,8 +625,8 @@ export default function SearchPage() {
               }
             />
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
-              {artistsSlice.map((a) => (
-                <ArtistCard key={a.name} artist={a} query={query} onPlay={playArtist} />
+              {artistsSlice.map((a, i) => (
+                <ArtistCard key={a.name} artist={a} query={query} onPlay={playArtist} index={i} />
               ))}
             </div>
           </div>
@@ -637,7 +641,7 @@ export default function SearchPage() {
             />
             <div className="rounded-3xl border border-white/8 bg-white/[0.03] p-3">
               <div className="space-y-0.5">
-                {usersSlice.map((u) => <UserRow key={u.id} user={u} query={query} />)}
+                {usersSlice.map((u, i) => <UserRow key={u.id} user={u} query={query} index={i} />)}
               </div>
             </div>
           </div>

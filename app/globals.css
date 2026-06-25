@@ -318,6 +318,16 @@ body[data-mp3-theme="ocean"] {
   animation: mp3-fadeUp 220ms ease-out both;
 }
 
+@keyframes mp3BarGrow {
+  from { transform: scaleY(0); }
+  to   { transform: scaleY(1); }
+}
+
+.mp3-bar-grow {
+  transform-origin: bottom;
+  animation: mp3BarGrow 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 .mp3-cover-pop {
   animation: mp3-coverPop 240ms ease-out both;
 }

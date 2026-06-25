@@ -86,7 +86,7 @@ function HorizontalBar({
   return (
     <div className="flex items-center gap-3">
       <span className="text-xs text-white/20 w-4 text-right shrink-0">{rank}</span>
-      <div className="w-36 truncate text-sm text-white/75 shrink-0">{label}</div>
+      <div className="w-36 md:w-48 truncate text-sm text-white/75 shrink-0">{label}</div>
       <div className="flex-1 h-1.5 rounded-full bg-white/8 overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-700"
@@ -183,7 +183,7 @@ export default function StatsPage() {
   const uniqueArtists = Object.keys(stats.byArtist).filter((k) => k !== "-").length;
 
   return (
-    <div className="max-w-3xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-40">
+    <div className="max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-40">
       <h2 className="text-3xl font-light mb-8">Statistiques</h2>
 
       {stats.totalPlays === 0 ? (

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Music, Play, Search, User, X } from "lucide-react";
+import { LayoutGrid, List as ListIcon, Music, Play, Search, User, X } from "lucide-react";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Track, usePlayer } from "../PlayerContext";
 import { subscribeTracksUpdated } from "../tracksSync";
@@ -249,6 +249,45 @@ function ArtistCard({
   );
 }
 
+function ArtistRow({
+  artist, query, onPlay,
+}: {
+  artist: ArtistEntry; query: string; onPlay: (name: string) => void;
+}) {
+  const hue = hashStringToHue(artist.name);
+  return (
+    <button
+      type="button"
+      onClick={() => onPlay(artist.name)}
+      className="group flex w-full items-center gap-3 rounded-2xl px-3 py-3 sm:py-2.5 text-left hover:bg-white/5 transition"
+    >
+      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-white/5">
+        {artist.cover ? (
+          <Image src={artist.cover} alt={artist.name} fill className="object-cover" sizes="40px" />
+        ) : (
+          <div
+            className="h-full w-full flex items-center justify-center"
+            style={{
+              background: `linear-gradient(135deg, hsla(${hue}, 55%, 28%, 0.9), hsla(${(hue + 50) % 360}, 60%, 22%, 0.85))`,
+            }}
+          >
+            <Music size={14} className="text-white/70" />
+          </div>
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-white/90 truncate">
+          <HighlightedText text={artist.name} query={query} />
+        </p>
+        <p className="text-xs text-white/40">
+          {artist.count} son{artist.count > 1 ? "s" : ""}
+        </p>
+      </div>
+      <Play size={13} className="shrink-0 opacity-0 group-hover:opacity-70 transition fill-white text-white" />
+    </button>
+  );
+}
+
 function UserRow({ user, query }: { user: UserEntry; query: string }) {
   const hue = hashStringToHue(user.id);
   const initials = getInitials(user.displayName, "");
@@ -285,6 +324,8 @@ const TABS: { value: SearchTab; label: string }[] = [
   { value: "utilisateurs", label: "Utilisateurs" },
 ];
 
+const ARTIST_VIEW_KEY = "mp3_search_artist_view";
+
 export default function SearchPage() {
   const { setQueueAndPlay, isFavorite, addToQueueEnd, toggleFavorite } = usePlayer();
 
@@ -298,6 +339,21 @@ export default function SearchPage() {
   const [error, setError] = useState("");
   const [selectMode, setSelectMode] = useState(false);
   const [selectedSrcs, setSelectedSrcs] = useState<Set<string>>(new Set());
+  const [artistView, setArtistView] = useState<"grid" | "list">("grid");
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(ARTIST_VIEW_KEY);
+      if (stored === "grid" || stored === "list") setArtistView(stored);
+    } catch {}
+  }, []);
+
+  function changeArtistView(next: "grid" | "list") {
+    setArtistView(next);
+    try {
+      localStorage.setItem(ARTIST_VIEW_KEY, next);
+    } catch {}
+  }
 
   function toggleSelect(src: string) {
     setSelectedSrcs((prev) => {
@@ -491,8 +547,19 @@ export default function SearchPage() {
       const list = filteredArtists;
       if (list.length === 0)
         return <EmptyState icon={<Music size={20} className="text-white/20" />} text={hasQuery ? `Aucun artiste pour "${query}"` : "Aucun artiste"} />;
+      if (artistView === "list") {
+        return (
+          <div className="rounded-3xl border border-white/8 bg-white/[0.03] p-3">
+            <div className="space-y-0.5">
+              {list.map((a) => (
+                <ArtistRow key={a.name} artist={a} query={query} onPlay={playArtist} />
+              ))}
+            </div>
+          </div>
+        );
+      }
       return (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
           {list.map((a) => (
             <ArtistCard key={a.name} artist={a} query={query} onPlay={playArtist} />
           ))}
@@ -553,7 +620,7 @@ export default function SearchPage() {
                   : undefined
               }
             />
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
               {artistsSlice.map((a) => (
                 <ArtistCard key={a.name} artist={a} query={query} onPlay={playArtist} />
               ))}
@@ -664,6 +731,36 @@ export default function SearchPage() {
           })}
         </div>
         <div className="flex items-center gap-1.5">
+          {tab === "artistes" ? (
+            <div className="hidden sm:flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+              <button
+                type="button"
+                onClick={() => changeArtistView("grid")}
+                aria-pressed={artistView === "grid"}
+                className={[
+                  "h-7 w-7 rounded-full flex items-center justify-center transition",
+                  artistView === "grid" ? "bg-white text-black" : "text-white/55 hover:bg-white/10 hover:text-white",
+                ].join(" ")}
+                title="Vue grille"
+                aria-label="Vue grille"
+              >
+                <LayoutGrid size={13} />
+              </button>
+              <button
+                type="button"
+                onClick={() => changeArtistView("list")}
+                aria-pressed={artistView === "list"}
+                className={[
+                  "h-7 w-7 rounded-full flex items-center justify-center transition",
+                  artistView === "list" ? "bg-white text-black" : "text-white/55 hover:bg-white/10 hover:text-white",
+                ].join(" ")}
+                title="Vue liste"
+                aria-label="Vue liste"
+              >
+                <ListIcon size={13} />
+              </button>
+            </div>
+          ) : null}
           <select
             value={artistFilter}
             onChange={(e) => setArtistFilter(e.target.value)}

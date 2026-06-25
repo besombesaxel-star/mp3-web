@@ -1,14 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
+import { LayoutGrid, List as ListIcon, Pencil } from "lucide-react";
 import AlbumCard from "../AlbumCard";
 import { useAuth } from "../AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
+import { Track, usePlayer } from "../PlayerContext";
 import { dispatchTracksUpdated, subscribeTracksUpdated } from "../tracksSync";
 import { COVER_SCROLL_TRANSFORM, useCoverScrollEffect } from "../useCoverScrollEffect";
 import { useFocusTrap } from "../useFocusTrap";
+import { useLongPress } from "../useLongPress";
 import { getArtistHref, getPublicProfileHref } from "@/lib/publicLinks";
+import TrackContextMenu from "../TrackContextMenu";
 
 type ApiTrack = {
   title: string;
@@ -40,6 +45,78 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
+function toTrack(track: ApiTrack): Track & { cover?: string } {
+  return {
+    title: track.title,
+    artist: track.artist,
+    src: track.src,
+    cover: track.cover ?? undefined,
+    ownerDisplayName: track.ownerDisplayName ?? undefined,
+    ownerId: track.ownerId ?? undefined,
+  };
+}
+
+const LIBRARY_VIEW_KEY = "mp3_library_view";
+
+function LibraryListRow({
+  track, index, canEdit, onEdit, onOpenMenu,
+}: {
+  track: ApiTrack;
+  index: number;
+  canEdit: boolean;
+  onEdit: () => void;
+  onOpenMenu: (t: Track) => void;
+}) {
+  const { playTrack } = usePlayer();
+  const longPress = useLongPress({ onLongPress: () => onOpenMenu(toTrack(track)) });
+
+  return (
+    <div
+      className="group flex items-center gap-3 rounded-2xl px-2 py-2 transition hover:bg-white/5 mp3-fade-up"
+      style={{ animationDelay: `${Math.min(index, 15) * 30}ms` }}
+      onTouchStart={longPress.onTouchStart}
+      onTouchMove={longPress.onTouchMove}
+      onTouchEnd={longPress.onTouchEnd}
+      onTouchCancel={longPress.onTouchCancel}
+      onContextMenu={longPress.onContextMenu}
+    >
+      <button
+        type="button"
+        onClick={() => {
+          if (longPress.didLongPress()) return;
+          playTrack(toTrack(track));
+        }}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        title="Lire"
+      >
+        <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-white/5">
+          {track.cover ? (
+            <Image src={track.cover} alt={track.title} fill className="object-cover" sizes="44px" />
+          ) : null}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-white/90 truncate">{track.title}</p>
+          <p className="text-xs text-white/45 truncate">
+            {track.ownerLabel ? `${track.artist} - ${track.ownerLabel}` : `${track.artist} - MP3`}
+          </p>
+        </div>
+      </button>
+
+      {canEdit ? (
+        <button
+          type="button"
+          onClick={onEdit}
+          className="shrink-0 h-9 w-9 rounded-full flex items-center justify-center text-white/60 opacity-0 group-hover:opacity-100 hover:bg-white/10 hover:text-white transition"
+          title="Modifier"
+          aria-label={`Modifier ${track.title}`}
+        >
+          <Pencil size={14} />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export default function LibraryPage() {
   const { accessToken, isAuthenticated } = useAuth();
   const [tracks, setTracks] = useState<ApiTrack[]>([]);
@@ -51,6 +128,22 @@ export default function LibraryPage() {
   const [editArtist, setEditArtist] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [view, setView] = useState<"grid" | "list">("grid");
+  const [menuTrack, setMenuTrack] = useState<Track | null>(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(LIBRARY_VIEW_KEY);
+      if (stored === "grid" || stored === "list") setView(stored);
+    } catch {}
+  }, []);
+
+  function changeView(next: "grid" | "list") {
+    setView(next);
+    try {
+      localStorage.setItem(LIBRARY_VIEW_KEY, next);
+    } catch {}
+  }
 
   const pageRef = useRef<HTMLDivElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -204,8 +297,36 @@ export default function LibraryPage() {
 
   return (
     <div ref={pageRef} className="px-2 pt-6 sm:px-6 pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
-      <div className="mb-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-white">Bibliotheque</h1>
+        <div className="hidden sm:flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+          <button
+            type="button"
+            onClick={() => changeView("grid")}
+            aria-pressed={view === "grid"}
+            className={[
+              "h-8 w-8 rounded-full flex items-center justify-center transition",
+              view === "grid" ? "bg-white text-black" : "text-white/55 hover:bg-white/10 hover:text-white",
+            ].join(" ")}
+            title="Vue grille"
+            aria-label="Vue grille"
+          >
+            <LayoutGrid size={15} />
+          </button>
+          <button
+            type="button"
+            onClick={() => changeView("list")}
+            aria-pressed={view === "list"}
+            className={[
+              "h-8 w-8 rounded-full flex items-center justify-center transition",
+              view === "list" ? "bg-white text-black" : "text-white/55 hover:bg-white/10 hover:text-white",
+            ].join(" ")}
+            title="Vue liste"
+            aria-label="Vue liste"
+          >
+            <ListIcon size={15} />
+          </button>
+        </div>
       </div>
 
       {loading ? <p className="text-white/60">Chargement...</p> : null}
@@ -224,27 +345,35 @@ export default function LibraryPage() {
         <p className="text-white/60">Aucun son pour le moment.</p>
       ) : null}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-6">
-        {tracks.map((track, i) => (
-          <AlbumCard
-            key={track.src}
-            title={track.title}
-            subtitle={track.ownerLabel ? `${track.artist} - ${track.ownerLabel}` : `${track.artist} - MP3`}
-            track={{
-              title: track.title,
-              artist: track.artist,
-              src: track.src,
-              cover: track.cover ?? undefined,
-              ownerDisplayName: track.ownerDisplayName ?? undefined,
-              ownerId: track.ownerId ?? undefined,
-            }}
-            onEdit={isAuthenticated && track.isOwnedByViewer ? () => openEdit(track) : undefined}
-            hoverEffect="shrink"
-            coverTransform={COVER_SCROLL_TRANSFORM}
-            animationDelay={`${Math.min(i, 9) * 40}ms`}
-          />
-        ))}
-      </div>
+      {view === "grid" ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-6">
+          {tracks.map((track, i) => (
+            <AlbumCard
+              key={track.src}
+              title={track.title}
+              subtitle={track.ownerLabel ? `${track.artist} - ${track.ownerLabel}` : `${track.artist} - MP3`}
+              track={toTrack(track)}
+              onEdit={isAuthenticated && track.isOwnedByViewer ? () => openEdit(track) : undefined}
+              hoverEffect="shrink"
+              coverTransform={COVER_SCROLL_TRANSFORM}
+              animationDelay={`${Math.min(i, 9) * 40}ms`}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {tracks.map((track, i) => (
+            <LibraryListRow
+              key={track.src}
+              track={track}
+              index={i}
+              canEdit={Boolean(isAuthenticated && track.isOwnedByViewer)}
+              onEdit={() => openEdit(track)}
+              onOpenMenu={setMenuTrack}
+            />
+          ))}
+        </div>
+      )}
 
       {editing ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -359,6 +488,8 @@ export default function LibraryPage() {
           </div>
         </div>
       ) : null}
+
+      <TrackContextMenu track={menuTrack} onClose={() => setMenuTrack(null)} />
     </div>
   );
 }

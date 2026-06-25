@@ -584,7 +584,7 @@ export default function PlaylistsPage() {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {dynamicPlaylists.map((playlist) => {
             const badges = dynamicPlaylistBadgesById[playlist.id] ?? [];
 
@@ -831,7 +831,7 @@ export default function PlaylistsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 px-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 px-2">
                   {filteredLibrary.map((track) => {
                     const inPlaylist = active.trackSrcs.includes(track.src);
                     return (

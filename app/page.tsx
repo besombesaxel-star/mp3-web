@@ -264,7 +264,7 @@ export default function Home() {
 
   return (
     <div ref={homeRef} className="pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
-      <div className="flex items-end justify-between mb-8">
+      <div className="flex items-end justify-between mb-8 mp3-fade-up">
         <h2 className="text-3xl font-light">Accueil</h2>
 
       </div>
@@ -277,13 +277,13 @@ export default function Home() {
 
 
       <section className="mb-12">
-        <div className="flex items-end justify-between mb-6">
+        <div className="flex items-end justify-between mb-6 mp3-fade-up">
           <h3 className="text-2xl font-light">Pour toi aujourd&apos;hui</h3>
           <span className="text-sm text-white/35">{todayMomentLabel(currentTodayMoment)}</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {todayMomentCards.map((momentItem) => {
+          {todayMomentCards.map((momentItem, momentIndex) => {
             const count = momentItem.tracks.length;
             const featuredTrack = momentItem.featuredTrack;
             const disabled = count === 0;
@@ -296,7 +296,8 @@ export default function Home() {
                 onClick={() => playTodayMoment(momentItem.tracks)}
                 disabled={disabled}
                 title={disabled ? `${momentItem.title} vide` : `Lire le mix ${momentItem.title.toLowerCase()}`}
-                className="group text-left disabled:cursor-default disabled:opacity-65"
+                className="group text-left disabled:cursor-default disabled:opacity-65 transition hover:-translate-y-0.5 mp3-fade-up"
+                style={{ animationDelay: `${momentIndex * 60}ms` }}
               >
                 <div
                   data-scroll-cover="1"
@@ -340,7 +341,7 @@ export default function Home() {
         </div>
       </section>
 
-      <div className="flex items-end justify-between mb-6">
+      <div className="flex items-end justify-between mb-6 mp3-fade-up">
         <h3 className="text-2xl font-light">Recemment ajoutes</h3>
         <span className="text-sm text-white/35" aria-live="polite">
           {loading ? "Chargement..." : "Auto"}
@@ -354,16 +355,17 @@ export default function Home() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
         {loading
           ? Array.from({ length: 8 }).map((_, index) => <SkeletonCard key={index} />)
-          : recent.map((item) => (
+          : recent.map((item, index) => (
               <AlbumCard
                 key={item.track.src}
                 title={item.title}
                 subtitle={item.subtitle}
                 track={item.track}
                 coverTransform={COVER_SCROLL_TRANSFORM}
+                animationDelay={`${Math.min(index, 9) * 40}ms`}
               />
             ))}
       </div>

@@ -59,13 +59,16 @@ function toTrack(track: ApiTrack): Track & { cover?: string } {
 const LIBRARY_VIEW_KEY = "mp3_library_view";
 
 function LibraryListRow({
-  track, index, canEdit, onEdit, onOpenMenu,
+  track, index, canEdit, onEdit, onOpenMenu, selectMode = false, selected = false, onToggleSelect,
 }: {
   track: ApiTrack;
   index: number;
   canEdit: boolean;
   onEdit: () => void;
   onOpenMenu: (t: Track) => void;
+  selectMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const { playTrack } = usePlayer();
   const longPress = useLongPress({ onLongPress: () => onOpenMenu(toTrack(track)) });
@@ -84,11 +87,28 @@ function LibraryListRow({
         type="button"
         onClick={() => {
           if (longPress.didLongPress()) return;
+          if (selectMode) {
+            onToggleSelect?.();
+            return;
+          }
           playTrack(toTrack(track));
         }}
         className="flex min-w-0 flex-1 items-center gap-3 text-left"
         title="Lire"
       >
+        {selectMode ? (
+          <span
+            className={[
+              "h-5 w-5 rounded-full border flex items-center justify-center shrink-0 transition",
+              selected ? "bg-white border-white text-black" : "border-white/25 text-transparent",
+            ].join(" ")}
+          >
+            <svg viewBox="0 0 24 24" width={11} height={11} fill="none" stroke="currentColor" strokeWidth={3}>
+              <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        ) : null}
+
         <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-white/5">
           {track.cover ? (
             <Image src={track.cover} alt={track.title} fill className="object-cover" sizes="44px" />
@@ -102,7 +122,7 @@ function LibraryListRow({
         </div>
       </button>
 
-      {canEdit ? (
+      {!selectMode && canEdit ? (
         <button
           type="button"
           onClick={onEdit}
@@ -130,6 +150,56 @@ export default function LibraryPage() {
   const [deleting, setDeleting] = useState(false);
   const [view, setView] = useState<"grid" | "list">("grid");
   const [menuTrack, setMenuTrack] = useState<Track | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedSrcs, setSelectedSrcs] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  function toggleSelect(src: string) {
+    setSelectedSrcs((prev) => {
+      const next = new Set(prev);
+      if (next.has(src)) next.delete(src);
+      else next.add(src);
+      return next;
+    });
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false);
+    setSelectedSrcs(new Set());
+  }
+
+  async function deleteSelected() {
+    if (!accessToken || bulkDeleting) return;
+
+    const toDelete = tracks.filter((t) => selectedSrcs.has(t.src) && t.isOwnedByViewer);
+    if (toDelete.length === 0) return;
+
+    const confirmed = window.confirm(
+      `Supprimer definitivement ${toDelete.length} son${toDelete.length > 1 ? "s" : ""} ?`
+    );
+    if (!confirmed) return;
+
+    setBulkDeleting(true);
+    setError("");
+    try {
+      await Promise.all(
+        toDelete.map((t) =>
+          fetch("/api/tracks", {
+            method: "DELETE",
+            headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+            body: JSON.stringify({ src: t.src }),
+          })
+        )
+      );
+      exitSelectMode();
+      dispatchTracksUpdated();
+      await loadTracks();
+    } catch (errorValue: unknown) {
+      setError(getErrorMessage(errorValue, "Erreur lors de la suppression"));
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
 
   useEffect(() => {
     try {
@@ -299,33 +369,50 @@ export default function LibraryPage() {
     <div ref={pageRef} className="px-2 pt-6 sm:px-6 pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-white">Bibliotheque</h1>
-        <div className="hidden sm:flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
-          <button
-            type="button"
-            onClick={() => changeView("grid")}
-            aria-pressed={view === "grid"}
-            className={[
-              "h-8 w-8 rounded-full flex items-center justify-center transition",
-              view === "grid" ? "bg-white text-black" : "text-white/55 hover:bg-white/10 hover:text-white",
-            ].join(" ")}
-            title="Vue grille"
-            aria-label="Vue grille"
-          >
-            <LayoutGrid size={15} />
-          </button>
-          <button
-            type="button"
-            onClick={() => changeView("list")}
-            aria-pressed={view === "list"}
-            className={[
-              "h-8 w-8 rounded-full flex items-center justify-center transition",
-              view === "list" ? "bg-white text-black" : "text-white/55 hover:bg-white/10 hover:text-white",
-            ].join(" ")}
-            title="Vue liste"
-            aria-label="Vue liste"
-          >
-            <ListIcon size={15} />
-          </button>
+        <div className="flex items-center gap-2">
+          {isAuthenticated && tracks.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+              aria-pressed={selectMode}
+              className={[
+                "h-8 px-3 rounded-lg text-xs font-medium transition",
+                selectMode
+                  ? "bg-white/15 text-white border border-white/30"
+                  : "bg-white/5 text-white/70 border border-white/10 hover:bg-white/10",
+              ].join(" ")}
+            >
+              {selectMode ? "Annuler" : "Selectionner"}
+            </button>
+          ) : null}
+          <div className="hidden sm:flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+            <button
+              type="button"
+              onClick={() => changeView("grid")}
+              aria-pressed={view === "grid"}
+              className={[
+                "h-8 w-8 rounded-full flex items-center justify-center transition",
+                view === "grid" ? "bg-white text-black" : "text-white/55 hover:bg-white/10 hover:text-white",
+              ].join(" ")}
+              title="Vue grille"
+              aria-label="Vue grille"
+            >
+              <LayoutGrid size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => changeView("list")}
+              aria-pressed={view === "list"}
+              className={[
+                "h-8 w-8 rounded-full flex items-center justify-center transition",
+                view === "list" ? "bg-white text-black" : "text-white/55 hover:bg-white/10 hover:text-white",
+              ].join(" ")}
+              title="Vue liste"
+              aria-label="Vue liste"
+            >
+              <ListIcon size={15} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -353,10 +440,13 @@ export default function LibraryPage() {
               title={track.title}
               subtitle={track.ownerLabel ? `${track.artist} - ${track.ownerLabel}` : `${track.artist} - MP3`}
               track={toTrack(track)}
-              onEdit={isAuthenticated && track.isOwnedByViewer ? () => openEdit(track) : undefined}
+              onEdit={!selectMode && isAuthenticated && track.isOwnedByViewer ? () => openEdit(track) : undefined}
               hoverEffect="shrink"
               coverTransform={COVER_SCROLL_TRANSFORM}
               animationDelay={`${Math.min(i, 9) * 40}ms`}
+              selectMode={selectMode}
+              selected={selectedSrcs.has(track.src)}
+              onToggleSelect={() => toggleSelect(track.src)}
             />
           ))}
         </div>
@@ -370,6 +460,9 @@ export default function LibraryPage() {
               canEdit={Boolean(isAuthenticated && track.isOwnedByViewer)}
               onEdit={() => openEdit(track)}
               onOpenMenu={setMenuTrack}
+              selectMode={selectMode}
+              selected={selectedSrcs.has(track.src)}
+              onToggleSelect={() => toggleSelect(track.src)}
             />
           ))}
         </div>
@@ -484,6 +577,26 @@ export default function LibraryPage() {
                 {saving ? "Sauvegarde..." : "Sauvegarder"}
               </button>
               </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {selectMode && selectedSrcs.size > 0 ? (
+        <div className="fixed bottom-[calc(11rem+env(safe-area-inset-bottom))] sm:bottom-8 left-1/2 -translate-x-1/2 z-50 px-4 w-full max-w-lg">
+          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] px-4 py-3">
+            <p className="text-sm text-white/85 shrink-0">
+              {selectedSrcs.size} selectionne{selectedSrcs.size > 1 ? "s" : ""}
+            </p>
+            <div className="flex-1 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={deleteSelected}
+                disabled={bulkDeleting}
+                className="h-9 px-3 rounded-full bg-red-500/20 text-red-100 text-xs font-medium hover:bg-red-500/30 transition disabled:opacity-60"
+              >
+                {bulkDeleting ? "Suppression..." : "Supprimer la selection"}
+              </button>
             </div>
           </div>
         </div>

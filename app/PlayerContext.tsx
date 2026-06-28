@@ -13,6 +13,7 @@ import { toast } from "./Toast";
 import { vibrate } from "./haptics";
 import { playChimeSound, playPopSound, unlockAudio } from "./sound";
 import { getOrCreateSharedGraph, type SharedGraph } from "./audioGraph";
+import { fetchTracksShared } from "./tracksCache";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 
 export type Track = {
@@ -223,10 +224,6 @@ type ApiTrack = {
   cover: string | null;
   ownerDisplayName?: string | null;
   ownerId?: string | null;
-};
-
-type TracksResponse = {
-  tracks?: ApiTrack[];
 };
 
 type AccountResponse = {
@@ -873,11 +870,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     smartAutoplayBusyRef.current = true;
 
     try {
-      const res = await fetch("/api/tracks", { cache: "no-store" });
-      if (!res.ok) return false;
-
-      const json = (await res.json()) as TracksResponse;
-      const apiTracks = Array.isArray(json.tracks) ? json.tracks : [];
+      const apiTracks = await fetchTracksShared(accessToken);
       const library: Track[] = apiTracks.map((item) => ({
         title: item.title,
         artist: item.artist,

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { usePlayer, Track } from "../PlayerContext";
+import { fetchTracksShared } from "../tracksCache";
 import { subscribeTracksUpdated } from "../tracksSync";
 import { toast } from "../Toast";
 import { useLongPress } from "../useLongPress";
@@ -69,10 +70,6 @@ type Playlist = {
   id: string;
   name: string;
   trackSrcs: string[];
-};
-
-type TracksResponse = {
-  tracks?: ApiTrack[];
 };
 
 type DynamicPlaylist = {
@@ -142,11 +139,7 @@ export default function PlaylistsPage() {
       setLibLoading(true);
       setLibError("");
 
-      const res = await fetch("/api/tracks", { cache: "no-store" });
-      if (!res.ok) throw new Error("Impossible de charger /api/tracks");
-
-      const json: TracksResponse = await res.json();
-      const list = Array.isArray(json.tracks) ? json.tracks : [];
+      const list = await fetchTracksShared(accessToken);
 
       setLibrary(
         list.map((track) => ({

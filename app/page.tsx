@@ -4,7 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import AlbumCard from "./AlbumCard";
+import { useAuth } from "./AuthProvider";
 import { Track, usePlayer } from "./PlayerContext";
+import { fetchTracksShared } from "./tracksCache";
 import { subscribeTracksUpdated } from "./tracksSync";
 import { COVER_SCROLL_TRANSFORM, useCoverScrollEffect } from "./useCoverScrollEffect";
 
@@ -15,10 +17,6 @@ type ApiTrack = {
   cover: string | null;
   ownerDisplayName?: string | null;
   ownerId?: string | null;
-};
-
-type TracksResponse = {
-  tracks?: ApiTrack[];
 };
 
 type RecentCard = {
@@ -67,6 +65,7 @@ function todayMomentLabel(moment: TodayMoment | null) {
 
 export default function Home() {
   const { favorites, setQueueAndPlay, stats } = usePlayer();
+  const { accessToken } = useAuth();
   const [tracks, setTracks] = useState<ApiTrack[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -80,12 +79,7 @@ export default function Home() {
       setLoading(true);
       setError("");
 
-      const res = await fetch("/api/tracks", { cache: "no-store" });
-      if (!res.ok) throw new Error("Impossible de charger /api/tracks");
-
-      const json: TracksResponse = await res.json();
-      const list = Array.isArray(json.tracks) ? json.tracks : [];
-      setTracks(list);
+      setTracks(await fetchTracksShared(accessToken));
     } catch (errorValue: unknown) {
       setError(getErrorMessage(errorValue, "Erreur lors du chargement"));
       setTracks([]);
@@ -95,8 +89,8 @@ export default function Home() {
   }
 
   useEffect(() => {
-    loadTracks();
-  }, []);
+    void loadTracks();
+  }, [accessToken]);
 
   useEffect(() => {
     return subscribeTracksUpdated(() => {

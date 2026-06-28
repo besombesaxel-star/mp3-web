@@ -7,6 +7,7 @@ import { LayoutGrid, List as ListIcon, Music, Play, Rss } from "lucide-react";
 import AlbumCard from "@/app/AlbumCard";
 import { useAuth } from "@/app/AuthProvider";
 import { usePlayer, type Track } from "@/app/PlayerContext";
+import { fetchTracksShared } from "@/app/tracksCache";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { getPublicProfileHref } from "@/lib/publicLinks";
 import { useLongPress } from "@/app/useLongPress";
@@ -15,9 +16,8 @@ import TrackContextMenu from "@/app/TrackContextMenu";
 type FeedTrack = {
   artist: string;
   cover: string | null;
-  createdAt: number;
-  ownerDisplayName: string | null;
-  ownerId: string | null;
+  ownerDisplayName?: string | null;
+  ownerId?: string | null;
   src: string;
   title: string;
 };
@@ -111,18 +111,16 @@ export default function FeedPage() {
     async function load() {
       setLoading(true);
       try {
-        const [accountRes, tracksRes] = await Promise.all([
+        const [accountRes, allTracks] = await Promise.all([
           fetch("/api/account", { cache: "no-store", headers: createAuthorizedHeaders(accessToken!) }),
-          fetch("/api/tracks", { cache: "no-store" }),
+          fetchTracksShared(accessToken),
         ]);
 
         const accountJson = await accountRes.json().catch(() => ({}));
-        const tracksJson = await tracksRes.json().catch(() => ({}));
 
         if (cancelled) return;
 
         const followingList: string[] = Array.isArray(accountJson.following) ? accountJson.following : [];
-        const allTracks: FeedTrack[] = Array.isArray(tracksJson.tracks) ? tracksJson.tracks : [];
 
         setFollowing(followingList);
         setTracks(allTracks.filter((t) => t.ownerId && followingList.includes(t.ownerId)));

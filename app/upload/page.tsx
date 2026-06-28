@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Image as ImageIcon, UploadCloud } from "lucide-react";
 import { useAuth } from "../AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
+import { fetchTracksShared } from "../tracksCache";
 import { dispatchTracksUpdated, subscribeTracksUpdated } from "../tracksSync";
 import { toast } from "../Toast";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
@@ -35,10 +36,6 @@ type UploadResponse = {
     title?: string;
     artist?: string;
   };
-};
-
-type TracksResponse = {
-  tracks?: Array<{ title: string; src: string }>;
 };
 
 type MetaResponse = {
@@ -125,12 +122,12 @@ export default function UploadPage() {
   }
 
   async function loadExistingNames() {
-    const res = await fetch("/api/tracks", { cache: "no-store" });
-    if (!res.ok) return;
-
-    const json: TracksResponse = await res.json();
-    const names = (json.tracks ?? []).map((track) => normalizeText(track.title));
-    setExistingNames(names);
+    try {
+      const tracks = await fetchTracksShared(accessToken);
+      setExistingNames(tracks.map((track) => normalizeText(track.title)));
+    } catch {
+      // ignore; keep existing names on failure
+    }
   }
 
   useEffect(() => {

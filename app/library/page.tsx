@@ -8,6 +8,7 @@ import AlbumCard from "../AlbumCard";
 import { useAuth } from "../AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { Track, usePlayer } from "../PlayerContext";
+import { fetchTracksShared } from "../tracksCache";
 import { dispatchTracksUpdated, subscribeTracksUpdated } from "../tracksSync";
 import { COVER_SCROLL_TRANSFORM, useCoverScrollEffect } from "../useCoverScrollEffect";
 import { useFocusTrap } from "../useFocusTrap";
@@ -25,10 +26,6 @@ type ApiTrack = {
   ownerDisplayName?: string | null;
   ownerId?: string | null;
   ownerLabel?: string | null;
-};
-
-type TracksResponse = {
-  tracks?: ApiTrack[];
 };
 
 type MetaSaveResponse = {
@@ -226,14 +223,7 @@ export default function LibraryPage() {
       setLoading(true);
       setError("");
 
-      const res = await fetch("/api/tracks", {
-        cache: "no-store",
-        headers: createAuthorizedHeaders(accessToken),
-      });
-      if (!res.ok) throw new Error("Impossible de charger /api/tracks");
-
-      const json: TracksResponse = await res.json();
-      setTracks(Array.isArray(json.tracks) ? json.tracks : []);
+      setTracks(await fetchTracksShared(accessToken));
     } catch (errorValue: unknown) {
       setError(getErrorMessage(errorValue, "Erreur lors du chargement"));
       setTracks([]);

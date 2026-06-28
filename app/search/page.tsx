@@ -4,7 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { LayoutGrid, List as ListIcon, Music, Play, Search, User, X } from "lucide-react";
 import { ReactNode, useEffect, useMemo, useState } from "react";
+import { useAuth } from "../AuthProvider";
 import { Track, usePlayer } from "../PlayerContext";
+import { fetchTracksShared } from "../tracksCache";
 import { subscribeTracksUpdated } from "../tracksSync";
 import { getInitials, hashStringToHue } from "@/lib/publicLinks";
 import { useLongPress } from "../useLongPress";
@@ -21,7 +23,6 @@ type ApiTrack = {
   ownerId?: string | null;
 };
 
-type TracksResponse = { tracks?: ApiTrack[] };
 type SearchTab = "all" | "titres" | "artistes" | "utilisateurs";
 
 type ArtistEntry = { name: string; count: number; cover?: string };
@@ -332,6 +333,7 @@ const ARTIST_VIEW_KEY = "mp3_search_artist_view";
 
 export default function SearchPage() {
   const { setQueueAndPlay, isFavorite, addToQueueEnd, toggleFavorite } = usePlayer();
+  const { accessToken } = useAuth();
 
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<SearchTab>("all");
@@ -391,10 +393,7 @@ export default function SearchPage() {
     try {
       setLoading(true);
       setError("");
-      const res = await fetch("/api/tracks", { cache: "no-store" });
-      if (!res.ok) throw new Error("Impossible de charger les sons");
-      const json: TracksResponse = await res.json();
-      const list = Array.isArray(json.tracks) ? json.tracks : [];
+      const list = await fetchTracksShared(accessToken);
       setTracks(
         list.map((t) => ({
           title: t.title,

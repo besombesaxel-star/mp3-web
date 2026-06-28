@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { LayoutGrid, List as ListIcon, Pencil } from "lucide-react";
@@ -149,6 +149,7 @@ export default function LibraryPage() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [sort, setSort] = useState<"default" | "title" | "artist">("default");
   const [menuTrack, setMenuTrack] = useState<Track | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedSrcs, setSelectedSrcs] = useState<Set<string>>(new Set());
@@ -365,11 +366,29 @@ export default function LibraryPage() {
     }
   }
 
+  const sortedTracks = useMemo(() => {
+    if (sort === "title") return [...tracks].sort((a, b) => a.title.localeCompare(b.title, "fr"));
+    if (sort === "artist") return [...tracks].sort((a, b) => a.artist.localeCompare(b.artist, "fr"));
+    return tracks;
+  }, [tracks, sort]);
+
   return (
     <div ref={pageRef} className="px-2 pt-6 sm:px-6 pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-white">Bibliotheque</h1>
         <div className="flex items-center gap-2">
+          {tracks.length > 0 ? (
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as "default" | "title" | "artist")}
+              aria-label="Trier par"
+              className="h-8 px-3 rounded-lg text-xs bg-white/5 text-white/70 border border-white/10 hover:bg-white/10 transition outline-none cursor-pointer"
+            >
+              <option value="default">Recents</option>
+              <option value="title">Titre</option>
+              <option value="artist">Artiste</option>
+            </select>
+          ) : null}
           {isAuthenticated && tracks.length > 0 ? (
             <button
               type="button"
@@ -434,7 +453,7 @@ export default function LibraryPage() {
 
       {view === "grid" ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-6">
-          {tracks.map((track, i) => (
+          {sortedTracks.map((track, i) => (
             <AlbumCard
               key={track.src}
               title={track.title}
@@ -452,7 +471,7 @@ export default function LibraryPage() {
         </div>
       ) : (
         <div className="space-y-1">
-          {tracks.map((track, i) => (
+          {sortedTracks.map((track, i) => (
             <LibraryListRow
               key={track.src}
               track={track}

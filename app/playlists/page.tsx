@@ -131,6 +131,7 @@ export default function PlaylistsPage() {
   const [search, setSearch] = useState("");
   const [menuTrack, setMenuTrack] = useState<Track | null>(null);
   const [activeTracksSearch, setActiveTracksSearch] = useState("");
+  const [activeSort, setActiveSort] = useState<"default" | "title" | "artist">("default");
   const [deletedSnapshot, setDeletedSnapshot] = useState<{ playlist: Playlist; index: number } | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playlistsRemoteHydratedRef = useRef(false);
@@ -330,11 +331,14 @@ export default function PlaylistsPage() {
 
   const filteredActiveTracks = useMemo(() => {
     const value = activeTracksSearch.trim().toLowerCase();
-    if (!value) return activeTracks;
-    return activeTracks.filter((track) =>
-      `${track.title} ${track.artist ?? ""}`.toLowerCase().includes(value)
-    );
-  }, [activeTracks, activeTracksSearch]);
+    const base = !value
+      ? activeTracks
+      : activeTracks.filter((track) => `${track.title} ${track.artist ?? ""}`.toLowerCase().includes(value));
+
+    if (activeSort === "title") return [...base].sort((a, b) => a.title.localeCompare(b.title, "fr"));
+    if (activeSort === "artist") return [...base].sort((a, b) => (a.artist ?? "").localeCompare(b.artist ?? "", "fr"));
+    return base;
+  }, [activeTracks, activeTracksSearch, activeSort]);
 
   const filteredLibrary = useMemo(() => {
     const value = search.trim().toLowerCase();
@@ -742,7 +746,21 @@ export default function PlaylistsPage() {
               </div>
 
               <div className="mb-6">
-                <p className="text-xs text-white/45 px-2 mb-2">Morceaux dans la playlist</p>
+                <div className="flex items-center justify-between gap-3 px-2 mb-2">
+                  <p className="text-xs text-white/45">Morceaux dans la playlist</p>
+                  {activeTracks.length > 1 ? (
+                    <select
+                      value={activeSort}
+                      onChange={(e) => setActiveSort(e.target.value as "default" | "title" | "artist")}
+                      aria-label="Trier par"
+                      className="h-7 px-2.5 rounded-lg text-xs bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition outline-none cursor-pointer"
+                    >
+                      <option value="default">Ordre d&apos;ajout</option>
+                      <option value="title">Titre</option>
+                      <option value="artist">Artiste</option>
+                    </select>
+                  ) : null}
+                </div>
 
                 {activeTracks.length > 8 ? (
                   <div className="mb-3 px-2">

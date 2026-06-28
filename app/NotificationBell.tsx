@@ -146,8 +146,17 @@ export default function NotificationBell() {
         setOpen(false);
       }
     }
-    if (open) document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    if (open) {
+      document.addEventListener("mousedown", handleClick);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [open]);
 
   if (!isAuthenticated) return null;
@@ -171,7 +180,7 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute top-11 right-0 w-[320px] max-h-[440px] overflow-y-auto rounded-2xl bg-zinc-900/95 border border-white/10 shadow-2xl backdrop-blur-sm">
+        <div className="absolute top-11 right-0 w-[320px] max-h-[440px] overflow-y-auto rounded-2xl bg-zinc-900/95 border border-white/10 shadow-2xl backdrop-blur-sm mp3-slide-down">
           <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold text-white/90">Notifications</h3>
             <Link

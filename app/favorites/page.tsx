@@ -1,12 +1,15 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
-import { Heart, Play, Shuffle } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Heart, LayoutGrid, List as ListIcon, Play, Shuffle } from "lucide-react";
+import AlbumCard from "../AlbumCard";
 import { Track, usePlayer } from "../PlayerContext";
 import AudioBars from "../AudioBars";
 import { useLongPress } from "../useLongPress";
 import TrackContextMenu from "../TrackContextMenu";
+
+const FAVORITES_VIEW_KEY = "mp3_favorites_view";
 
 function FavoriteRow({
   track, index, sorted, isActive, playing, onOpenMenu,
@@ -95,6 +98,21 @@ function FavoriteRow({
 export default function FavoritesPage() {
   const { favorites, setQueueAndPlay, track: currentTrack, playing } = usePlayer();
   const [menuTrack, setMenuTrack] = useState<Track | null>(null);
+  const [view, setView] = useState<"grid" | "list">("list");
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(FAVORITES_VIEW_KEY);
+      if (stored === "grid" || stored === "list") setView(stored);
+    } catch {}
+  }, []);
+
+  function changeView(next: "grid" | "list") {
+    setView(next);
+    try {
+      localStorage.setItem(FAVORITES_VIEW_KEY, next);
+    } catch {}
+  }
 
   const sorted = useMemo(() => {
     return [...favorites].sort((a, b) => a.title.localeCompare(b.title));
@@ -119,6 +137,34 @@ export default function FavoritesPage() {
 
         {sorted.length > 0 && (
           <div className="flex items-center gap-2 shrink-0">
+            <div className="hidden sm:flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+              <button
+                type="button"
+                onClick={() => changeView("grid")}
+                aria-pressed={view === "grid"}
+                className={[
+                  "h-8 w-8 rounded-full flex items-center justify-center transition",
+                  view === "grid" ? "bg-white text-black" : "text-white/55 hover:bg-white/10 hover:text-white",
+                ].join(" ")}
+                title="Vue grille"
+                aria-label="Vue grille"
+              >
+                <LayoutGrid size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={() => changeView("list")}
+                aria-pressed={view === "list"}
+                className={[
+                  "h-8 w-8 rounded-full flex items-center justify-center transition",
+                  view === "list" ? "bg-white text-black" : "text-white/55 hover:bg-white/10 hover:text-white",
+                ].join(" ")}
+                title="Vue liste"
+                aria-label="Vue liste"
+              >
+                <ListIcon size={15} />
+              </button>
+            </div>
             <button
               onClick={playShuffled}
               className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 text-white/70 text-sm font-medium px-4 py-2 hover:bg-white/10 hover:text-white transition"
@@ -146,6 +192,19 @@ export default function FavoritesPage() {
           <Heart size={36} className="mx-auto mb-4 text-white/15" />
           <p className="text-white/60 font-medium">Aucun favori pour l&apos;instant</p>
           <p className="text-white/30 text-sm mt-2">Appuie sur le cœur dans le player pour en ajouter.</p>
+        </div>
+      ) : view === "grid" ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-6">
+          {sorted.map((track, index) => (
+            <AlbumCard
+              key={track.src}
+              title={track.title}
+              subtitle={track.artist ?? "—"}
+              track={track}
+              hoverEffect="shrink"
+              animationDelay={`${Math.min(index, 9) * 40}ms`}
+            />
+          ))}
         </div>
       ) : (
         <div className="space-y-1">

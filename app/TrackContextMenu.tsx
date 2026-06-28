@@ -55,6 +55,12 @@ export default function TrackContextMenu({ track, onClose }: Props) {
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-white/15" aria-hidden="true" />
 
         <div className="flex items-center gap-3 px-1 pb-3 border-b border-white/8 mb-2">
+          <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-white/5">
+            {track.cover ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={track.cover} alt={track.title} className="h-full w-full object-cover" />
+            ) : null}
+          </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-white/90 truncate">{track.title}</p>
             <p className="text-xs text-white/45 truncate">{track.artist ?? "-"}</p>

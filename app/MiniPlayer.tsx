@@ -564,17 +564,29 @@ export default function MiniPlayer() {
                     <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/20 bg-white/10 p-3">
                       <button
                         type="button"
-                        className="min-w-0 flex-1 text-left"
+                        className="min-w-0 flex-1 flex items-center gap-3 text-left"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (index >= 0) playIndex(index);
                         }}
                         title="Lire ce morceau"
                       >
-                        <p className="text-sm text-white/92 truncate">{currentQueueTrack.title}</p>
-                        <p className="text-xs text-white/50 truncate">{currentQueueTrack.artist ?? "-"}</p>
+                        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-white/5">
+                          {currentQueueTrack.cover ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={currentQueueTrack.cover}
+                              alt={currentQueueTrack.title}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : null}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm text-white/92 truncate">{currentQueueTrack.title}</p>
+                          <p className="text-xs text-white/50 truncate">{currentQueueTrack.artist ?? "-"}</p>
+                        </div>
                       </button>
-                      <span className="text-[11px] text-white/55">Lecture</span>
+                      <span className="text-[11px] text-white/55 shrink-0">Lecture</span>
                     </div>
                   </div>
                 ) : null}
@@ -607,15 +619,27 @@ export default function MiniPlayer() {
 
                             <button
                               type="button"
-                              className="min-w-0 flex-1 text-left"
+                              className="min-w-0 flex-1 flex items-center gap-2.5 text-left"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 playIndex(absoluteIndex);
                               }}
                               title="Lire ce morceau"
                             >
-                              <p className="text-sm text-white/85 truncate">{queuedTrack.title}</p>
-                              <p className="text-xs text-white/40 truncate">{queuedTrack.artist ?? "-"}</p>
+                              <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-white/5">
+                                {queuedTrack.cover ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img
+                                    src={queuedTrack.cover}
+                                    alt={queuedTrack.title}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : null}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm text-white/85 truncate">{queuedTrack.title}</p>
+                                <p className="text-xs text-white/40 truncate">{queuedTrack.artist ?? "-"}</p>
+                              </div>
                             </button>
 
                             <button

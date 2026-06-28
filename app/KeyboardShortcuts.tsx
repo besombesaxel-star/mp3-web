@@ -1,7 +1,24 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { X } from "lucide-react";
 import { usePlayer } from "./PlayerContext";
+import { subscribeShowShortcuts } from "./shortcutsUi";
+
+const SHORTCUTS: { keys: string[]; label: string }[] = [
+  { keys: ["Espace"], label: "Lecture / Pause" },
+  { keys: ["F"], label: "Plein ecran" },
+  { keys: ["Echap"], label: "Fermer" },
+  { keys: ["↑", "↓"], label: "Volume" },
+  { keys: ["M"], label: "Muet" },
+  { keys: ["←", "→"], label: "Reculer / Avancer 5s" },
+  { keys: ["Maj", "←", "→"], label: "Morceau precedent / suivant" },
+  { keys: ["S"], label: "Lecture aleatoire" },
+  { keys: ["R"], label: "Repeter" },
+  { keys: ["A"], label: "Lecture intelligente" },
+  { keys: ["Z"], label: "Mode focus" },
+  { keys: ["?"], label: "Afficher cette aide" },
+];
 
 export default function KeyboardShortcuts() {
   const {
@@ -20,6 +37,10 @@ export default function KeyboardShortcuts() {
     toggleShuffle,
     cycleRepeat,
   } = usePlayer();
+
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  useEffect(() => subscribeShowShortcuts(() => setHelpOpen(true)), []);
 
   useEffect(() => {
     function isTypingTarget(target: EventTarget | null) {
@@ -52,6 +73,13 @@ export default function KeyboardShortcuts() {
 
       const key = e.key.toLowerCase();
 
+      // Shortcuts help
+      if (e.key === "?") {
+        e.preventDefault();
+        setHelpOpen((v) => !v);
+        return;
+      }
+
       // Play / Pause
       if (e.code === "Space") {
         e.preventDefault();
@@ -66,6 +94,11 @@ export default function KeyboardShortcuts() {
         return;
       }
       if (e.key === "Escape") {
+        if (helpOpen) {
+          e.preventDefault();
+          setHelpOpen(false);
+          return;
+        }
         if (expanded) {
           e.preventDefault();
           setExpanded(false);
@@ -148,7 +181,57 @@ export default function KeyboardShortcuts() {
     setMuted,
     toggleShuffle,
     cycleRepeat,
+    helpOpen,
   ]);
 
-  return null;
+  if (!helpOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4"
+      onClick={() => setHelpOpen(false)}
+      role="presentation"
+    >
+      <div
+        className="w-full max-w-lg rounded-3xl bg-[#15151C] border border-white/10 p-6 mp3-pop"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Raccourcis clavier"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-lg font-semibold text-white/95">Raccourcis clavier</h2>
+          <button
+            type="button"
+            onClick={() => setHelpOpen(false)}
+            className="h-9 w-9 rounded-full bg-white/8 hover:bg-white/12 flex items-center justify-center text-white/70 transition"
+            aria-label="Fermer"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {SHORTCUTS.map(({ keys, label }) => (
+            <div
+              key={label}
+              className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.03] px-3 py-2.5"
+            >
+              <span className="text-sm text-white/75">{label}</span>
+              <div className="flex items-center gap-1 shrink-0">
+                {keys.map((k, i) => (
+                  <kbd
+                    key={i}
+                    className="rounded-md border border-white/15 bg-white/8 px-1.5 py-0.5 text-xs font-mono text-white/85"
+                  >
+                    {k}
+                  </kbd>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }

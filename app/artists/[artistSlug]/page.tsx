@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { LayoutGrid, List as ListIcon } from "lucide-react";
+import AlbumCard from "@/app/AlbumCard";
 import { usePlayer } from "@/app/PlayerContext";
 import { getPublicProfileHref } from "@/lib/publicLinks";
 
@@ -43,6 +45,8 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
+const ARTIST_VIEW_KEY = "mp3_artist_view";
+
 export default function ArtistPage() {
   const params = useParams<{ artistSlug: string }>();
   const { setQueueAndPlay } = usePlayer();
@@ -50,6 +54,21 @@ export default function ArtistPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [artist, setArtist] = useState<ArtistData | null>(null);
+  const [view, setView] = useState<"grid" | "list">("list");
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(ARTIST_VIEW_KEY);
+      if (stored === "grid" || stored === "list") setView(stored);
+    } catch {}
+  }, []);
+
+  function changeView(next: "grid" | "list") {
+    setView(next);
+    try {
+      localStorage.setItem(ARTIST_VIEW_KEY, next);
+    } catch {}
+  }
 
   const tracksForPlayer = useMemo(
     () =>
@@ -105,7 +124,7 @@ export default function ArtistPage() {
 
   return (
     <div className="pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-3 mp3-fade-up">
         <div>
           <p className="text-xs uppercase tracking-[0.28em] text-white/35">Page artiste</p>
           <h1 className="mt-2 text-3xl font-light text-white/95">
@@ -135,7 +154,7 @@ export default function ArtistPage() {
         </div>
       ) : artist ? (
         <div className="space-y-6">
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 mp3-fade-up" style={{ animationDelay: "40ms" }}>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div className="min-w-0">
                 <p className="text-sm text-white/60">
@@ -174,56 +193,108 @@ export default function ArtistPage() {
             </div>
           </section>
 
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-6">
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 mp3-fade-up" style={{ animationDelay: "80ms" }}>
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.28em] text-white/35">Catalogue</p>
                 <h2 className="mt-2 text-xl text-white/92">Derniers morceaux</h2>
               </div>
-            </div>
 
-            <div className="space-y-3">
-              {artist.recentTracks.map((track, index) => (
-                <div
-                  key={track.src}
-                  className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 p-3 sm:flex-row sm:items-center sm:justify-between"
+              <div className="hidden sm:flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+                <button
+                  type="button"
+                  onClick={() => changeView("grid")}
+                  aria-pressed={view === "grid"}
+                  className={[
+                    "h-8 w-8 rounded-full flex items-center justify-center transition",
+                    view === "grid" ? "bg-white text-black" : "text-white/55 hover:bg-white/10 hover:text-white",
+                  ].join(" ")}
+                  title="Vue grille"
+                  aria-label="Vue grille"
                 >
-                  <div className="min-w-0 flex items-center gap-3">
-                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[#14141B]">
-                      {track.cover ? (
-                        <Image src={track.cover} alt={track.title} fill className="object-cover" sizes="56px" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-white/35 text-xs uppercase">
-                          {track.title.slice(0, 1) || "-"}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="truncate text-sm text-white/92">{track.title}</p>
-                      {track.ownerId ? (
-                        <Link
-                          href={getPublicProfileHref(track.ownerId)}
-                          className="mt-1 inline-flex max-w-full truncate text-xs text-white/55 underline underline-offset-4 hover:text-white/85"
-                        >
-                          {track.ownerLabel ?? "Membre mp3"}
-                        </Link>
-                      ) : (
-                        <p className="mt-1 truncate text-xs text-white/45">{track.ownerLabel ?? "Bibliotheque partagee"}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setQueueAndPlay(tracksForPlayer, index)}
-                    className="h-10 rounded-2xl bg-white px-4 text-sm font-medium text-black transition hover:opacity-90 sm:shrink-0"
-                  >
-                    Lire
-                  </button>
-                </div>
-              ))}
+                  <LayoutGrid size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => changeView("list")}
+                  aria-pressed={view === "list"}
+                  className={[
+                    "h-8 w-8 rounded-full flex items-center justify-center transition",
+                    view === "list" ? "bg-white text-black" : "text-white/55 hover:bg-white/10 hover:text-white",
+                  ].join(" ")}
+                  title="Vue liste"
+                  aria-label="Vue liste"
+                >
+                  <ListIcon size={15} />
+                </button>
+              </div>
             </div>
+
+            {view === "grid" ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5">
+                {artist.recentTracks.map((track, index) => (
+                  <AlbumCard
+                    key={track.src}
+                    title={track.title}
+                    subtitle={track.ownerLabel ?? "Bibliotheque partagee"}
+                    track={{
+                      title: track.title,
+                      artist: track.artist,
+                      src: track.src,
+                      cover: track.cover ?? undefined,
+                      ownerDisplayName: track.ownerDisplayName ?? undefined,
+                      ownerId: track.ownerId ?? undefined,
+                    }}
+                    hoverEffect="shrink"
+                    animationDelay={`${Math.min(index, 9) * 40}ms`}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {artist.recentTracks.map((track, index) => (
+                  <div
+                    key={track.src}
+                    className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 p-3 transition hover:bg-white/[0.06] hover:border-white/20 sm:flex-row sm:items-center sm:justify-between mp3-fade-up"
+                    style={{ animationDelay: `${Math.min(index, 14) * 25}ms` }}
+                  >
+                    <div className="min-w-0 flex items-center gap-3">
+                      <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[#14141B]">
+                        {track.cover ? (
+                          <Image src={track.cover} alt={track.title} fill className="object-cover" sizes="56px" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-white/35 text-xs uppercase">
+                            {track.title.slice(0, 1) || "-"}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="truncate text-sm text-white/92">{track.title}</p>
+                        {track.ownerId ? (
+                          <Link
+                            href={getPublicProfileHref(track.ownerId)}
+                            className="mt-1 inline-flex max-w-full truncate text-xs text-white/55 underline underline-offset-4 hover:text-white/85"
+                          >
+                            {track.ownerLabel ?? "Membre mp3"}
+                          </Link>
+                        ) : (
+                          <p className="mt-1 truncate text-xs text-white/45">{track.ownerLabel ?? "Bibliotheque partagee"}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setQueueAndPlay(tracksForPlayer, index)}
+                      className="h-10 rounded-2xl bg-white px-4 text-sm font-medium text-black transition hover:opacity-90 sm:shrink-0"
+                    >
+                      Lire
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         </div>
       ) : null}

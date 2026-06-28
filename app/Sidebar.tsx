@@ -21,6 +21,7 @@ import {
 import { useAuth } from "./AuthProvider";
 import { usePlayer } from "./PlayerContext";
 import { useFocusTrap } from "./useFocusTrap";
+import { openShortcutsHelp } from "./shortcutsUi";
 
 const nav = [
   { href: "/", label: "Accueil", Icon: Home },
@@ -107,10 +108,27 @@ export default function Sidebar() {
           </div>
         ) : null}
 
-        <div className={["relative z-10", compact ? "mb-8 text-center" : "mb-10"].join(" ")}>
+        <div
+          className={[
+            "relative z-10 flex items-center",
+            compact ? "mb-8 justify-center" : "mb-10 justify-between",
+          ].join(" ")}
+        >
           <h1 className={["font-light tracking-widest text-white", compact ? "text-2xl" : "text-3xl"].join(" ")}>
             {compact ? ".m" : ".mp3"}
           </h1>
+
+          {!compact ? (
+            <button
+              type="button"
+              onClick={openShortcutsHelp}
+              className="h-8 w-8 rounded-full bg-white/5 text-white/50 text-sm transition hover:bg-white/10 hover:text-white/85"
+              title="Raccourcis clavier (?)"
+              aria-label="Afficher les raccourcis clavier"
+            >
+              ?
+            </button>
+          ) : null}
         </div>
 
         <nav className="relative z-10 flex flex-col gap-2" aria-label="Navigation principale">

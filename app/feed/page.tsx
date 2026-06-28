@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Music, Play, Rss } from "lucide-react";
+import { LayoutGrid, List as ListIcon, Music, Play, Rss } from "lucide-react";
+import AlbumCard from "@/app/AlbumCard";
 import { useAuth } from "@/app/AuthProvider";
 import { usePlayer, type Track } from "@/app/PlayerContext";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
@@ -23,6 +24,8 @@ type FeedTrack = {
 
 type PlayerTrack = { artist: string; cover?: string; src: string; title: string };
 
+const FEED_VIEW_KEY = "mp3_feed_view";
+
 function FeedRow({
   track, playerTrack, idx, queue, onPlay, onOpenMenu,
 }: {
@@ -34,7 +37,8 @@ function FeedRow({
 
   return (
     <div
-      className="group flex items-center gap-3 rounded-2xl px-3 py-3 sm:py-2.5 hover:bg-white/5 transition cursor-pointer"
+      className="group flex items-center gap-3 rounded-2xl px-3 py-3 sm:py-2.5 hover:bg-white/5 transition cursor-pointer mp3-fade-up"
+      style={{ animationDelay: `${Math.min(idx, 14) * 25}ms` }}
       onClick={() => {
         if (longPress.didLongPress()) return;
         onPlay(queue, idx);
@@ -84,6 +88,21 @@ export default function FeedPage() {
   const [tracks, setTracks] = useState<FeedTrack[]>([]);
   const [loading, setLoading] = useState(true);
   const [menuTrack, setMenuTrack] = useState<Track | null>(null);
+  const [view, setView] = useState<"grid" | "list">("list");
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(FEED_VIEW_KEY);
+      if (stored === "grid" || stored === "list") setView(stored);
+    } catch {}
+  }, []);
+
+  function changeView(next: "grid" | "list") {
+    setView(next);
+    try {
+      localStorage.setItem(FEED_VIEW_KEY, next);
+    } catch {}
+  }
 
   useEffect(() => {
     if (!isAuthenticated || !accessToken) { setLoading(false); return; }
@@ -134,18 +153,50 @@ export default function FeedPage() {
 
   return (
     <div className="max-w-2xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 mp3-fade-up">
         <h2 className="text-3xl font-light">Feed</h2>
-        {!loading && tracks.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setQueueAndPlay(queue, 0)}
-            className="flex items-center gap-2 h-9 px-4 rounded-full bg-white/8 border border-white/10 text-xs text-white/60 hover:bg-white/12 transition"
-          >
-            <Play size={11} className="fill-current" />
-            Tout écouter
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {!loading && tracks.length > 0 && (
+            <div className="hidden sm:flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+              <button
+                type="button"
+                onClick={() => changeView("grid")}
+                aria-pressed={view === "grid"}
+                className={[
+                  "h-8 w-8 rounded-full flex items-center justify-center transition",
+                  view === "grid" ? "bg-white text-black" : "text-white/55 hover:bg-white/10 hover:text-white",
+                ].join(" ")}
+                title="Vue grille"
+                aria-label="Vue grille"
+              >
+                <LayoutGrid size={15} />
+              </button>
+              <button
+                type="button"
+                onClick={() => changeView("list")}
+                aria-pressed={view === "list"}
+                className={[
+                  "h-8 w-8 rounded-full flex items-center justify-center transition",
+                  view === "list" ? "bg-white text-black" : "text-white/55 hover:bg-white/10 hover:text-white",
+                ].join(" ")}
+                title="Vue liste"
+                aria-label="Vue liste"
+              >
+                <ListIcon size={15} />
+              </button>
+            </div>
+          )}
+          {!loading && tracks.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setQueueAndPlay(queue, 0)}
+              className="flex items-center gap-2 h-9 px-4 rounded-full bg-white/8 border border-white/10 text-xs text-white/60 hover:bg-white/12 transition"
+            >
+              <Play size={11} className="fill-current" />
+              Tout écouter
+            </button>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -170,6 +221,26 @@ export default function FeedPage() {
         <div className="py-20 text-center">
           <Music size={32} className="mx-auto mb-4 text-white/10" />
           <p className="text-white/35 text-sm">Aucun son de tes abonnements pour l&apos;instant.</p>
+        </div>
+      ) : view === "grid" ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5">
+          {tracks.map((track, idx) => (
+            <AlbumCard
+              key={track.src}
+              title={track.title}
+              subtitle={track.ownerDisplayName ? `${track.artist} - ${track.ownerDisplayName}` : track.artist}
+              track={{
+                title: track.title,
+                artist: track.artist,
+                src: track.src,
+                cover: track.cover ?? undefined,
+                ownerDisplayName: track.ownerDisplayName ?? undefined,
+                ownerId: track.ownerId ?? undefined,
+              }}
+              hoverEffect="shrink"
+              animationDelay={`${Math.min(idx, 9) * 40}ms`}
+            />
+          ))}
         </div>
       ) : (
         <div className="space-y-0.5">

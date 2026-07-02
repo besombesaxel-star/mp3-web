@@ -364,7 +364,7 @@ export default function PlayerOverlay() {
     <>
       <div
         ref={overlayRef}
-        className={`group fixed inset-0 z-[9999] bg-black ${isClosing ? "mp3-ov-exit" : "mp3-ov-enter"}`}
+        className={`group fixed inset-0 z-[9999] bg-black overflow-hidden ${isClosing ? "mp3-ov-exit" : "mp3-ov-enter"}`}
         role="dialog"
         aria-modal="true"
         aria-label="Lecteur plein ecran"
@@ -893,7 +893,7 @@ export default function PlayerOverlay() {
 
             </div>
 
-            <div className="hidden md:block w-full mp3-ov-panel lg:self-center lg:translate-y-8">
+            <div className={["hidden md:block w-full mp3-ov-panel lg:self-center", showLyrics ? "" : "lg:translate-y-8"].join(" ")}>
               {showLyrics && !focusMode ? (
                 /* Apple Music-style full-height lyrics column */
                 <div

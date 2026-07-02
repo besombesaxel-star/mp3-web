@@ -548,7 +548,7 @@ export default function PlayerOverlay() {
             {/* Cover */}
             <div
               className={[
-                "mx-auto w-full",
+                "mx-auto w-full flex flex-col gap-5",
                 focusMode
                   ? "max-w-[360px] sm:max-w-[420px] md:max-w-[760px]"
                   : showLyrics
@@ -584,11 +584,10 @@ export default function PlayerOverlay() {
                   </div>
                 ) : null}
               </div>
-            </div>
 
-            {/* Compact controls in lyrics mode (left column, desktop only) */}
-            {showLyrics && !focusMode ? (
-              <div className="hidden lg:flex flex-col gap-4 w-full mt-4 mp3-ov-panel">
+              {/* Compact controls in lyrics mode (below cover, desktop only) */}
+              {showLyrics && !focusMode ? (
+              <div className="hidden lg:flex flex-col gap-4 w-full mp3-ov-panel">
                 <div className="min-w-0">
                   <p className="text-base font-semibold text-white/90 truncate">{track?.title ?? "—"}</p>
                   {track?.artist ? (
@@ -695,7 +694,8 @@ export default function PlayerOverlay() {
                   />
                 </div>
               </div>
-            ) : null}
+              ) : null}
+            </div>
 
             {/* Right */}
             <div className="w-full md:hidden mp3-ov-panel">

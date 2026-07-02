@@ -542,7 +542,7 @@ export default function PlayerOverlay() {
           <div
             className={[
               "w-full max-w-[1680px] grid gap-5 md:gap-10 lg:gap-14 items-start",
-              focusMode ? "grid-cols-1 max-w-5xl" : showLyrics ? "grid-cols-1 lg:grid-cols-[minmax(0,0.58fr)_minmax(0,1fr)] lg:items-center" : "grid-cols-1 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)]",
+              focusMode ? "grid-cols-1 max-w-5xl" : showLyrics ? "grid-cols-1 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1fr)] lg:items-center" : "grid-cols-1 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)]",
             ].join(" ")}
           >
             {/* Cover */}
@@ -552,7 +552,7 @@ export default function PlayerOverlay() {
                 focusMode
                   ? "max-w-[360px] sm:max-w-[420px] md:max-w-[760px]"
                   : showLyrics
-                  ? "max-w-[300px] sm:max-w-[360px] md:max-w-[420px] md:sticky md:top-10"
+                  ? "md:sticky md:top-10"
                   : "max-w-[360px] sm:max-w-[500px] md:max-w-[640px] lg:max-w-[760px] md:sticky md:top-10",
               ].join(" ")}
             >
@@ -589,17 +589,17 @@ export default function PlayerOverlay() {
               {showLyrics && !focusMode ? (
               <div className="hidden lg:flex flex-col gap-4 w-full mp3-ov-panel">
                 <div className="min-w-0">
-                  <p className="text-base font-semibold text-white/90 truncate">{track?.title ?? "—"}</p>
+                  <p className="text-2xl font-bold text-white/95 truncate leading-tight">{track?.title ?? "—"}</p>
                   {track?.artist ? (
-                    <Link href={getArtistHref(track.artist)} className="text-sm text-white/45 hover:text-white/70 transition truncate block">
+                    <Link href={getArtistHref(track.artist)} className="text-base text-white/50 hover:text-white/75 transition truncate block mt-1">
                       {track.artist}
                     </Link>
-                  ) : <p className="text-sm text-white/40">—</p>}
+                  ) : <p className="text-base text-white/40">—</p>}
                 </div>
 
                 <div>
                   <div
-                    className="relative h-1.5 w-full rounded-full bg-white/10 overflow-hidden cursor-pointer"
+                    className="relative h-2 w-full rounded-full bg-white/10 overflow-hidden cursor-pointer"
                     onClick={(e) => {
                       const rect = e.currentTarget.getBoundingClientRect();
                       seekTo((e.clientX - rect.left) / rect.width);
@@ -619,68 +619,68 @@ export default function PlayerOverlay() {
                       disabled={!track}
                     />
                   </div>
-                  <div className="flex justify-between mt-1 text-[11px] text-white/30 tabular-nums">
+                  <div className="flex justify-between mt-1.5 text-xs text-white/35 tabular-nums">
                     <span>{formatTime(currentTime)}</span>
                     <span>{formatTime(duration)}</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center justify-center gap-3">
                   <button
                     onClick={toggleShuffle}
                     aria-pressed={shuffle}
-                    className={["h-9 w-9 rounded-full transition active:scale-[0.98]", shuffle ? "bg-white/12 ring-1 ring-white/15" : "bg-white/8 hover:bg-white/12"].join(" ")}
+                    className={["h-11 w-11 rounded-full transition active:scale-[0.98]", shuffle ? "bg-white/12 ring-1 ring-white/15" : "bg-white/8 hover:bg-white/12"].join(" ")}
                     type="button"
                     title="Aléatoire"
                   >
-                    <Shuffle size={15} className="mx-auto text-white/85" />
+                    <Shuffle size={18} className="mx-auto text-white/85" />
                   </button>
                   <button
                     onClick={() => { tapHaptic(); prev(); }}
-                    className="h-10 w-10 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98] disabled:opacity-50"
+                    className="h-12 w-12 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98] disabled:opacity-50"
                     disabled={!track}
                     type="button"
                     title="Précédent"
                   >
-                    <SkipBack size={18} className="mx-auto text-white/85" />
+                    <SkipBack size={20} className="mx-auto text-white/85" />
                   </button>
                   <button
                     onClick={() => { tapHaptic(); togglePlay(); }}
-                    className="h-12 w-12 rounded-full flex items-center justify-center bg-white text-black transition active:scale-[0.98] disabled:opacity-60"
-                    style={{ boxShadow: `0 0 40px ${glowStrong}` }}
+                    className="h-16 w-16 rounded-full flex items-center justify-center bg-white text-black transition active:scale-[0.98] disabled:opacity-60"
+                    style={{ boxShadow: `0 0 50px ${glowStrong}` }}
                     disabled={!track}
                     type="button"
                     title={playing ? "Pause" : "Lecture"}
                   >
-                    {playing ? <Pause size={20} /> : <Play size={20} />}
+                    {playing ? <Pause size={24} /> : <Play size={24} />}
                   </button>
                   <button
                     onClick={() => { tapHaptic(); next(); }}
-                    className="h-10 w-10 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98] disabled:opacity-50"
+                    className="h-12 w-12 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98] disabled:opacity-50"
                     disabled={!track}
                     type="button"
                     title="Suivant"
                   >
-                    <SkipForward size={18} className="mx-auto text-white/85" />
+                    <SkipForward size={20} className="mx-auto text-white/85" />
                   </button>
                   <button
                     onClick={cycleRepeat}
                     aria-pressed={Boolean(repeat)}
-                    className={["h-9 w-9 rounded-full transition active:scale-[0.98]", repeat ? "bg-white/12 ring-1 ring-white/15" : "bg-white/8 hover:bg-white/12"].join(" ")}
+                    className={["h-11 w-11 rounded-full transition active:scale-[0.98]", repeat ? "bg-white/12 ring-1 ring-white/15" : "bg-white/8 hover:bg-white/12"].join(" ")}
                     type="button"
                     title="Répéter"
                   >
-                    {repeat === "one" ? <Repeat1 size={15} className="mx-auto text-white/85" /> : <Repeat size={15} className="mx-auto text-white/85" />}
+                    {repeat === "one" ? <Repeat1 size={18} className="mx-auto text-white/85" /> : <Repeat size={18} className="mx-auto text-white/85" />}
                   </button>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setMuted(!muted)}
-                    className={["h-8 w-8 rounded-full transition", muted ? "bg-white/12" : "hover:bg-white/8"].join(" ")}
+                    className={["h-10 w-10 rounded-full transition", muted ? "bg-white/12" : "hover:bg-white/8"].join(" ")}
                     type="button"
                   >
-                    {muted || volume === 0 ? <VolumeX size={15} className="mx-auto text-white/85" /> : volume < 0.5 ? <Volume1 size={15} className="mx-auto text-white/85" /> : <Volume2 size={15} className="mx-auto text-white/85" />}
+                    {muted || volume === 0 ? <VolumeX size={18} className="mx-auto text-white/85" /> : volume < 0.5 ? <Volume1 size={18} className="mx-auto text-white/85" /> : <Volume2 size={18} className="mx-auto text-white/85" />}
                   </button>
                   <input
                     type="range"
@@ -895,50 +895,39 @@ export default function PlayerOverlay() {
 
             <div className={["hidden md:block w-full mp3-ov-panel lg:self-center", showLyrics ? "" : "lg:translate-y-8"].join(" ")}>
               {showLyrics && !focusMode ? (
-                /* Apple Music-style full-height lyrics column */
-                <div
-                  ref={lyricsContainerRef}
-                  className="h-[calc(100vh-160px)] overflow-y-auto scrollbar-none select-none"
-                >
+                /* 5-line lyrics display — 2 before, active, 2 after */
+                <div className="flex flex-col justify-center h-[calc(100vh-160px)] select-none gap-1">
                   {lyrics.loading ? (
-                    <div className="flex items-center justify-center h-full">
-                      <p className="text-lg text-white/30">Recherche des paroles…</p>
-                    </div>
+                    <p className="text-lg text-white/30">Recherche des paroles…</p>
                   ) : !lyrics.hasLyrics ? (
-                    <div className="flex items-center justify-center h-full">
-                      <p className="text-lg text-white/25">Paroles non trouvées</p>
-                    </div>
+                    <p className="text-lg text-white/25">Paroles non trouvées</p>
                   ) : lyrics.lines.length > 0 ? (
-                    <>
-                      <div style={{ height: "36vh" }} />
-                      {lyrics.lines.map((line, idx) => {
-                        const isActive = idx === currentLineIdx;
-                        const distance = Math.abs(idx - currentLineIdx);
-                        return (
-                          <div
-                            key={idx}
-                            ref={isActive ? (el) => { activeLyricRef.current = el; } : undefined}
-                            className="py-2 cursor-pointer leading-tight"
-                            style={{
-                              opacity: distance === 0 ? 1 : distance === 1 ? 0.35 : distance === 2 ? 0.15 : 0.06,
-                              fontSize: isActive ? "2.5rem" : distance === 1 ? "1.85rem" : distance === 2 ? "1.35rem" : "1.1rem",
-                              fontWeight: isActive ? 700 : distance <= 1 ? 600 : 400,
-                              color: "rgba(255,255,255,0.95)",
-                              transition: "opacity 350ms ease, font-size 350ms ease",
-                            }}
-                            onClick={() => { if (duration > 0) seekTo(line.time / duration); }}
-                          >
-                            {line.text}
-                          </div>
-                        );
-                      })}
-                      <div style={{ height: "36vh" }} />
-                    </>
+                    ([-2, -1, 0, 1, 2] as const).map((offset) => {
+                      const center = Math.max(0, currentLineIdx);
+                      const idx = center + offset;
+                      const isActive = idx === currentLineIdx;
+                      const distance = Math.abs(offset);
+                      const line = idx >= 0 && idx < lyrics.lines.length ? lyrics.lines[idx] : null;
+                      return (
+                        <div
+                          key={offset}
+                          className="leading-tight cursor-pointer"
+                          style={{
+                            opacity: distance === 0 ? 1 : distance === 1 ? 0.4 : 0.14,
+                            fontSize: distance === 0 ? "3rem" : distance === 1 ? "2rem" : "1.4rem",
+                            fontWeight: isActive ? 700 : distance === 1 ? 500 : 400,
+                            color: "rgba(255,255,255,0.95)",
+                            transition: "opacity 380ms ease, font-size 380ms ease",
+                            minHeight: distance === 0 ? "3.6rem" : distance === 1 ? "2.6rem" : "1.8rem",
+                          }}
+                          onClick={() => { if (line && duration > 0) seekTo(line.time / duration); }}
+                        >
+                          {line?.text ?? ""}
+                        </div>
+                      );
+                    })
                   ) : lyrics.plain ? (
-                    <>
-                      <div style={{ height: "24vh" }} />
-                      <p className="text-xl text-white/50 leading-relaxed whitespace-pre-wrap">{lyrics.plain}</p>
-                    </>
+                    <p className="text-xl text-white/50 leading-relaxed whitespace-pre-wrap">{lyrics.plain}</p>
                   ) : null}
                 </div>
               ) : (

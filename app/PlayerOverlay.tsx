@@ -899,8 +899,8 @@ export default function PlayerOverlay() {
                 /* Apple Music-style: all lines scroll, opacity-only fading */
                 <div
                   ref={lyricsContainerRef}
-                  className="h-[calc(100vh-160px)] overflow-y-auto scrollbar-none select-none"
-                  style={{ maskImage: "linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%)", WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 18%, black 82%, transparent 100%)" }}
+                  className="h-[calc(100vh-160px)] overflow-x-hidden overflow-y-auto scrollbar-none select-none"
+                  style={{ maskImage: "linear-gradient(to bottom, transparent 0%, black 28%, black 72%, transparent 100%)", WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 28%, black 72%, transparent 100%)" }}
                 >
                   {lyrics.loading ? (
                     <div className="flex items-center justify-center h-full">

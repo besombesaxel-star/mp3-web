@@ -22,7 +22,7 @@ import {
   VolumeX,
   Volume1,
   Volume2,
-  AlignLeft,
+  Mic,
 } from "lucide-react";
 import { useLyrics } from "./useLyrics";
 
@@ -491,7 +491,7 @@ export default function PlayerOverlay() {
               title="Paroles"
               type="button"
             >
-              <AlignLeft size={18} className="mx-auto opacity-90 text-white/85" />
+              <Mic size={18} className="mx-auto opacity-90 text-white/85" />
             </button>
 
             <button

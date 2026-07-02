@@ -542,7 +542,7 @@ export default function PlayerOverlay() {
           <div
             className={[
               "w-full max-w-[1680px] grid gap-5 md:gap-10 lg:gap-14 items-start",
-              focusMode ? "grid-cols-1 max-w-5xl" : "grid-cols-1 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)]",
+              focusMode ? "grid-cols-1 max-w-5xl" : showLyrics ? "grid-cols-1 lg:grid-cols-[minmax(0,0.44fr)_minmax(0,1fr)] lg:items-center" : "grid-cols-1 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)]",
             ].join(" ")}
           >
             {/* Cover */}
@@ -551,6 +551,8 @@ export default function PlayerOverlay() {
                 "mx-auto w-full",
                 focusMode
                   ? "max-w-[360px] sm:max-w-[420px] md:max-w-[760px]"
+                  : showLyrics
+                  ? "max-w-[240px] sm:max-w-[280px] md:max-w-[300px] md:sticky md:top-10"
                   : "max-w-[360px] sm:max-w-[500px] md:max-w-[640px] lg:max-w-[760px] md:sticky md:top-10",
               ].join(" ")}
             >
@@ -583,6 +585,117 @@ export default function PlayerOverlay() {
                 ) : null}
               </div>
             </div>
+
+            {/* Compact controls in lyrics mode (left column, desktop only) */}
+            {showLyrics && !focusMode ? (
+              <div className="hidden lg:flex flex-col gap-4 w-full mt-4 mp3-ov-panel">
+                <div className="min-w-0">
+                  <p className="text-base font-semibold text-white/90 truncate">{track?.title ?? "—"}</p>
+                  {track?.artist ? (
+                    <Link href={getArtistHref(track.artist)} className="text-sm text-white/45 hover:text-white/70 transition truncate block">
+                      {track.artist}
+                    </Link>
+                  ) : <p className="text-sm text-white/40">—</p>}
+                </div>
+
+                <div>
+                  <div
+                    className="relative h-1.5 w-full rounded-full bg-white/10 overflow-hidden cursor-pointer"
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      seekTo((e.clientX - rect.left) / rect.width);
+                    }}
+                  >
+                    <div
+                      className="h-full transition-[width] duration-150"
+                      style={{ width: `${(progress || 0) * 100}%`, background: accent, boxShadow: `0 0 12px ${glowStrong}` }}
+                    />
+                    <input
+                      type="range"
+                      min={0}
+                      max={1000}
+                      value={Math.round((progress || 0) * 1000)}
+                      onChange={(e) => seekTo(Number(e.target.value) / 1000)}
+                      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                      disabled={!track}
+                    />
+                  </div>
+                  <div className="flex justify-between mt-1 text-[11px] text-white/30 tabular-nums">
+                    <span>{formatTime(currentTime)}</span>
+                    <span>{formatTime(duration)}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-center gap-2">
+                  <button
+                    onClick={toggleShuffle}
+                    aria-pressed={shuffle}
+                    className={["h-9 w-9 rounded-full transition active:scale-[0.98]", shuffle ? "bg-white/12 ring-1 ring-white/15" : "bg-white/8 hover:bg-white/12"].join(" ")}
+                    type="button"
+                    title="Aléatoire"
+                  >
+                    <Shuffle size={15} className="mx-auto text-white/85" />
+                  </button>
+                  <button
+                    onClick={() => { tapHaptic(); prev(); }}
+                    className="h-10 w-10 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98] disabled:opacity-50"
+                    disabled={!track}
+                    type="button"
+                    title="Précédent"
+                  >
+                    <SkipBack size={18} className="mx-auto text-white/85" />
+                  </button>
+                  <button
+                    onClick={() => { tapHaptic(); togglePlay(); }}
+                    className="h-12 w-12 rounded-full flex items-center justify-center bg-white text-black transition active:scale-[0.98] disabled:opacity-60"
+                    style={{ boxShadow: `0 0 40px ${glowStrong}` }}
+                    disabled={!track}
+                    type="button"
+                    title={playing ? "Pause" : "Lecture"}
+                  >
+                    {playing ? <Pause size={20} /> : <Play size={20} />}
+                  </button>
+                  <button
+                    onClick={() => { tapHaptic(); next(); }}
+                    className="h-10 w-10 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98] disabled:opacity-50"
+                    disabled={!track}
+                    type="button"
+                    title="Suivant"
+                  >
+                    <SkipForward size={18} className="mx-auto text-white/85" />
+                  </button>
+                  <button
+                    onClick={cycleRepeat}
+                    aria-pressed={Boolean(repeat)}
+                    className={["h-9 w-9 rounded-full transition active:scale-[0.98]", repeat ? "bg-white/12 ring-1 ring-white/15" : "bg-white/8 hover:bg-white/12"].join(" ")}
+                    type="button"
+                    title="Répéter"
+                  >
+                    {repeat === "one" ? <Repeat1 size={15} className="mx-auto text-white/85" /> : <Repeat size={15} className="mx-auto text-white/85" />}
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setMuted(!muted)}
+                    className={["h-8 w-8 rounded-full transition", muted ? "bg-white/12" : "hover:bg-white/8"].join(" ")}
+                    type="button"
+                  >
+                    {muted || volume === 0 ? <VolumeX size={15} className="mx-auto text-white/85" /> : volume < 0.5 ? <Volume1 size={15} className="mx-auto text-white/85" /> : <Volume2 size={15} className="mx-auto text-white/85" />}
+                  </button>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={Math.round(volume * 100)}
+                    onChange={(e) => setVolume(Number(e.target.value) / 100)}
+                    className="flex-1 mp3-ov-volume-slider"
+                    style={{ background: `linear-gradient(to right, ${accent} ${muted ? 0 : Math.round(volume * 100)}%, rgba(255,255,255,0.14) ${muted ? 0 : Math.round(volume * 100)}%)` }}
+                    aria-label="Volume"
+                  />
+                </div>
+              </div>
+            ) : null}
 
             {/* Right */}
             <div className="w-full md:hidden mp3-ov-panel">
@@ -781,262 +894,262 @@ export default function PlayerOverlay() {
             </div>
 
             <div className="hidden md:block w-full mp3-ov-panel lg:self-center lg:translate-y-8">
-              {!focusMode ? (
-                <>
-                  <div className="flex items-center gap-5 min-w-0">
-                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white/95 truncate min-w-0">
-                      {track?.title ?? "Aucune lecture"}
-                    </h1>
-                    <AudioBars bars={20} height={48} className="shrink-0 opacity-70" />
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-3 text-lg md:text-xl text-white/45">
-                    {track?.artist ? (
-                      <Link href={getArtistHref(track.artist)} className="truncate underline underline-offset-4 hover:text-white/80">
-                        {track.artist}
-                      </Link>
-                    ) : (
-                      <span>-</span>
-                    )}
-                  </div>
-                </>
-              ) : null}
-
-              {/* Lyrics panel */}
               {showLyrics && !focusMode ? (
+                /* Apple Music-style full-height lyrics column */
                 <div
                   ref={lyricsContainerRef}
-                  className="mt-6 h-[196px] overflow-y-auto space-y-0.5 scrollbar-none select-none"
+                  className="h-[calc(100vh-160px)] overflow-y-auto scrollbar-none select-none"
                 >
                   {lyrics.loading ? (
                     <div className="flex items-center justify-center h-full">
-                      <p className="text-sm text-white/30">Recherche des paroles…</p>
+                      <p className="text-lg text-white/30">Recherche des paroles…</p>
                     </div>
                   ) : !lyrics.hasLyrics ? (
                     <div className="flex items-center justify-center h-full">
-                      <p className="text-sm text-white/25">Paroles non trouvées</p>
+                      <p className="text-lg text-white/25">Paroles non trouvées</p>
                     </div>
                   ) : lyrics.lines.length > 0 ? (
-                    lyrics.lines.map((line, idx) => {
-                      const isActive = idx === currentLineIdx;
-                      const distance = Math.abs(idx - currentLineIdx);
-                      return (
-                        <div
-                          key={idx}
-                          ref={isActive ? (el) => { activeLyricRef.current = el; } : undefined}
-                          className="py-1.5 transition-all duration-300 cursor-pointer leading-snug"
-                          style={{
-                            opacity: distance === 0 ? 1 : distance === 1 ? 0.42 : distance === 2 ? 0.22 : 0.1,
-                            fontSize: isActive ? "1.05rem" : "0.875rem",
-                            fontWeight: isActive ? 500 : 400,
-                            color: "rgba(255,255,255,0.95)",
-                          }}
-                          onClick={() => { if (duration > 0) seekTo(line.time / duration); }}
-                        >
-                          {line.text}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <p className="text-sm text-white/45 leading-relaxed whitespace-pre-wrap">{lyrics.plain}</p>
-                  )}
+                    <>
+                      <div style={{ height: "36vh" }} />
+                      {lyrics.lines.map((line, idx) => {
+                        const isActive = idx === currentLineIdx;
+                        const distance = Math.abs(idx - currentLineIdx);
+                        return (
+                          <div
+                            key={idx}
+                            ref={isActive ? (el) => { activeLyricRef.current = el; } : undefined}
+                            className="py-2 cursor-pointer leading-tight"
+                            style={{
+                              opacity: distance === 0 ? 1 : distance === 1 ? 0.35 : distance === 2 ? 0.15 : 0.06,
+                              fontSize: isActive ? "2.5rem" : distance === 1 ? "1.85rem" : distance === 2 ? "1.35rem" : "1.1rem",
+                              fontWeight: isActive ? 700 : distance <= 1 ? 600 : 400,
+                              color: "rgba(255,255,255,0.95)",
+                              transition: "opacity 350ms ease, font-size 350ms ease",
+                            }}
+                            onClick={() => { if (duration > 0) seekTo(line.time / duration); }}
+                          >
+                            {line.text}
+                          </div>
+                        );
+                      })}
+                      <div style={{ height: "36vh" }} />
+                    </>
+                  ) : lyrics.plain ? (
+                    <>
+                      <div style={{ height: "24vh" }} />
+                      <p className="text-xl text-white/50 leading-relaxed whitespace-pre-wrap">{lyrics.plain}</p>
+                    </>
+                  ) : null}
                 </div>
-              ) : null}
+              ) : (
+                /* Normal layout */
+                <>
+                  {!focusMode ? (
+                    <>
+                      <div className="flex items-center gap-5 min-w-0">
+                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white/95 truncate min-w-0">
+                          {track?.title ?? "Aucune lecture"}
+                        </h1>
+                        <AudioBars bars={20} height={48} className="shrink-0 opacity-70" />
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-3 text-lg md:text-xl text-white/45">
+                        {track?.artist ? (
+                          <Link href={getArtistHref(track.artist)} className="truncate underline underline-offset-4 hover:text-white/80">
+                            {track.artist}
+                          </Link>
+                        ) : (
+                          <span>-</span>
+                        )}
+                      </div>
+                    </>
+                  ) : null}
 
-              {/* Progress */}
-              <div
-                className={[
-                  focusMode ? "mt-7" : showLyrics ? "mt-5" : "mt-12",
-                  "transition-all duration-300",
-                  controlsHidden
-                    ? "opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0"
-                    : "opacity-100",
-                ].join(" ")}
-              >
-                <div
-                  className="relative h-3 w-full rounded-full bg-white/10 overflow-hidden cursor-pointer"
-                  onClick={(e) => {
-                    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const ratio = rect.width > 0 ? x / rect.width : 0;
-                    seekTo(ratio);
-                  }}
-                  onMouseMove={onProgressHover}
-                  onMouseLeave={() => setProgressHover(null)}
-                  title="Cliquer pour se deplacer"
-                >
-                  {progressHover ? (
+                  {/* Progress */}
+                  <div
+                    className={[
+                      focusMode ? "mt-7" : "mt-12",
+                      "transition-all duration-300",
+                      controlsHidden
+                        ? "opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0"
+                        : "opacity-100",
+                    ].join(" ")}
+                  >
                     <div
-                      className="pointer-events-none absolute -top-8 -translate-x-1/2 rounded-md border border-white/15 bg-black/90 px-2 py-1 text-xs text-white/85 tabular-nums"
-                      style={{ left: progressHover.x }}
+                      className="relative h-3 w-full rounded-full bg-white/10 overflow-hidden cursor-pointer"
+                      onClick={(e) => {
+                        const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const ratio = rect.width > 0 ? x / rect.width : 0;
+                        seekTo(ratio);
+                      }}
+                      onMouseMove={onProgressHover}
+                      onMouseLeave={() => setProgressHover(null)}
+                      title="Cliquer pour se deplacer"
                     >
-                      {formatTime(progressHover.time)}
+                      {progressHover ? (
+                        <div
+                          className="pointer-events-none absolute -top-8 -translate-x-1/2 rounded-md border border-white/15 bg-black/90 px-2 py-1 text-xs text-white/85 tabular-nums"
+                          style={{ left: progressHover.x }}
+                        >
+                          {formatTime(progressHover.time)}
+                        </div>
+                      ) : null}
+                      <div
+                        className="h-full transition-[width] duration-150 ease-out"
+                        style={{
+                          width: `${(progress || 0) * 100}%`,
+                          background: accent,
+                          boxShadow: `0 0 26px ${glowStrong}`,
+                        }}
+                      />
+                      <div
+                        className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                        style={{ animation: "mp3ProgressSheen 2.4s ease-in-out infinite" }}
+                      />
+                      <input
+                        type="range"
+                        min={0}
+                        max={1000}
+                        value={Math.round((progress || 0) * 1000)}
+                        onChange={(e) => seekTo(Number(e.target.value) / 1000)}
+                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                        aria-label="Progression de lecture"
+                        disabled={!track}
+                      />
+                    </div>
+                    <div className="flex justify-between mt-3 text-sm text-white/35 tabular-nums">
+                      <span>{formatTime(currentTime)}</span>
+                      <span>{formatTime(duration)}</span>
+                    </div>
+                  </div>
+
+                  {/* Controls */}
+                  <div
+                    className={[
+                      "mt-12 flex items-center justify-center gap-4 lg:gap-5 mp3-ov-controls transition-all duration-300",
+                      controlsHidden
+                        ? "opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0"
+                        : "opacity-100",
+                    ].join(" ")}
+                  >
+                    <button
+                      onClick={toggleShuffle}
+                      aria-pressed={shuffle}
+                      className={[
+                        "h-[52px] w-[52px] lg:h-14 lg:w-14 rounded-full transition active:scale-[0.98]",
+                        shuffle ? "bg-white/12 ring-1 ring-white/15" : "bg-white/8 hover:bg-white/12",
+                      ].join(" ")}
+                      title="Lecture aléatoire"
+                      type="button"
+                    >
+                      <Shuffle size={22} className="mx-auto opacity-90 text-white/85" />
+                    </button>
+
+                    <button
+                      onClick={() => { tapHaptic(); prev(); }}
+                      className="h-[60px] w-[60px] lg:h-16 lg:w-16 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98] disabled:opacity-50"
+                      disabled={!track}
+                      title="Precedent"
+                      type="button"
+                    >
+                      <SkipBack size={24} className="mx-auto opacity-90 text-white/85" />
+                    </button>
+
+                    <button
+                      onClick={() => { tapHaptic(); togglePlay(); }}
+                      className={[
+                        "h-[72px] w-[72px] lg:h-20 lg:w-20 rounded-full text-lg font-semibold transition active:scale-[0.98] disabled:opacity-60 flex items-center justify-center",
+                        "bg-white text-black",
+                      ].join(" ")}
+                      style={{ boxShadow: `0 0 98px ${glowStrong}` }}
+                      disabled={!track}
+                      title={playing ? "Pause" : "Lecture"}
+                      type="button"
+                    >
+                      {playing ? <Pause size={28} /> : <Play size={28} />}
+                    </button>
+
+                    <button
+                      onClick={() => { tapHaptic(); next(); }}
+                      className="h-[60px] w-[60px] lg:h-16 lg:w-16 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98] disabled:opacity-50"
+                      disabled={!track}
+                      title="Suivant"
+                      type="button"
+                    >
+                      <SkipForward size={24} className="mx-auto opacity-90 text-white/85" />
+                    </button>
+
+                    <button
+                      onClick={cycleRepeat}
+                      aria-pressed={Boolean(repeat)}
+                      className={[
+                        "h-[52px] w-[52px] lg:h-14 lg:w-14 rounded-full transition active:scale-[0.98]",
+                        repeat ? "bg-white/12 ring-1 ring-white/15" : "bg-white/8 hover:bg-white/12",
+                      ].join(" ")}
+                      title="Répéter"
+                      type="button"
+                    >
+                      {repeat === "one" ? (
+                        <Repeat1 size={22} className="mx-auto opacity-90 text-white/85" />
+                      ) : (
+                        <Repeat size={22} className="mx-auto opacity-90 text-white/85" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Volume */}
+                  <div
+                    className={[
+                      "mt-10 flex items-center gap-4 lg:gap-5 mp3-ov-controls transition-all duration-300",
+                      controlsHidden
+                        ? "opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0"
+                        : "opacity-100",
+                    ].join(" ")}
+                  >
+                    <button
+                      className={[
+                        "h-[52px] w-[52px] lg:h-14 lg:w-14 rounded-full transition active:scale-[0.98]",
+                        muted ? "bg-white/12 ring-1 ring-white/15" : "bg-white/8 hover:bg-white/12",
+                      ].join(" ")}
+                      onClick={() => setMuted(!muted)}
+                      aria-pressed={muted}
+                      title={muted ? "Réactiver" : "Couper"}
+                      type="button"
+                    >
+                      {muted || volume === 0 ? (
+                        <VolumeX size={22} className="mx-auto opacity-90 text-white/85" />
+                      ) : volume < 0.5 ? (
+                        <Volume1 size={22} className="mx-auto opacity-90 text-white/85" />
+                      ) : (
+                        <Volume2 size={22} className="mx-auto opacity-90 text-white/85" />
+                      )}
+                    </button>
+
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={Math.round(volume * 100)}
+                      onChange={(e) => setVolume(Number(e.target.value) / 100)}
+                      className="w-full mp3-ov-volume-slider"
+                      style={{
+                        background: `linear-gradient(to right, ${accent} ${muted ? 0 : Math.round(volume * 100)}%, rgba(255,255,255,0.14) ${muted ? 0 : Math.round(volume * 100)}%)`,
+                      }}
+                      aria-label="Volume"
+                    />
+
+                    <span className="text-xs text-white/55 tabular-nums w-12 text-right">
+                      {Math.round(volume * 100)}
+                    </span>
+                  </div>
+
+                  {!focusMode ? (
+                    <div className="mt-6 text-xs text-white/25 mp3-ov-panel flex items-center justify-center">
+                      <span className="italic">© · Azer0.</span>
                     </div>
                   ) : null}
-                  <div
-                    className="h-full transition-[width] duration-150 ease-out"
-                    style={{
-                      width: `${(progress || 0) * 100}%`,
-                      background: accent,
-                      boxShadow: `0 0 26px ${glowStrong}`,
-                    }}
-                  />
-                  <div
-                    className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-                    style={{ animation: "mp3ProgressSheen 2.4s ease-in-out infinite" }}
-                  />
-                  <input
-                    type="range"
-                    min={0}
-                    max={1000}
-                    value={Math.round((progress || 0) * 1000)}
-                    onChange={(e) => seekTo(Number(e.target.value) / 1000)}
-                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                    aria-label="Progression de lecture"
-                    disabled={!track}
-                  />
-                </div>
-                <div className="flex justify-between mt-3 text-sm text-white/35 tabular-nums">
-                  <span>{formatTime(currentTime)}</span>
-                  <span>{formatTime(duration)}</span>
-                </div>
-              </div>
-
-              {/* Controls */}
-              <div
-                className={[
-                  "mt-12 flex items-center justify-center gap-4 lg:gap-5 mp3-ov-controls transition-all duration-300",
-                  controlsHidden
-                    ? "opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0"
-                    : "opacity-100",
-                ].join(" ")}
-              >
-                <button
-                  onClick={toggleShuffle}
-                  aria-pressed={shuffle}
-                  className={[
-                    "h-[52px] w-[52px] lg:h-14 lg:w-14 rounded-full transition active:scale-[0.98]",
-                    shuffle ? "bg-white/12 ring-1 ring-white/15" : "bg-white/8 hover:bg-white/12",
-                  ].join(" ")}
-                  title="Lecture alÃ©atoire"
-                  type="button"
-                >
-                  <Shuffle size={22} className="mx-auto opacity-90 text-white/85" />
-                </button>
-
-                <button
-                  onClick={() => {
-                    tapHaptic();
-                    prev();
-                  }}
-                  className="h-[60px] w-[60px] lg:h-16 lg:w-16 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98] disabled:opacity-50"
-                  disabled={!track}
-                  title="Precedent"
-                  type="button"
-                >
-                  <SkipBack size={24} className="mx-auto opacity-90 text-white/85" />
-                </button>
-
-                <button
-                  onClick={() => {
-                    tapHaptic();
-                    togglePlay();
-                  }}
-                  className={[
-                    "h-[72px] w-[72px] lg:h-20 lg:w-20 rounded-full text-lg font-semibold transition active:scale-[0.98] disabled:opacity-60 flex items-center justify-center",
-                    "bg-white text-black",
-                  ].join(" ")}
-                  style={{
-                    boxShadow: `0 0 98px ${glowStrong}`,
-                  }}
-                  disabled={!track}
-                  title={playing ? "Pause" : "Lecture"}
-                  type="button"
-                >
-                  {playing ? <Pause size={28} /> : <Play size={28} />}
-                </button>
-
-                <button
-                  onClick={() => {
-                    tapHaptic();
-                    next();
-                  }}
-                  className="h-[60px] w-[60px] lg:h-16 lg:w-16 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98] disabled:opacity-50"
-                  disabled={!track}
-                  title="Suivant"
-                  type="button"
-                >
-                  <SkipForward size={24} className="mx-auto opacity-90 text-white/85" />
-                </button>
-
-                <button
-                  onClick={cycleRepeat}
-                  aria-pressed={Boolean(repeat)}
-                  className={[
-                    "h-[52px] w-[52px] lg:h-14 lg:w-14 rounded-full transition active:scale-[0.98]",
-                    repeat ? "bg-white/12 ring-1 ring-white/15" : "bg-white/8 hover:bg-white/12",
-                  ].join(" ")}
-                  title="Repeat"
-                  type="button"
-                >
-                  {repeat === "one" ? (
-                    <Repeat1 size={22} className="mx-auto opacity-90 text-white/85" />
-                  ) : (
-                    <Repeat size={22} className="mx-auto opacity-90 text-white/85" />
-                  )}
-                </button>
-              </div>
-
-              {/* Volume */}
-              <div
-                className={[
-                  "mt-10 flex items-center gap-4 lg:gap-5 mp3-ov-controls transition-all duration-300",
-                  controlsHidden
-                    ? "opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0"
-                    : "opacity-100",
-                ].join(" ")}
-              >
-                <button
-                  className={[
-                    "h-[52px] w-[52px] lg:h-14 lg:w-14 rounded-full transition active:scale-[0.98]",
-                    muted ? "bg-white/12 ring-1 ring-white/15" : "bg-white/8 hover:bg-white/12",
-                  ].join(" ")}
-                  onClick={() => setMuted(!muted)}
-                  aria-pressed={muted}
-                  title={muted ? "RÃ©activer" : "Couper"}
-                  type="button"
-                >
-                  {muted || volume === 0 ? (
-                    <VolumeX size={22} className="mx-auto opacity-90 text-white/85" />
-                  ) : volume < 0.5 ? (
-                    <Volume1 size={22} className="mx-auto opacity-90 text-white/85" />
-                  ) : (
-                    <Volume2 size={22} className="mx-auto opacity-90 text-white/85" />
-                  )}
-                </button>
-
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={Math.round(volume * 100)}
-                  onChange={(e) => setVolume(Number(e.target.value) / 100)}
-                  className="w-full mp3-ov-volume-slider"
-                  style={{
-                    background: `linear-gradient(to right, ${accent} ${muted ? 0 : Math.round(volume * 100)}%, rgba(255,255,255,0.14) ${muted ? 0 : Math.round(volume * 100)}%)`,
-                  }}
-                  aria-label="Volume"
-                />
-
-                <span className="text-xs text-white/55 tabular-nums w-12 text-right">
-                  {Math.round(volume * 100)}
-                </span>
-              </div>
-
-              {!focusMode ? (
-                <div className="mt-6 text-xs text-white/25 mp3-ov-panel flex items-center justify-center">
-                  <span className="italic">© · Azer0.</span>
-                </div>
-              ) : null}
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -542,7 +542,7 @@ export default function PlayerOverlay() {
           <div
             className={[
               "w-full max-w-[1680px] grid gap-5 md:gap-10 lg:gap-14 items-start",
-              focusMode ? "grid-cols-1 max-w-5xl" : showLyrics ? "grid-cols-1 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1fr)] lg:items-center" : "grid-cols-1 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)]",
+              focusMode ? "grid-cols-1 max-w-5xl" : showLyrics ? "grid-cols-1 lg:grid-cols-[minmax(0,0.5fr)_minmax(0,1fr)] lg:items-center" : "grid-cols-1 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)]",
             ].join(" ")}
           >
             {/* Cover */}
@@ -552,7 +552,7 @@ export default function PlayerOverlay() {
                 focusMode
                   ? "max-w-[360px] sm:max-w-[420px] md:max-w-[760px]"
                   : showLyrics
-                  ? "md:sticky md:top-10"
+                  ? "max-w-[360px] lg:max-w-[400px] md:sticky md:top-10"
                   : "max-w-[360px] sm:max-w-[500px] md:max-w-[640px] lg:max-w-[760px] md:sticky md:top-10",
               ].join(" ")}
             >
@@ -587,7 +587,7 @@ export default function PlayerOverlay() {
 
               {/* Compact controls in lyrics mode (below cover, desktop only) */}
               {showLyrics && !focusMode ? (
-              <div className="hidden lg:flex flex-col gap-4 w-full mp3-ov-panel">
+              <div className="hidden lg:flex flex-col gap-3 w-full mp3-ov-panel">
                 <div className="min-w-0">
                   <p className="text-2xl font-bold text-white/95 truncate leading-tight">{track?.title ?? "—"}</p>
                   {track?.artist ? (
@@ -895,39 +895,49 @@ export default function PlayerOverlay() {
 
             <div className={["hidden md:block w-full mp3-ov-panel lg:self-center", showLyrics ? "" : "lg:translate-y-8"].join(" ")}>
               {showLyrics && !focusMode ? (
-                /* 5-line lyrics display — 2 before, active, 2 after */
-                <div className="flex flex-col justify-center h-[calc(100vh-160px)] select-none gap-1">
+                /* Apple Music-style: all lines scroll, opacity-only fading */
+                <div
+                  ref={lyricsContainerRef}
+                  className="h-[calc(100vh-160px)] overflow-y-auto scrollbar-none select-none"
+                >
                   {lyrics.loading ? (
-                    <p className="text-lg text-white/30">Recherche des paroles…</p>
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-lg text-white/30">Recherche des paroles…</p>
+                    </div>
                   ) : !lyrics.hasLyrics ? (
-                    <p className="text-lg text-white/25">Paroles non trouvées</p>
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-lg text-white/25">Paroles non trouvées</p>
+                    </div>
                   ) : lyrics.lines.length > 0 ? (
-                    ([-2, -1, 0, 1, 2] as const).map((offset) => {
-                      const center = Math.max(0, currentLineIdx);
-                      const idx = center + offset;
-                      const isActive = idx === currentLineIdx;
-                      const distance = Math.abs(offset);
-                      const line = idx >= 0 && idx < lyrics.lines.length ? lyrics.lines[idx] : null;
-                      return (
-                        <div
-                          key={offset}
-                          className="leading-tight cursor-pointer"
-                          style={{
-                            opacity: distance === 0 ? 1 : distance === 1 ? 0.4 : 0.14,
-                            fontSize: distance === 0 ? "3rem" : distance === 1 ? "2rem" : "1.4rem",
-                            fontWeight: isActive ? 700 : distance === 1 ? 500 : 400,
-                            color: "rgba(255,255,255,0.95)",
-                            transition: "opacity 380ms ease, font-size 380ms ease",
-                            minHeight: distance === 0 ? "3.6rem" : distance === 1 ? "2.6rem" : "1.8rem",
-                          }}
-                          onClick={() => { if (line && duration > 0) seekTo(line.time / duration); }}
-                        >
-                          {line?.text ?? ""}
-                        </div>
-                      );
-                    })
+                    <>
+                      <div style={{ height: "40vh" }} />
+                      {lyrics.lines.map((line, idx) => {
+                        const isActive = idx === currentLineIdx;
+                        const distance = Math.abs(idx - currentLineIdx);
+                        return (
+                          <div
+                            key={idx}
+                            ref={isActive ? (el) => { activeLyricRef.current = el; } : undefined}
+                            className="py-2 cursor-pointer leading-snug"
+                            style={{
+                              opacity: distance === 0 ? 1 : distance === 1 ? 0.45 : distance === 2 ? 0.22 : distance === 3 ? 0.1 : 0.04,
+                              fontSize: "1.55rem",
+                              fontWeight: isActive ? 700 : 400,
+                              color: "rgba(255,255,255,0.95)",
+                              transition: "opacity 350ms ease",
+                            }}
+                            onClick={() => { if (duration > 0) seekTo(line.time / duration); }}
+                          >
+                            {line.text}
+                          </div>
+                        );
+                      })}
+                      <div style={{ height: "40vh" }} />
+                    </>
                   ) : lyrics.plain ? (
-                    <p className="text-xl text-white/50 leading-relaxed whitespace-pre-wrap">{lyrics.plain}</p>
+                    <div style={{ paddingTop: "25vh" }}>
+                      <p className="text-xl text-white/50 leading-relaxed whitespace-pre-wrap">{lyrics.plain}</p>
+                    </div>
                   ) : null}
                 </div>
               ) : (

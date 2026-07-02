@@ -921,7 +921,7 @@ export default function PlayerOverlay() {
                             className="py-2 cursor-pointer leading-snug"
                             style={{
                               opacity: distance === 0 ? 1 : distance === 1 ? 0.45 : distance === 2 ? 0.22 : distance === 3 ? 0.1 : 0.04,
-                              fontSize: "1.55rem",
+                              fontSize: "2rem",
                               fontWeight: isActive ? 700 : 400,
                               color: "rgba(255,255,255,0.95)",
                               textShadow: isActive ? `0 0 28px ${glowStrong}, 0 0 70px ${glow}` : undefined,

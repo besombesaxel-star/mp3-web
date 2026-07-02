@@ -14,6 +14,7 @@ import {
   Menu,
   Search as SearchIcon,
   Settings,
+  TrendingUp,
   Upload,
   UserRound,
   X,
@@ -30,6 +31,7 @@ const nav = [
   { href: "/search", label: "Recherche", Icon: SearchIcon },
   { href: "/favorites", label: "Favoris", Icon: Heart },
   { href: "/stats", label: "Stats", Icon: BarChart3 },
+  { href: "/top", label: "Top global", Icon: TrendingUp },
   { href: "/account", label: "Compte", Icon: UserRound },
   { href: "/settings", label: "Parametres", Icon: Settings },
 ];

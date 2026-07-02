@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePlayer } from "./PlayerContext";
 import AudioBars from "./AudioBars";
 import { useFocusTrap } from "./useFocusTrap";
@@ -22,7 +22,9 @@ import {
   VolumeX,
   Volume1,
   Volume2,
+  AlignLeft,
 } from "lucide-react";
+import { useLyrics } from "./useLyrics";
 
 function withAlpha(color: string, alpha: number) {
   if (!color) return `rgba(255,255,255,${alpha})`;
@@ -210,6 +212,30 @@ export default function PlayerOverlay() {
 
   const [heartBurst, setHeartBurst] = useState(false);
   const lastCoverTapRef = useRef(0);
+
+  const [showLyrics, setShowLyrics] = useState(false);
+  const lyrics = useLyrics(track);
+  const lyricsContainerRef = useRef<HTMLDivElement | null>(null);
+  const activeLyricRef = useRef<HTMLDivElement | null>(null);
+
+  const currentLineIdx = useMemo(() => {
+    if (!lyrics.lines.length || !currentTime) return -1;
+    let idx = 0;
+    for (let i = 0; i < lyrics.lines.length; i++) {
+      if (lyrics.lines[i].time <= currentTime) idx = i;
+      else break;
+    }
+    return idx;
+  }, [lyrics.lines, currentTime]);
+
+  useEffect(() => {
+    if (!showLyrics || currentLineIdx < 0) return;
+    const container = lyricsContainerRef.current;
+    const el = activeLyricRef.current;
+    if (!container || !el) return;
+    const targetTop = el.offsetTop - container.clientHeight / 2 + el.clientHeight / 2;
+    container.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+  }, [currentLineIdx, showLyrics]);
 
   function onCoverTap() {
     const now = Date.now();
@@ -455,6 +481,19 @@ export default function PlayerOverlay() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowLyrics((v) => !v)}
+              aria-pressed={showLyrics}
+              className={[
+                "h-11 w-11 rounded-full transition active:scale-[0.98]",
+                showLyrics ? "bg-white/12 ring-1 ring-white/15" : "bg-white/8 hover:bg-white/12",
+              ].join(" ")}
+              title="Paroles"
+              type="button"
+            >
+              <AlignLeft size={18} className="mx-auto opacity-90 text-white/85" />
+            </button>
+
             <button
               onClick={() => {
                 tapHaptic();
@@ -762,10 +801,51 @@ export default function PlayerOverlay() {
                 </>
               ) : null}
 
+              {/* Lyrics panel */}
+              {showLyrics && !focusMode ? (
+                <div
+                  ref={lyricsContainerRef}
+                  className="mt-6 h-[196px] overflow-y-auto space-y-0.5 scrollbar-none select-none"
+                >
+                  {lyrics.loading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-sm text-white/30">Recherche des paroles…</p>
+                    </div>
+                  ) : !lyrics.hasLyrics ? (
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-sm text-white/25">Paroles non trouvées</p>
+                    </div>
+                  ) : lyrics.lines.length > 0 ? (
+                    lyrics.lines.map((line, idx) => {
+                      const isActive = idx === currentLineIdx;
+                      const distance = Math.abs(idx - currentLineIdx);
+                      return (
+                        <div
+                          key={idx}
+                          ref={isActive ? (el) => { activeLyricRef.current = el; } : undefined}
+                          className="py-1.5 transition-all duration-300 cursor-pointer leading-snug"
+                          style={{
+                            opacity: distance === 0 ? 1 : distance === 1 ? 0.42 : distance === 2 ? 0.22 : 0.1,
+                            fontSize: isActive ? "1.05rem" : "0.875rem",
+                            fontWeight: isActive ? 500 : 400,
+                            color: "rgba(255,255,255,0.95)",
+                          }}
+                          onClick={() => { if (duration > 0) seekTo(line.time / duration); }}
+                        >
+                          {line.text}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-sm text-white/45 leading-relaxed whitespace-pre-wrap">{lyrics.plain}</p>
+                  )}
+                </div>
+              ) : null}
+
               {/* Progress */}
               <div
                 className={[
-                  focusMode ? "mt-7" : "mt-12",
+                  focusMode ? "mt-7" : showLyrics ? "mt-5" : "mt-12",
                   "transition-all duration-300",
                   controlsHidden
                     ? "opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0"

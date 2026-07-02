@@ -552,7 +552,7 @@ export default function PlayerOverlay() {
                 focusMode
                   ? "max-w-[360px] sm:max-w-[420px] md:max-w-[760px]"
                   : showLyrics
-                  ? "max-w-[360px] lg:max-w-[400px] md:sticky md:top-10"
+                  ? "max-w-[400px] lg:max-w-[460px] md:sticky md:top-10"
                   : "max-w-[360px] sm:max-w-[500px] md:max-w-[640px] lg:max-w-[760px] md:sticky md:top-10",
               ].join(" ")}
             >
@@ -924,7 +924,8 @@ export default function PlayerOverlay() {
                               fontSize: "1.55rem",
                               fontWeight: isActive ? 700 : 400,
                               color: "rgba(255,255,255,0.95)",
-                              transition: "opacity 350ms ease",
+                              textShadow: isActive ? `0 0 28px ${glowStrong}, 0 0 70px ${glow}` : undefined,
+                              transition: "opacity 350ms ease, text-shadow 350ms ease",
                             }}
                             onClick={() => { if (duration > 0) seekTo(line.time / duration); }}
                           >

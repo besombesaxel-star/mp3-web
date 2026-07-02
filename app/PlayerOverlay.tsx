@@ -927,7 +927,7 @@ export default function PlayerOverlay() {
                               fontWeight: isActive ? 700 : 400,
                               color: "rgba(255,255,255,0.95)",
                               textShadow: isActive ? `0 0 28px ${glowStrong}, 0 0 70px ${glow}` : undefined,
-                              transition: "opacity 350ms ease, font-size 350ms ease, text-shadow 350ms ease",
+                              transition: "opacity 350ms ease, text-shadow 350ms ease",
                             }}
                             onClick={() => { if (duration > 0) seekTo(line.time / duration); }}
                           >

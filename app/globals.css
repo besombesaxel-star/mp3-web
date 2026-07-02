@@ -137,6 +137,13 @@ body[data-mp3-theme="ocean"] {
   background: transparent;
 }
 
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 :focus-visible {
   outline: 2px solid #ffffff;
   outline-offset: 2px;

@@ -46,11 +46,11 @@ export type AchievementDef = {
 };
 
 const ACHIEVEMENTS: AchievementDef[] = [
-  { id: "plays_10", title: "10 morceaux jouÃ©s", desc: "Tu commences Ã  charbonner.", icon: "ðŸ†" },
-  { id: "listen_1h", title: "1h dâ€™Ã©coute", desc: "Mode immersion activÃ©.", icon: "â±ï¸" },
-  { id: "first_favorite", title: "Premier favori", desc: "Un premier â™¥, Ã§a compte.", icon: "â¤ï¸" },
-  { id: "first_playlist", title: "PremiÃ¨re playlist", desc: "Tu organises ton son.", icon: "ðŸ“€" },
-  { id: "night_listen", title: "Ã‰coute de nuit", desc: "Il est tardâ€¦ mais câ€™est bon.", icon: "ðŸŒ™" },
+  { id: "plays_10", title: "10 morceaux joués", desc: "Tu commences à charbonner.", icon: "🏆" },
+  { id: "listen_1h", title: "1h d’écoute", desc: "Mode immersion activé.", icon: "⏱️" },
+  { id: "first_favorite", title: "Premier favori", desc: "Un premier ♥, ça compte.", icon: "❤️" },
+  { id: "first_playlist", title: "Première playlist", desc: "Tu organises ton son.", icon: "🔀" },
+  { id: "night_listen", title: "Écoute de nuit", desc: "Il est tard… mais c’est bon.", icon: "🌙" },
 ];
 
 export type PlayerStats = {
@@ -171,7 +171,7 @@ type PlayerCtx = {
   undoLastAction: () => void;
   dismissUndoToast: () => void;
 
-  /** âœ… pour dÃ©clencher lâ€™achievement â€œPremiÃ¨re playlistâ€ depuis PlaylistsPage */
+  /** âœ… pour dÃ©clencher lâ€™achievement â€œPremière playlistâ€ depuis PlaylistsPage */
   markPlaylistCreated: () => void;
 
   reloadFavoritesFromStorage: () => void;

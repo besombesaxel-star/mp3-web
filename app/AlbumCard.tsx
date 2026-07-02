@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { Pencil } from "lucide-react";
 import { Track, usePlayer } from "./PlayerContext";
 import { useLongPress } from "./useLongPress";
 import TrackContextMenu from "./TrackContextMenu";
@@ -130,7 +131,7 @@ export default function AlbumCard({
           title="Modifier"
           aria-label={`Modifier ${title}`}
         >
-          ✏️
+          <Pencil size={14} className="mx-auto" />
         </button>
       ) : null}
 

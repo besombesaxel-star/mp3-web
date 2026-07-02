@@ -144,6 +144,11 @@ body[data-mp3-theme="ocean"] {
   display: none;
 }
 
+@keyframes lyricsActivePop {
+  from { transform: translateY(10px); }
+  to   { transform: translateY(0); }
+}
+
 :focus-visible {
   outline: 2px solid #ffffff;
   outline-offset: 2px;

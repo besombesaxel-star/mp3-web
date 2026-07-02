@@ -552,7 +552,7 @@ export default function PlayerOverlay() {
                 focusMode
                   ? "max-w-[360px] sm:max-w-[420px] md:max-w-[760px]"
                   : showLyrics
-                  ? "max-w-[400px] lg:max-w-[460px] md:sticky md:top-10"
+                  ? "max-w-[480px] lg:max-w-[560px] md:sticky md:top-10"
                   : "max-w-[360px] sm:max-w-[500px] md:max-w-[640px] lg:max-w-[760px] md:sticky md:top-10",
               ].join(" ")}
             >
@@ -589,9 +589,9 @@ export default function PlayerOverlay() {
               {showLyrics && !focusMode ? (
               <div className="hidden lg:flex flex-col gap-3 w-full mp3-ov-panel">
                 <div className="min-w-0">
-                  <p className="text-2xl font-bold text-white/95 truncate leading-tight">{track?.title ?? "—"}</p>
+                  <p className="text-3xl font-bold text-white/95 truncate leading-tight">{track?.title ?? "—"}</p>
                   {track?.artist ? (
-                    <Link href={getArtistHref(track.artist)} className="text-base text-white/50 hover:text-white/75 transition truncate block mt-1">
+                    <Link href={getArtistHref(track.artist)} className="text-lg text-white/50 hover:text-white/75 transition truncate block mt-1">
                       {track.artist}
                     </Link>
                   ) : <p className="text-base text-white/40">—</p>}
@@ -922,7 +922,7 @@ export default function PlayerOverlay() {
                             className="py-2 cursor-pointer leading-snug"
                             style={{
                               opacity: distance === 0 ? 1 : distance === 1 ? 0.45 : distance === 2 ? 0.22 : distance === 3 ? 0.1 : 0.04,
-                              fontSize: "2.4rem",
+                              fontSize: "2.85rem",
                               fontWeight: isActive ? 700 : 400,
                               color: "rgba(255,255,255,0.95)",
                               textShadow: isActive ? `0 0 28px ${glowStrong}, 0 0 70px ${glow}` : undefined,

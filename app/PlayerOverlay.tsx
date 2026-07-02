@@ -542,17 +542,18 @@ export default function PlayerOverlay() {
           <div
             className={[
               "w-full max-w-[1680px] grid gap-5 md:gap-10 lg:gap-14 items-start",
-              focusMode ? "grid-cols-1 max-w-5xl" : showLyrics ? "grid-cols-1 lg:grid-cols-[minmax(0,0.5fr)_minmax(0,1fr)] lg:items-center" : "grid-cols-1 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)]",
+              focusMode ? "grid-cols-1 max-w-5xl" : showLyrics ? "grid-cols-1 lg:grid-cols-[minmax(0,0.62fr)_minmax(0,1fr)] lg:items-center" : "grid-cols-1 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)]",
             ].join(" ")}
           >
             {/* Cover */}
             <div
               className={[
-                "mx-auto w-full flex flex-col gap-5",
+                showLyrics && !focusMode ? "ml-0 mr-auto w-full" : "mx-auto w-full",
+                "flex flex-col gap-5",
                 focusMode
                   ? "max-w-[360px] sm:max-w-[420px] md:max-w-[760px]"
                   : showLyrics
-                  ? "max-w-[480px] lg:max-w-[560px] md:sticky md:top-10"
+                  ? "md:sticky md:top-10"
                   : "max-w-[360px] sm:max-w-[500px] md:max-w-[640px] lg:max-w-[760px] md:sticky md:top-10",
               ].join(" ")}
             >
@@ -922,7 +923,7 @@ export default function PlayerOverlay() {
                             className="py-2 cursor-pointer leading-snug"
                             style={{
                               opacity: distance === 0 ? 1 : distance === 1 ? 0.45 : distance === 2 ? 0.22 : distance === 3 ? 0.1 : 0.04,
-                              fontSize: "2.85rem",
+                              fontSize: distance === 0 ? "3.4rem" : distance === 1 ? "2.6rem" : "2.1rem",
                               fontWeight: isActive ? 700 : 400,
                               color: "rgba(255,255,255,0.95)",
                               textShadow: isActive ? `0 0 28px ${glowStrong}, 0 0 70px ${glow}` : undefined,

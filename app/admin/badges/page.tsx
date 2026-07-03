@@ -118,7 +118,12 @@ export default function AdminBadgesPage() {
 
   return (
     <div className="max-w-2xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-40">
-      <h2 className="text-3xl font-light mb-8 mp3-fade-up">Badges</h2>
+      <div className="flex items-center justify-between mb-8 mp3-fade-up">
+        <h2 className="text-3xl font-light">Badges</h2>
+        <Link href="/admin/storage" className="text-sm text-white/45 hover:text-white/80 transition underline underline-offset-4">
+          Stockage
+        </Link>
+      </div>
 
       {error && (
         <div className="mb-5 rounded-2xl border border-red-400/20 bg-red-400/8 px-4 py-3 text-sm text-red-300 mp3-fade-up">

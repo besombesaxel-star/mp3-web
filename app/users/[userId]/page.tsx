@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Copy, ExternalLink, Crown, Music, Play, Shield, Shuffle, Sparkles, UserCheck, UserPlus } from "lucide-react";
+import { Check, Copy, ExternalLink, Crown, ListMusic, Music, Play, Shield, Shuffle, Sparkles, UserCheck, UserPlus } from "lucide-react";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
 import { BADGE_LABELS, type BadgeKey } from "@/lib/badges";
@@ -131,7 +131,7 @@ function TrackRow({
 
 export default function PublicUserProfilePage() {
   const params = useParams<{ userId: string }>();
-  const { setQueueAndPlay } = usePlayer();
+  const { setQueueAndPlay, track: myTrack, suggestTrackToUser } = usePlayer();
   const { accessToken, isAuthenticated, user } = useAuth();
   const userId = typeof params?.userId === "string" ? params.userId : "";
 
@@ -145,6 +145,8 @@ export default function PublicUserProfilePage() {
   const [copiedSrc, setCopiedSrc] = useState<string | null>(null);
   const [reactionSent, setReactionSent] = useState<string | null>(null);
   const [reactionBusy, setReactionBusy] = useState(false);
+  const [suggestSent, setSuggestSent] = useState(false);
+  const [suggestBusy, setSuggestBusy] = useState(false);
 
   const isOwnProfile = !!user?.id && user.id === userId;
 
@@ -253,6 +255,20 @@ export default function PublicUserProfilePage() {
       }
     } catch { /* silent */ }
     finally { setReactionBusy(false); }
+  }
+
+  async function sendQueueSuggestion() {
+    if (!accessToken || suggestBusy || isOwnProfile || !nowPlaying || !myTrack) return;
+    setSuggestBusy(true);
+    try {
+      const ok = await suggestTrackToUser(userId, myTrack);
+      if (ok) {
+        setSuggestSent(true);
+        setTimeout(() => setSuggestSent(false), 1500);
+      }
+    } finally {
+      setSuggestBusy(false);
+    }
   }
 
   async function toggleFollow() {
@@ -402,6 +418,23 @@ export default function PublicUserProfilePage() {
                     {emoji}
                   </button>
                 ))}
+                {myTrack && (
+                  <button
+                    type="button"
+                    onClick={() => void sendQueueSuggestion()}
+                    disabled={suggestBusy}
+                    className={[
+                      "h-8 px-3 rounded-full text-xs transition flex items-center gap-1.5",
+                      suggestSent
+                        ? "bg-white/20 text-white"
+                        : "bg-white/6 hover:bg-white/12 active:scale-95 text-white/70",
+                    ].join(" ")}
+                    title={`Suggerer "${myTrack.title}" a sa file`}
+                  >
+                    {suggestSent ? <Check size={12} /> : <ListMusic size={12} />}
+                    {suggestSent ? "Envoye" : "Suggerer mon son"}
+                  </button>
+                )}
               </div>
             )}
 

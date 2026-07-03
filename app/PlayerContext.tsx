@@ -16,6 +16,7 @@ import { getOrCreateSharedGraph, type SharedGraph } from "./audioGraph";
 import { fetchTracksShared } from "./tracksCache";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
+import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 
 export type Track = {
   title: string;
@@ -61,6 +62,13 @@ export type AchievementToast = {
 
 export type UndoToast = {
   message: string;
+} | null;
+
+export type QueueSuggestion = {
+  id: string;
+  fromUserId: string;
+  fromDisplayName: string;
+  track: Track;
 } | null;
 
 type PlayerCtx = {
@@ -153,6 +161,11 @@ type PlayerCtx = {
   undoToast: UndoToast;
   undoLastAction: () => void;
   dismissUndoToast: () => void;
+
+  queueSuggestion: QueueSuggestion;
+  acceptQueueSuggestion: () => void;
+  dismissQueueSuggestion: () => void;
+  suggestTrackToUser: (targetUserId: string, track: Track) => Promise<boolean>;
 
   /** âœ… pour dÃ©clencher lâ€™achievement â€œPremière playlistâ€ depuis PlaylistsPage */
   markPlaylistCreated: () => void;
@@ -576,7 +589,7 @@ function buildSmartQueue(
 }
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
-  const { accessToken, isAuthenticated, loading: authLoading } = useAuth();
+  const { accessToken, isAuthenticated, loading: authLoading, user } = useAuth();
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [tracks, _setTracks] = useState<Track[]>([]);
@@ -666,6 +679,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   // âœ… Toast succÃ¨s
   const [achievementToast, setAchievementToast] = useState<AchievementToast>(null);
   const [undoToast, setUndoToast] = useState<UndoToast>(null);
+  const [queueSuggestion, setQueueSuggestion] = useState<QueueSuggestion>(null);
 
   // refs pour calcul delta temps
   const lastCtRef = useRef<number>(0);
@@ -675,6 +689,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const sessionHydratedRef = useRef(false);
   const undoActionRef = useRef<(() => void) | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const queueSuggestionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shownAchievementIdsRef = useRef<Set<AchievementId>>(new Set());
   const favoritesRemoteHydratedRef = useRef(false);
   const lastSyncedFavoritesSignatureRef = useRef("");
@@ -800,6 +815,47 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     const action = undoActionRef.current;
     dismissUndoToast();
     if (action) action();
+  }
+
+  function clearQueueSuggestionTimer() {
+    if (queueSuggestionTimerRef.current) {
+      clearTimeout(queueSuggestionTimerRef.current);
+      queueSuggestionTimerRef.current = null;
+    }
+  }
+
+  function dismissQueueSuggestion() {
+    clearQueueSuggestionTimer();
+    setQueueSuggestion(null);
+  }
+
+  function acceptQueueSuggestion() {
+    setQueueSuggestion((current) => {
+      if (current) addToQueueNext(current.track);
+      return current;
+    });
+    dismissQueueSuggestion();
+  }
+
+  async function suggestTrackToUser(targetUserId: string, targetTrack: Track): Promise<boolean> {
+    if (!accessToken || !targetTrack) return false;
+    try {
+      const res = await fetch("/api/queue/suggest", {
+        method: "POST",
+        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          targetUserId,
+          trackTitle: targetTrack.title,
+          trackArtist: targetTrack.artist ?? "",
+          trackSrc: targetTrack.src,
+          trackCover: targetTrack.cover ?? "",
+        }),
+      });
+      const json = await res.json().catch(() => ({ ok: false }));
+      return Boolean(res.ok && json.ok);
+    } catch {
+      return false;
+    }
   }
 
   function unlockAchievement(id: AchievementId) {
@@ -1441,6 +1497,49 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
     return () => window.clearTimeout(timeoutId);
   }, [accessToken, authLoading, eqPreset, customEqGains, isAuthenticated]);
+
+  // listen for collaborative queue suggestions from other users (Realtime Broadcast)
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+    const supabase = getSupabaseBrowserAuthClient();
+    if (!supabase) return;
+
+    const channel = supabase
+      .channel(`user:${user.id}`)
+      .on("broadcast", { event: "queue_suggestion" }, ({ payload }) => {
+        const data = payload as {
+          id?: string;
+          fromUserId?: string;
+          fromDisplayName?: string;
+          track?: { title?: string; artist?: string; src?: string; cover?: string };
+        };
+        if (!data?.id || !data.fromUserId || !data.fromDisplayName || !data.track?.title || !data.track?.src) return;
+
+        clearQueueSuggestionTimer();
+        setQueueSuggestion({
+          id: data.id,
+          fromUserId: data.fromUserId,
+          fromDisplayName: data.fromDisplayName,
+          track: {
+            title: data.track.title,
+            artist: data.track.artist,
+            src: data.track.src,
+            cover: data.track.cover,
+          },
+        });
+
+        queueSuggestionTimerRef.current = setTimeout(() => {
+          setQueueSuggestion(null);
+          queueSuggestionTimerRef.current = null;
+        }, 20000);
+      })
+      .subscribe();
+
+    return () => {
+      clearQueueSuggestionTimer();
+      void supabase.removeChannel(channel);
+    };
+  }, [isAuthenticated, user?.id]);
 
   // load stats (localStorage first, then merge remote if authenticated)
   useEffect(() => {
@@ -2470,6 +2569,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     undoToast,
     undoLastAction,
     dismissUndoToast,
+
+    queueSuggestion,
+    acceptQueueSuggestion,
+    dismissQueueSuggestion,
+    suggestTrackToUser,
 
     markPlaylistCreated,
 

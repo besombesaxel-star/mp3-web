@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Copy, ExternalLink, Crown, Music, Play, Shield, Shuffle, Sparkles, UserCheck, UserPlus } from "lucide-react";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
+import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
 import { BADGE_LABELS, type BadgeKey } from "@/lib/badges";
 import { usePlayer } from "@/app/PlayerContext";
 import { useAuth } from "@/app/AuthProvider";
@@ -52,6 +53,7 @@ type PublicProfile = {
   uploadsCount: number;
   userId: string;
   uniqueArtistsCount: number;
+  unlockedAchievements: AchievementId[];
 };
 
 type PublicProfileResponse = {
@@ -420,6 +422,21 @@ export default function PublicUserProfilePage() {
                 <p className="text-xs text-white/30">artiste{profile.uniqueArtistsCount > 1 ? "s" : ""}</p>
               </div>
             </div>
+
+            {profile.unlockedAchievements.length > 0 && (
+              <div className="mt-4 flex items-center gap-1.5 flex-wrap justify-center max-w-[380px]">
+                {ACHIEVEMENTS.filter((def) => profile.unlockedAchievements.includes(def.id)).map((def) => (
+                  <span
+                    key={def.id}
+                    title={def.desc}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs bg-white/6 border border-white/10 text-white/70"
+                  >
+                    <span>{def.icon}</span>
+                    {def.title}
+                  </span>
+                ))}
+              </div>
+            )}
 
             {/* Play + Follow actions */}
             <div className="mt-5 flex items-center gap-2 flex-wrap justify-center">

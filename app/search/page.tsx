@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { LayoutGrid, List as ListIcon, Music, Play, Search, User, X } from "lucide-react";
+import { Clock, LayoutGrid, List as ListIcon, Music, Play, Search, User, X } from "lucide-react";
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../AuthProvider";
 import { Track, usePlayer } from "../PlayerContext";
@@ -330,6 +330,8 @@ const TABS: { value: SearchTab; label: string }[] = [
 ];
 
 const ARTIST_VIEW_KEY = "mp3_search_artist_view";
+const SEARCH_HISTORY_KEY = "mp3_search_history";
+const MAX_HISTORY = 8;
 
 export default function SearchPage() {
   const { setQueueAndPlay, isFavorite, addToQueueEnd, toggleFavorite } = usePlayer();
@@ -346,11 +348,18 @@ export default function SearchPage() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedSrcs, setSelectedSrcs] = useState<Set<string>>(new Set());
   const [artistView, setArtistView] = useState<"grid" | "list">("grid");
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem(ARTIST_VIEW_KEY);
       if (stored === "grid" || stored === "list") setArtistView(stored);
+    } catch {}
+
+    try {
+      const rawHistory = localStorage.getItem(SEARCH_HISTORY_KEY);
+      const parsed = rawHistory ? JSON.parse(rawHistory) : [];
+      if (Array.isArray(parsed)) setSearchHistory(parsed.filter((v): v is string => typeof v === "string"));
     } catch {}
   }, []);
 
@@ -359,6 +368,28 @@ export default function SearchPage() {
     try {
       localStorage.setItem(ARTIST_VIEW_KEY, next);
     } catch {}
+  }
+
+  function persistHistory(next: string[]) {
+    setSearchHistory(next);
+    try {
+      localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(next));
+    } catch {}
+  }
+
+  function commitToHistory(raw: string) {
+    const clean = raw.trim();
+    if (clean.length < 2) return;
+    const deduped = searchHistory.filter((entry) => entry.toLowerCase() !== clean.toLowerCase());
+    persistHistory([clean, ...deduped].slice(0, MAX_HISTORY));
+  }
+
+  function removeFromHistory(entry: string) {
+    persistHistory(searchHistory.filter((item) => item !== entry));
+  }
+
+  function clearHistory() {
+    persistHistory([]);
   }
 
   function toggleSelect(src: string) {
@@ -488,8 +519,14 @@ export default function SearchPage() {
     else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex((p) => Math.max(0, p - 1)); }
     else if (e.key === "Enter") {
       e.preventDefault();
+      commitToHistory(query);
       if (activeIndex >= 0 && activeIndex < list.length) setQueueAndPlay(list, activeIndex);
     }
+  }
+
+  function runHistoryQuery(entry: string) {
+    setQuery(entry);
+    commitToHistory(entry);
   }
 
   function tabCount(t: SearchTab) {
@@ -498,6 +535,11 @@ export default function SearchPage() {
     if (t === "artistes") return filteredArtists.length;
     if (t === "utilisateurs") return filteredUsers.length;
     return 0;
+  }
+
+  function playFromResults(q: TrackWithCover[], i: number) {
+    if (hasQuery) commitToHistory(query);
+    setQueueAndPlay(q, i);
   }
 
   function renderTracks(list: TrackWithCover[], limit?: number) {
@@ -513,7 +555,7 @@ export default function SearchPage() {
             active={i === activeIndex}
             query={query}
             isFav={isFavorite(t.src)}
-            onPlay={setQueueAndPlay}
+            onPlay={playFromResults}
             onHover={setActiveIndex}
             selectMode={selectMode}
             selected={selectedSrcs.has(t.src)}
@@ -599,6 +641,44 @@ export default function SearchPage() {
 
     return (
       <>
+        {!hasQuery && searchHistory.length > 0 && (
+          <div className="mb-6">
+            <SectionHeader title="Recherches récentes" />
+            <div className="flex flex-wrap gap-2">
+              {searchHistory.map((entry) => (
+                <div
+                  key={entry}
+                  className="group flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] pl-3 pr-1.5 py-1.5 hover:bg-white/8 transition"
+                >
+                  <button
+                    type="button"
+                    onClick={() => runHistoryQuery(entry)}
+                    className="flex items-center gap-1.5 text-sm text-white/70 hover:text-white transition"
+                  >
+                    <Clock size={12} className="text-white/30" />
+                    {entry}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeFromHistory(entry)}
+                    aria-label={`Supprimer "${entry}" de l'historique`}
+                    className="h-5 w-5 rounded-full flex items-center justify-center text-white/25 hover:text-white/70 hover:bg-white/10 transition"
+                  >
+                    <X size={10} />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={clearHistory}
+                className="text-sm text-white/30 hover:text-white/60 transition px-2 py-1.5"
+              >
+                Tout effacer
+              </button>
+            </div>
+          </div>
+        )}
+
         {tracksSlice.length > 0 && (
           <div className="mb-6">
             <SectionHeader

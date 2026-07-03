@@ -1,4 +1,5 @@
 import { readAccountProfile, type ProfileLink } from "@/lib/accountData";
+import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
 import { getBadgesForUser, type BadgeKey } from "@/lib/badges";
 import { listTracksForApi } from "@/lib/libraryRepository";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
@@ -30,7 +31,30 @@ export type PublicUserProfileData = {
   uploadsCount: number;
   userId: string;
   uniqueArtistsCount: number;
+  unlockedAchievements: AchievementId[];
 };
+
+const STATS_BUCKET = "account-data";
+
+async function readUnlockedAchievements(userId: string): Promise<AchievementId[]> {
+  const admin = getSupabaseAdmin();
+  if (!admin) return [];
+
+  const { data, error } = await admin.client.storage
+    .from(STATS_BUCKET)
+    .download(`stats/${userId}.json`);
+  if (error || !data) return [];
+
+  try {
+    const parsed = JSON.parse(await data.text()) as { achievements?: Record<string, unknown> };
+    const achievements = parsed?.achievements;
+    if (!achievements || typeof achievements !== "object") return [];
+
+    return ACHIEVEMENTS.filter((def) => Boolean(achievements[def.id])).map((def) => def.id);
+  } catch {
+    return [];
+  }
+}
 
 export type PublicArtistPageData = {
   artist: string;
@@ -79,11 +103,12 @@ async function readPublicUserBasics(userId: string) {
 }
 
 export async function getPublicUserProfileData(userId: string): Promise<PublicUserProfileData | null> {
-  const [tracks, profile, userBasics, badges] = await Promise.all([
+  const [tracks, profile, userBasics, badges, unlockedAchievements] = await Promise.all([
     listTracksForApi(),
     readAccountProfile(userId).catch(() => null),
     readPublicUserBasics(userId),
     getBadgesForUser(userId),
+    readUnlockedAchievements(userId).catch(() => []),
   ]);
 
   const uploads = tracks
@@ -123,6 +148,7 @@ export async function getPublicUserProfileData(userId: string): Promise<PublicUs
     uploadsCount: uploads.length,
     userId,
     uniqueArtistsCount,
+    unlockedAchievements,
   };
 }
 

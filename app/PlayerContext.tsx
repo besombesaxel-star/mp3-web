@@ -15,6 +15,7 @@ import { playChimeSound, playPopSound, unlockAudio } from "./sound";
 import { getOrCreateSharedGraph, type SharedGraph } from "./audioGraph";
 import { fetchTracksShared } from "./tracksCache";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
+import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
 
 export type Track = {
   title: string;
@@ -30,28 +31,6 @@ type RepeatMode = "off" | "all" | "one";
 type ThemeMode = "midnight" | "sunset" | "ocean";
 type EqPreset = "off" | "bass" | "vocal" | "night";
 
-/** âœ… Achievements */
-export type AchievementId =
-  | "plays_10"
-  | "listen_1h"
-  | "first_favorite"
-  | "first_playlist"
-  | "night_listen";
-
-export type AchievementDef = {
-  id: AchievementId;
-  title: string;
-  desc: string;
-  icon: string; // emoji
-};
-
-const ACHIEVEMENTS: AchievementDef[] = [
-  { id: "plays_10", title: "10 morceaux joués", desc: "Tu commences à charbonner.", icon: "🏆" },
-  { id: "listen_1h", title: "1h d’écoute", desc: "Mode immersion activé.", icon: "⏱️" },
-  { id: "first_favorite", title: "Premier favori", desc: "Un premier ♥, ça compte.", icon: "❤️" },
-  { id: "first_playlist", title: "Première playlist", desc: "Tu organises ton son.", icon: "🔀" },
-  { id: "night_listen", title: "Écoute de nuit", desc: "Il est tard… mais c’est bon.", icon: "🌙" },
-];
 
 export type PlayerStats = {
   totalListenSeconds: number;

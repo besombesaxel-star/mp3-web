@@ -17,6 +17,14 @@ type TopEntry = {
   seconds: number;
 };
 
+type Period = "all" | "week" | "month";
+
+const PERIOD_TABS: { value: Period; label: string }[] = [
+  { value: "week", label: "Cette semaine" },
+  { value: "month", label: "Ce mois" },
+  { value: "all", label: "Toujours" },
+];
+
 function formatListenTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds <= 0) return null;
   const h = Math.floor(seconds / 3600);
@@ -32,13 +40,14 @@ export default function TopPage() {
   const [top, setTop] = useState<TopEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [coverBySrc, setCoverBySrc] = useState<Map<string, string>>(new Map());
+  const [period, setPeriod] = useState<Period>("week");
 
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
         const [topRes, libraryTracks] = await Promise.all([
-          fetch("/api/stats/global"),
+          fetch(`/api/stats/global?period=${period}`),
           fetchTracksShared(accessToken),
         ]);
 
@@ -57,7 +66,7 @@ export default function TopPage() {
       }
     }
     void load();
-  }, [accessToken]);
+  }, [accessToken, period]);
 
   const queue = useMemo<Track[]>(
     () =>
@@ -72,7 +81,7 @@ export default function TopPage() {
 
   return (
     <div className="max-w-2xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
-      <div className="flex items-start justify-between mb-8 mp3-fade-up">
+      <div className="flex items-start justify-between mb-6 mp3-fade-up">
         <div>
           <h2 className="text-3xl font-light">Top global</h2>
           <p className="text-sm text-white/35 mt-1">Morceaux les plus joués sur la plateforme</p>
@@ -87,6 +96,24 @@ export default function TopPage() {
             Tout écouter
           </button>
         )}
+      </div>
+
+      <div className="flex items-center gap-1.5 mb-8 mp3-fade-up" style={{ animationDelay: "30ms" }}>
+        {PERIOD_TABS.map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setPeriod(value)}
+            className={[
+              "h-8 px-3.5 rounded-full text-sm transition",
+              period === value
+                ? "bg-white text-black font-medium"
+                : "bg-white/8 text-white/60 hover:bg-white/12 hover:text-white/85",
+            ].join(" ")}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {loading ? (
@@ -105,7 +132,11 @@ export default function TopPage() {
       ) : top.length === 0 ? (
         <div className="py-20 text-center">
           <TrendingUp size={32} className="mx-auto mb-4 text-white/10" />
-          <p className="text-white/35 text-sm">Aucune donnée d&apos;écoute disponible.</p>
+          <p className="text-white/35 text-sm">
+            {period === "all"
+              ? "Aucune donnée d'écoute disponible."
+              : `Aucune écoute sur ${period === "week" ? "les 7 derniers jours" : "les 30 derniers jours"}.`}
+          </p>
           <p className="text-white/20 text-xs mt-1">Les écoutes apparaîtront ici après synchronisation.</p>
         </div>
       ) : (

@@ -6,7 +6,7 @@ import { usePlayer } from "./PlayerContext";
 import AudioBars from "./AudioBars";
 import { useFocusTrap } from "./useFocusTrap";
 import { vibrate } from "./haptics";
-import { getArtistHref, getPublicProfileHref } from "@/lib/publicLinks";
+import { getArtistHref } from "@/lib/publicLinks";
 import {
   Shuffle,
   SkipBack,
@@ -183,7 +183,6 @@ export default function PlayerOverlay() {
     isFavorite,
     toggleFavorite,
     focusMode,
-    preloadedTrack,
     hapticsEnabled,
   } = usePlayer();
 

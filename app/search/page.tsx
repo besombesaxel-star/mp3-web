@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Clock, LayoutGrid, List as ListIcon, Music, Play, Search, User, X } from "lucide-react";
-import { ReactNode, useEffect, useMemo, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../AuthProvider";
 import { Track, usePlayer } from "../PlayerContext";
 import { fetchTracksShared } from "../tracksCache";
@@ -13,15 +13,6 @@ import { useLongPress } from "../useLongPress";
 import TrackContextMenu from "../TrackContextMenu";
 
 type TrackWithCover = Track & { cover?: string };
-
-type ApiTrack = {
-  title: string;
-  artist: string;
-  src: string;
-  cover: string | null;
-  ownerDisplayName?: string | null;
-  ownerId?: string | null;
-};
 
 type SearchTab = "all" | "titres" | "artistes" | "utilisateurs";
 
@@ -420,7 +411,7 @@ export default function SearchPage() {
     exitSelectMode();
   }
 
-  async function loadTracks() {
+  const loadTracks = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -440,10 +431,10 @@ export default function SearchPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [accessToken]);
 
-  useEffect(() => { void loadTracks(); }, []);
-  useEffect(() => subscribeTracksUpdated(() => { void loadTracks(); }), []);
+  useEffect(() => { void loadTracks(); }, [loadTracks]);
+  useEffect(() => subscribeTracksUpdated(() => { void loadTracks(); }), [loadTracks]);
 
   const hasQuery = query.trim().length > 0;
   const needle = useMemo(() => normalizeText(query), [query]);

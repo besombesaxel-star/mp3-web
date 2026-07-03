@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { usePlayer, Track } from "../PlayerContext";
@@ -56,15 +56,6 @@ function ActivePlaylistRow({
     </button>
   );
 }
-
-type ApiTrack = {
-  title: string;
-  artist: string;
-  src: string;
-  cover: string | null;
-  ownerDisplayName?: string | null;
-  ownerId?: string | null;
-};
 
 type Playlist = {
   id: string;
@@ -134,7 +125,7 @@ export default function PlaylistsPage() {
   const playlistsRemoteHydratedRef = useRef(false);
   const lastSyncedPlaylistsSignatureRef = useRef("");
 
-  async function loadLibrary() {
+  const loadLibrary = useCallback(async () => {
     try {
       setLibLoading(true);
       setLibError("");
@@ -157,7 +148,7 @@ export default function PlaylistsPage() {
     } finally {
       setLibLoading(false);
     }
-  }
+  }, [accessToken]);
 
   function clearUndoTimer() {
     if (undoTimerRef.current) {
@@ -176,14 +167,14 @@ export default function PlaylistsPage() {
   }
 
   useEffect(() => {
-    loadLibrary();
-  }, []);
+    void loadLibrary();
+  }, [loadLibrary]);
 
   useEffect(() => {
     return subscribeTracksUpdated(() => {
       void loadLibrary();
     });
-  }, []);
+  }, [loadLibrary]);
 
   useEffect(() => {
     return () => clearUndoTimer();

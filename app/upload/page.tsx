@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, Check, Image as ImageIcon, Layers, Loader2, UploadCloud, X as XIcon } from "lucide-react";
 import { useAuth } from "../AuthProvider";
@@ -324,14 +324,14 @@ export default function UploadPage() {
     if (file) setCover(file);
   }
 
-  async function loadExistingNames() {
+  const loadExistingNames = useCallback(async () => {
     try {
       const tracks = await fetchTracksShared(accessToken);
       setExistingNames(tracks.map((track) => normalizeText(track.title)));
     } catch {
       // ignore; keep existing names on failure
     }
-  }
+  }, [accessToken]);
 
   useEffect(() => {
     let mounted = true;
@@ -347,13 +347,13 @@ export default function UploadPage() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [loadExistingNames]);
 
   useEffect(() => {
     return subscribeTracksUpdated(() => {
       void loadExistingNames();
     });
-  }, []);
+  }, [loadExistingNames]);
 
   useEffect(() => {
     if (!audio) {

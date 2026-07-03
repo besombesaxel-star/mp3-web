@@ -1536,6 +1536,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (statsState.totalListenSeconds >= 3600 && !statsState.achievements?.listen_1h) {
       unlockAchievement("listen_1h");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- unlockAchievement is redefined every render; only the tracked stats should retrigger this
   }, [
     statsState.totalPlays,
     statsState.totalListenSeconds,
@@ -1547,6 +1548,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (favorites.length > 0 && !statsState.achievements?.first_favorite) {
       unlockAchievement("first_favorite");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- unlockAchievement is redefined every render; only these two values should retrigger this
   }, [favorites.length, statsState.achievements?.first_favorite]);
 
   useEffect(() => {
@@ -1593,6 +1595,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     return () => {
       if (nowPlayingTimerRef.current) clearTimeout(nowPlayingTimerRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on track?.src only, not the whole track object
   }, [track?.src, playing, isAuthenticated, accessToken, authLoading]);
 
   // persist prefs
@@ -1829,6 +1832,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       album: ".mp3",
       artwork: track.cover ? [{ src: track.cover, sizes: "512x512", type: "image/png" }] : [],
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on these fields only, not the whole track object
   }, [track?.title, track?.artist, track?.cover]);
 
   // titre de l'onglet : montre ce qui joue sans avoir besoin de cliquer sur l'onglet
@@ -1842,6 +1846,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
     const icon = playing ? "▶" : "❚❚";
     document.title = `${icon} ${track.title}${track.artist ? ` - ${track.artist}` : ""} . mp3`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on these fields only, not the whole track object
   }, [track?.title, track?.artist, playing]);
 
   function createQueueSnapshot() {

@@ -1,9 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { Radio } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AlbumCard from "./AlbumCard";
 import { useAuth } from "./AuthProvider";
 import { Track, usePlayer } from "./PlayerContext";
@@ -71,7 +70,6 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [todayHour, setTodayHour] = useState<number | null>(null);
-  const [nowMs, setNowMs] = useState(0);
   const [radioLoading, setRadioLoading] = useState(false);
 
   async function onStartRadio() {
@@ -86,7 +84,7 @@ export default function Home() {
   const homeRef = useRef<HTMLDivElement | null>(null);
   useCoverScrollEffect(homeRef);
 
-  async function loadTracks() {
+  const loadTracks = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -98,22 +96,21 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [accessToken]);
 
   useEffect(() => {
     void loadTracks();
-  }, [accessToken]);
+  }, [loadTracks]);
 
   useEffect(() => {
     return subscribeTracksUpdated(() => {
       void loadTracks();
     });
-  }, []);
+  }, [loadTracks]);
 
   useEffect(() => {
     const tick = () => {
       const now = Date.now();
-      setNowMs(now);
       setTodayHour(new Date(now).getHours());
     };
     tick();

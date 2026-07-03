@@ -226,7 +226,7 @@ export default function MiniPlayer() {
       window.removeEventListener("touchstart", onDown);
       window.removeEventListener("keydown", onKey);
     };
-  }, [queueOpen]);
+  }, [queueOpen, setQueueOpen]);
 
   useEffect(() => {
     if (!playing || !track) return;

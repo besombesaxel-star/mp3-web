@@ -3,11 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Music, Play, TrendingUp } from "lucide-react";
+import { Music, Play, TrendingUp, User } from "lucide-react";
 import { useAuth } from "@/app/AuthProvider";
 import { usePlayer, type Track } from "@/app/PlayerContext";
 import { fetchTracksShared } from "@/app/tracksCache";
-import { getArtistHref } from "@/lib/publicLinks";
+import { getArtistHref, getInitials, getPublicProfileHref, hashStringToHue } from "@/lib/publicLinks";
 
 type TopEntry = {
   src: string;
@@ -17,12 +17,26 @@ type TopEntry = {
   seconds: number;
 };
 
+type ListenerEntry = {
+  userId: string;
+  displayName: string;
+  avatarUrl: string;
+  plays: number;
+  seconds: number;
+};
+
 type Period = "all" | "week" | "month";
+type MainTab = "titres" | "auditeurs";
 
 const PERIOD_TABS: { value: Period; label: string }[] = [
   { value: "week", label: "Cette semaine" },
   { value: "month", label: "Ce mois" },
   { value: "all", label: "Toujours" },
+];
+
+const MAIN_TABS: { value: MainTab; label: string }[] = [
+  { value: "titres", label: "Titres" },
+  { value: "auditeurs", label: "Auditeurs" },
 ];
 
 function formatListenTime(seconds: number) {
@@ -38,9 +52,11 @@ export default function TopPage() {
   const { accessToken } = useAuth();
   const { setQueueAndPlay } = usePlayer();
   const [top, setTop] = useState<TopEntry[]>([]);
+  const [listeners, setListeners] = useState<ListenerEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [coverBySrc, setCoverBySrc] = useState<Map<string, string>>(new Map());
   const [period, setPeriod] = useState<Period>("week");
+  const [tab, setTab] = useState<MainTab>("titres");
 
   useEffect(() => {
     async function load() {
@@ -51,8 +67,9 @@ export default function TopPage() {
           fetchTracksShared(accessToken),
         ]);
 
-        const json = await topRes.json().catch(() => ({ top: [] }));
+        const json = await topRes.json().catch(() => ({ top: [], listeners: [] }));
         setTop(Array.isArray(json.top) ? json.top : []);
+        setListeners(Array.isArray(json.listeners) ? json.listeners : []);
 
         const map = new Map<string, string>();
         for (const t of libraryTracks) {
@@ -61,6 +78,7 @@ export default function TopPage() {
         setCoverBySrc(map);
       } catch {
         setTop([]);
+        setListeners([]);
       } finally {
         setLoading(false);
       }
@@ -86,7 +104,7 @@ export default function TopPage() {
           <h2 className="text-3xl font-light">Top global</h2>
           <p className="text-sm text-white/35 mt-1">Morceaux les plus joués sur la plateforme</p>
         </div>
-        {!loading && top.length > 0 && (
+        {!loading && tab === "titres" && top.length > 0 && (
           <button
             type="button"
             onClick={() => setQueueAndPlay(queue, 0)}
@@ -98,22 +116,41 @@ export default function TopPage() {
         )}
       </div>
 
-      <div className="flex items-center gap-1.5 mb-8 mp3-fade-up" style={{ animationDelay: "30ms" }}>
-        {PERIOD_TABS.map(({ value, label }) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => setPeriod(value)}
-            className={[
-              "h-8 px-3.5 rounded-full text-sm transition",
-              period === value
-                ? "bg-white text-black font-medium"
-                : "bg-white/8 text-white/60 hover:bg-white/12 hover:text-white/85",
-            ].join(" ")}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-8 mp3-fade-up" style={{ animationDelay: "30ms" }}>
+        <div className="flex items-center gap-1.5">
+          {MAIN_TABS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setTab(value)}
+              className={[
+                "h-8 px-3.5 rounded-full text-sm transition",
+                tab === value
+                  ? "bg-white text-black font-medium"
+                  : "bg-white/8 text-white/60 hover:bg-white/12 hover:text-white/85",
+              ].join(" ")}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5">
+          {PERIOD_TABS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setPeriod(value)}
+              className={[
+                "h-8 px-3.5 rounded-full text-sm transition",
+                period === value
+                  ? "bg-white text-black font-medium"
+                  : "bg-white/8 text-white/60 hover:bg-white/12 hover:text-white/85",
+              ].join(" ")}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
@@ -129,7 +166,7 @@ export default function TopPage() {
             </div>
           ))}
         </div>
-      ) : top.length === 0 ? (
+      ) : tab === "titres" && top.length === 0 ? (
         <div className="py-20 text-center">
           <TrendingUp size={32} className="mx-auto mb-4 text-white/10" />
           <p className="text-white/35 text-sm">
@@ -138,6 +175,62 @@ export default function TopPage() {
               : `Aucune écoute sur ${period === "week" ? "les 7 derniers jours" : "les 30 derniers jours"}.`}
           </p>
           <p className="text-white/20 text-xs mt-1">Les écoutes apparaîtront ici après synchronisation.</p>
+        </div>
+      ) : tab === "auditeurs" && listeners.length === 0 ? (
+        <div className="py-20 text-center">
+          <User size={32} className="mx-auto mb-4 text-white/10" />
+          <p className="text-white/35 text-sm">
+            {period === "all"
+              ? "Aucune donnée d'écoute disponible."
+              : `Aucune écoute sur ${period === "week" ? "les 7 derniers jours" : "les 30 derniers jours"}.`}
+          </p>
+        </div>
+      ) : tab === "auditeurs" ? (
+        <div className="space-y-0.5">
+          {listeners.map((entry, idx) => {
+            const hue = hashStringToHue(entry.userId);
+            const listenTime = formatListenTime(entry.seconds);
+            return (
+              <Link
+                key={entry.userId}
+                href={getPublicProfileHref(entry.userId)}
+                className="group flex items-center gap-3 rounded-2xl px-3 py-2.5 hover:bg-white/5 transition mp3-fade-up"
+                style={{ animationDelay: `${Math.min(idx, 14) * 20}ms` }}
+              >
+                <div className="w-7 shrink-0 text-center text-sm text-white/20 tabular-nums font-light">
+                  {idx + 1}
+                </div>
+
+                <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-white/5">
+                  {entry.avatarUrl ? (
+                    <Image src={entry.avatarUrl} alt={entry.displayName} fill className="object-cover" sizes="40px" />
+                  ) : (
+                    <div
+                      className="h-full w-full flex items-center justify-center text-xs font-semibold text-white"
+                      style={{
+                        background: `linear-gradient(135deg, hsla(${hue}, 65%, 55%, 0.85), hsla(${(hue + 50) % 360}, 70%, 48%, 0.8))`,
+                      }}
+                    >
+                      {getInitials(entry.displayName, "")}
+                    </div>
+                  )}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-white/85 truncate">{entry.displayName}</p>
+                </div>
+
+                <div className="shrink-0 text-right">
+                  <p className="text-xs text-white/55 tabular-nums">
+                    {entry.plays} écoute{entry.plays > 1 ? "s" : ""}
+                  </p>
+                  {listenTime ? (
+                    <p className="text-[11px] text-white/25 tabular-nums">{listenTime}</p>
+                  ) : null}
+                </div>
+              </Link>
+            );
+          })}
         </div>
       ) : (
         <div className="space-y-0.5">

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { readAccountProfile } from "@/lib/accountData";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
@@ -17,6 +18,14 @@ type TrackEntry = {
   seconds: number;
 };
 
+type ListenerEntry = {
+  userId: string;
+  displayName: string;
+  avatarUrl: string;
+  plays: number;
+  seconds: number;
+};
+
 type ByTrackValue = {
   title?: string;
   artist?: string;
@@ -30,11 +39,14 @@ type RecentPlay = {
 };
 
 type StatsFile = {
+  userId: string;
   byTrack?: Record<string, ByTrackValue>;
   recentPlays?: RecentPlay[];
 };
 
-const cache = new Map<Period, { top: TrackEntry[]; expiresAt: number }>();
+type CachedResult = { top: TrackEntry[]; listeners: ListenerEntry[]; expiresAt: number };
+
+const cache = new Map<Period, CachedResult>();
 
 function periodCutoffMs(period: Period): number | null {
   if (period === "week") return Date.now() - 7 * 24 * 60 * 60 * 1000;
@@ -107,6 +119,38 @@ function computeTopForWindow(files: StatsFile[], cutoff: number): TrackEntry[] {
     .slice(0, 20);
 }
 
+function computeListenersAllTime(files: StatsFile[]): Array<{ userId: string; plays: number; seconds: number }> {
+  return files
+    .map((f) => {
+      let plays = 0;
+      let seconds = 0;
+      for (const entry of Object.values(f.byTrack ?? {})) {
+        if (!entry || typeof entry !== "object") continue;
+        plays += entry.plays ?? 0;
+        seconds += entry.seconds ?? 0;
+      }
+      return { userId: f.userId, plays, seconds };
+    })
+    .filter((e) => e.plays > 0)
+    .sort((a, b) => b.plays - a.plays)
+    .slice(0, 20);
+}
+
+function computeListenersForWindow(
+  files: StatsFile[],
+  cutoff: number
+): Array<{ userId: string; plays: number; seconds: number }> {
+  return files
+    .map((f) => {
+      const recentPlays = Array.isArray(f.recentPlays) ? f.recentPlays : [];
+      const plays = recentPlays.filter((p) => typeof p?.playedAt === "number" && p.playedAt >= cutoff).length;
+      return { userId: f.userId, plays, seconds: 0 };
+    })
+    .filter((e) => e.plays > 0)
+    .sort((a, b) => b.plays - a.plays)
+    .slice(0, 20);
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const requested = searchParams.get("period");
@@ -114,18 +158,18 @@ export async function GET(req: Request) {
 
   const cached = cache.get(period);
   if (cached && Date.now() < cached.expiresAt) {
-    return NextResponse.json({ ok: true, top: cached.top, period });
+    return NextResponse.json({ ok: true, top: cached.top, listeners: cached.listeners, period });
   }
 
   const admin = getSupabaseAdmin();
-  if (!admin) return NextResponse.json({ ok: true, top: [], period });
+  if (!admin) return NextResponse.json({ ok: true, top: [], listeners: [], period });
 
   try {
     const { data: files, error } = await admin.client.storage
       .from(BUCKET)
       .list("stats", { limit: 1000 });
 
-    if (error || !files?.length) return NextResponse.json({ ok: true, top: [], period });
+    if (error || !files?.length) return NextResponse.json({ ok: true, top: [], listeners: [], period });
 
     const parsedFiles: StatsFile[] = (
       await Promise.all(
@@ -135,7 +179,8 @@ export async function GET(req: Request) {
               .from(BUCKET)
               .download(`stats/${file.name}`);
             if (dlErr || !data) return null;
-            return JSON.parse(await data.text()) as StatsFile;
+            const parsed = JSON.parse(await data.text()) as Omit<StatsFile, "userId">;
+            return { ...parsed, userId: file.name.replace(/\.json$/i, "") };
           } catch {
             return null;
           }
@@ -145,11 +190,36 @@ export async function GET(req: Request) {
 
     const cutoff = periodCutoffMs(period);
     const top = cutoff === null ? computeTopAllTime(parsedFiles) : computeTopForWindow(parsedFiles, cutoff);
+    const listenerCounts =
+      cutoff === null ? computeListenersAllTime(parsedFiles) : computeListenersForWindow(parsedFiles, cutoff);
 
-    cache.set(period, { top, expiresAt: Date.now() + CACHE_TTL_MS });
+    const { data: usersData } = await admin.client.auth.admin.listUsers({ perPage: 1000 });
+    const usersById = new Map((usersData?.users ?? []).map((u) => [u.id, u]));
 
-    return NextResponse.json({ ok: true, top, period });
+    const listeners: ListenerEntry[] = await Promise.all(
+      listenerCounts.map(async (entry) => {
+        const user = usersById.get(entry.userId);
+        const displayName =
+          (typeof user?.user_metadata?.display_name === "string" && user.user_metadata.display_name.trim()) ||
+          user?.email?.trim() ||
+          "Membre mp3";
+
+        const profile = await readAccountProfile(entry.userId).catch(() => null);
+
+        return {
+          userId: entry.userId,
+          displayName,
+          avatarUrl: profile?.avatarUrl ?? "",
+          plays: entry.plays,
+          seconds: entry.seconds,
+        };
+      })
+    );
+
+    cache.set(period, { top, listeners, expiresAt: Date.now() + CACHE_TTL_MS });
+
+    return NextResponse.json({ ok: true, top, listeners, period });
   } catch {
-    return NextResponse.json({ ok: false, top: [], period });
+    return NextResponse.json({ ok: false, top: [], listeners: [], period });
   }
 }

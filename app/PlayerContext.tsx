@@ -17,6 +17,7 @@ import { fetchTracksShared } from "./tracksCache";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
+import { cacheTracksForOffline } from "@/lib/offlineCache";
 
 export type Track = {
   title: string;
@@ -2458,6 +2459,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (!wasFav) {
       if (hapticsEnabledRef.current) vibrate(12);
       if (uiSoundsRef.current) playPopSound();
+      void cacheTracksForOffline([{ src: t.src, cover: t.cover }]);
     }
   }
 

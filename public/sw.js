@@ -91,6 +91,30 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(staleWhileRevalidate(request));
 });
 
+self.addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || data.type !== "CACHE_URLS" || !Array.isArray(data.urls)) return;
+
+  event.waitUntil(
+    caches.open(RUNTIME_CACHE).then((cache) =>
+      Promise.all(
+        data.urls.map(async (url) => {
+          try {
+            const existing = await cache.match(url);
+            if (existing) return;
+            const response = await fetch(url);
+            if (response && response.status === 200) {
+              await cache.put(url, response);
+            }
+          } catch {
+            // ignore individual failures (offline, missing file, etc.)
+          }
+        })
+      )
+    )
+  );
+});
+
 self.addEventListener("push", (event) => {
   let data = {};
   try {

@@ -2,12 +2,14 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import { Heart, LayoutGrid, List as ListIcon, Play, Shuffle } from "lucide-react";
+import { Check, Download, Heart, LayoutGrid, List as ListIcon, Loader2, Play, Shuffle } from "lucide-react";
 import AlbumCard from "../AlbumCard";
 import { Track, usePlayer } from "../PlayerContext";
 import AudioBars from "../AudioBars";
 import { useLongPress } from "../useLongPress";
 import TrackContextMenu from "../TrackContextMenu";
+import { cacheTracksForOffline } from "@/lib/offlineCache";
+import { toast } from "../Toast";
 
 const FAVORITES_VIEW_KEY = "mp3_favorites_view";
 
@@ -105,7 +107,6 @@ export default function FavoritesPage() {
     try {
       const stored = localStorage.getItem(FAVORITES_VIEW_KEY);
       if (stored === "grid" || stored === "list") {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- must read the real client-only localStorage value after mount
         setView(stored);
       }
     } catch {}
@@ -126,6 +127,24 @@ export default function FavoritesPage() {
     if (!sorted.length) return;
     const shuffled = [...sorted].sort(() => Math.random() - 0.5);
     setQueueAndPlay(shuffled, 0);
+  }
+
+  const [offlineBusy, setOfflineBusy] = useState(false);
+  const [offlineDone, setOfflineDone] = useState(false);
+
+  async function makeAvailableOffline() {
+    if (offlineBusy || !sorted.length) return;
+    setOfflineBusy(true);
+    try {
+      await cacheTracksForOffline(sorted.map((t) => ({ src: t.src, cover: t.cover })));
+      setOfflineDone(true);
+      toast("Favoris disponibles hors-ligne", "check");
+      setTimeout(() => setOfflineDone(false), 3000);
+    } catch {
+      toast("Echec de la mise en cache", "check");
+    } finally {
+      setOfflineBusy(false);
+    }
   }
 
   return (
@@ -169,6 +188,22 @@ export default function FavoritesPage() {
                 <ListIcon size={15} />
               </button>
             </div>
+            <button
+              onClick={() => void makeAvailableOffline()}
+              disabled={offlineBusy}
+              className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 text-white/70 text-sm font-medium px-4 py-2 hover:bg-white/10 hover:text-white transition disabled:opacity-60"
+              title="Rendre les favoris disponibles hors-ligne"
+              type="button"
+            >
+              {offlineBusy ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : offlineDone ? (
+                <Check size={14} />
+              ) : (
+                <Download size={14} />
+              )}
+              <span className="hidden sm:inline">Hors-ligne</span>
+            </button>
             <button
               onClick={playShuffled}
               className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 text-white/70 text-sm font-medium px-4 py-2 hover:bg-white/10 hover:text-white transition"

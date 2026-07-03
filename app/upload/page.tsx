@@ -564,7 +564,7 @@ export default function UploadPage() {
             <p className="text-sm text-white/60">Lecture des tags ID3...</p>
           </div>
         ) : batchFiles.length > 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4 mp3-scale-in">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Layers size={16} className="text-white/50" />
@@ -583,16 +583,17 @@ export default function UploadPage() {
             </div>
 
             {batchFiles.some((f) => f.duplicate) ? (
-              <div className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs text-amber-100">
+              <div className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs text-amber-100 mp3-fade-up">
                 {batchFiles.filter((f) => f.duplicate).length} doublon(s) potentiel(s) detecte(s) - verifie les titres surlignes.
               </div>
             ) : null}
 
             <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
-              {batchFiles.map((item) => (
+              {batchFiles.map((item, i) => (
                 <div
                   key={item.id}
-                  className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2.5"
+                  className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2.5 mp3-fade-up transition-opacity"
+                  style={{ animationDelay: `${Math.min(i, 14) * 25}ms` }}
                 >
                   <div className="relative shrink-0 h-8 w-8 rounded-lg overflow-hidden flex items-center justify-center bg-white/5">
                     {item.coverPreview ? (
@@ -697,7 +698,7 @@ export default function UploadPage() {
 
         <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-5">
           {step === 1 ? (
-            <div>
+            <div className="mp3-fade-up">
               <label htmlFor="audio-input" className="block text-sm text-white/70 mb-2">
                 1) Selectionne ton MP3
               </label>
@@ -752,7 +753,7 @@ export default function UploadPage() {
           ) : null}
 
           {step === 2 ? (
-            <div>
+            <div className="mp3-fade-up">
               <label htmlFor="cover-input" className="block text-sm text-white/70 mb-2">
                 2) Ajoute une cover (optionnel)
               </label>
@@ -825,7 +826,7 @@ export default function UploadPage() {
           ) : null}
 
           {step === 3 ? (
-            <div>
+            <div className="mp3-fade-up">
               <p className="text-sm text-white/70 mb-3">3) Verifie les metadata</p>
 
               <div className="space-y-3">
@@ -893,7 +894,7 @@ export default function UploadPage() {
           ) : null}
 
           {step === 4 ? (
-            <div className="space-y-4">
+            <div className="space-y-4 mp3-fade-up">
               <p className="text-sm text-white/80">4) Confirmation</p>
               <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80" aria-live="polite">
                 {message || "Termine."}

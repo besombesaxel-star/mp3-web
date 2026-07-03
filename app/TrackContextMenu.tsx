@@ -42,7 +42,7 @@ export default function TrackContextMenu({ track, onClose }: Props) {
   return (
     <>
       <div
-        className="fixed inset-0 z-[120] bg-black/60"
+        className="fixed inset-0 z-[120] bg-black/60 mp3-backdrop-in"
         onClick={onClose}
         aria-hidden="true"
       />

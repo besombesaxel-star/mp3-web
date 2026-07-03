@@ -118,15 +118,15 @@ export default function AdminBadgesPage() {
 
   return (
     <div className="max-w-2xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-40">
-      <h2 className="text-3xl font-light mb-8">Badges</h2>
+      <h2 className="text-3xl font-light mb-8 mp3-fade-up">Badges</h2>
 
       {error && (
-        <div className="mb-5 rounded-2xl border border-red-400/20 bg-red-400/8 px-4 py-3 text-sm text-red-300">
+        <div className="mb-5 rounded-2xl border border-red-400/20 bg-red-400/8 px-4 py-3 text-sm text-red-300 mp3-fade-up">
           {error}
         </div>
       )}
 
-      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 mb-6">
+      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 mb-6 mp3-fade-up mp3-d-1">
         <p className="text-xs uppercase tracking-[0.22em] text-white/25 mb-4">Attribuer un badge</p>
 
         <input
@@ -165,7 +165,7 @@ export default function AdminBadgesPage() {
         </button>
       </section>
 
-      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 mp3-fade-up mp3-d-2">
         <p className="text-xs uppercase tracking-[0.22em] text-white/25 mb-4">Attributions actuelles</p>
 
         {!fetched ? (
@@ -174,8 +174,12 @@ export default function AdminBadgesPage() {
           <p className="text-sm text-white/35">Aucun badge attribué.</p>
         ) : (
           <div className="space-y-2.5">
-            {Object.entries(assignments).map(([id, badges]) => (
-              <div key={id} className="flex items-center justify-between gap-3 rounded-2xl border border-white/5 bg-white/[0.02] px-4 py-3">
+            {Object.entries(assignments).map(([id, badges], i) => (
+              <div
+                key={id}
+                className="flex items-center justify-between gap-3 rounded-2xl border border-white/5 bg-white/[0.02] px-4 py-3 mp3-fade-up"
+                style={{ animationDelay: `${Math.min(i, 9) * 30}ms` }}
+              >
                 <div className="min-w-0">
                   <Link href={`/users/${id}`} className="text-sm text-white/85 hover:underline underline-offset-4 truncate block">
                     {displayNames[id] ?? id}

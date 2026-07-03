@@ -483,7 +483,7 @@ export default function GlobalChat() {
       {/* Backdrop (mobile) */}
       {open && (
         <div
-          className="fixed inset-0 z-[54] bg-black/50 md:hidden"
+          className="fixed inset-0 z-[54] bg-black/50 md:hidden mp3-backdrop-in"
           onClick={() => setOpen(false)}
           aria-hidden="true"
         />
@@ -590,7 +590,7 @@ export default function GlobalChat() {
                     {group.messages.map((msg, i) => {
                       const canDelete = msg.user_id === myId || canModerate;
                       return (
-                        <div key={msg.id} className="flex flex-col">
+                        <div key={msg.id} className="flex flex-col mp3-fade-up">
                           <div className={["group/msg flex items-center gap-1", isMe ? "flex-row-reverse" : "flex-row"].join(" ")}>
                             <div
                               className={[

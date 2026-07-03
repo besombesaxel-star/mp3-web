@@ -176,9 +176,12 @@ export default function NotificationBell() {
         aria-label="Notifications"
         className="relative w-9 h-9 md:w-10 md:h-10 flex items-center justify-center rounded-full border border-white/15 bg-black/70 backdrop-blur text-white/70 hover:text-white hover:border-white/30 hover:bg-white/10 transition shadow-lg"
       >
-        <Bell size={15} />
+        <Bell size={15} className={unread > 0 ? "mp3-bell-ring" : undefined} />
         {unread > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white px-0.5 leading-none">
+          <span
+            key={unread}
+            className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white px-0.5 leading-none mp3-pop"
+          >
             {unread > 9 ? "9+" : unread}
           </span>
         )}

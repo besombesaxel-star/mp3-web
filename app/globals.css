@@ -291,7 +291,12 @@ body[data-mp3-theme="ocean"] {
 @media (prefers-reduced-motion: reduce) {
   .mp3-ov-enter, .mp3-ov-exit, .mp3-ov-bg,
   .mp3-ov-cover, .mp3-ov-panel, .mp3-ov-controls,
-  .mp3-page-transition {
+  .mp3-page-transition,
+  .mp3-fade-up, .mp3-bar-grow, .mp3-cover-pop,
+  .mp3-now-cover--playing, .mp3-slide-right, .mp3-pop,
+  .mp3-slide-down, .mp3-heart-burst, .mp3-drawer-in,
+  .mp3-toast-in, .mp3-achievement-glow, .mp3-backdrop-in,
+  .mp3-scale-in, .mp3-bell-ring {
     animation: none !important;
     transition: none !important;
   }
@@ -378,6 +383,60 @@ body[data-mp3-theme="ocean"] {
 .mp3-d-5 { animation-delay: 225ms; }
 .mp3-d-6 { animation-delay: 270ms; }
 .mp3-d-7 { animation-delay: 315ms; }
+.mp3-d-8 { animation-delay: 360ms; }
+.mp3-d-9 { animation-delay: 405ms; }
+
+/* Modal / drawer / toast entrances (single source of truth) */
+@keyframes mp3-backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.mp3-backdrop-in {
+  animation: mp3-backdropIn 180ms ease-out both;
+}
+
+@keyframes mp3-scaleIn {
+  from { opacity: 0; transform: scale(0.96) translateY(4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+.mp3-scale-in {
+  animation: mp3-scaleIn 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes mp3-drawerIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.mp3-drawer-in {
+  animation: mp3-drawerIn 180ms ease-out both;
+}
+
+@keyframes mp3-toastIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.99); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.mp3-toast-in {
+  animation: mp3-toastIn 180ms ease-out both;
+}
+
+@keyframes mp3-achievementGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.18); }
+  50%      { box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.06); }
+}
+.mp3-achievement-glow {
+  animation: mp3-achievementGlow 2.4s ease-in-out infinite;
+}
+
+@keyframes mp3-bellRing {
+  0%, 100% { transform: rotate(0deg); }
+  10%, 30% { transform: rotate(-12deg); }
+  20%, 40% { transform: rotate(10deg); }
+  50%      { transform: rotate(0deg); }
+}
+.mp3-bell-ring {
+  transform-origin: top center;
+  animation: mp3-bellRing 2.2s ease-in-out 1;
+}
 
 @keyframes mp3-slide-right {
   from { opacity: 0; transform: translateX(-10px); }

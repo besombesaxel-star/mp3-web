@@ -478,10 +478,10 @@ export default function LibraryPage() {
       )}
 
       {editing ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 mp3-backdrop-in">
           <div
             ref={dialogRef}
-            className="w-full max-w-lg rounded-3xl bg-[#15151C] border border-white/10 p-5"
+            className="w-full max-w-lg rounded-3xl bg-[#15151C] border border-white/10 p-5 mp3-scale-in"
             role="dialog"
             aria-modal="true"
             aria-labelledby="edit-track-title"

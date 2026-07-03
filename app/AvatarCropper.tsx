@@ -111,8 +111,8 @@ export default function AvatarCropper({ file, onCancel, onCropped }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
-      <div className="w-full max-w-sm rounded-3xl bg-[#15151C] border border-white/10 p-5">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4 mp3-backdrop-in">
+      <div className="w-full max-w-sm rounded-3xl bg-[#15151C] border border-white/10 p-5 mp3-scale-in">
         <p className="text-sm text-white/85 mb-4">Recadrer la photo de profil</p>
 
         <div

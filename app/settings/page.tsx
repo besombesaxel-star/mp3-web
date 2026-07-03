@@ -15,7 +15,7 @@ function EqGainsEditor({ gains, onChange }: { gains: EqGains; onChange: (gains: 
   }
 
   return (
-    <div className="mt-4 space-y-3">
+    <div className="mt-4 space-y-3 mp3-fade-up">
       {EQ_BAND_LABELS.map((label, i) => (
         <div key={label} className="flex items-center gap-3">
           <span className="text-xs text-white/40 w-14 shrink-0">{label}</span>

@@ -409,14 +409,6 @@ export default function DynamicBackdrop() {
   return (
     <>
       <style jsx global>{`
-        @media (prefers-reduced-motion: reduce) {
-          .mp3-dynamic-blob,
-          .mp3-dynamic-cover {
-            animation: none !important;
-            transition: none !important;
-          }
-        }
-
         @keyframes mp3DynamicFloatA {
           0% {
             transform: translate3d(0, 0, 0) scale(1);

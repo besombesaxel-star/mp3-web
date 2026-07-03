@@ -9,7 +9,7 @@ import { fetchTracksShared } from "../tracksCache";
 import { dispatchTracksUpdated, subscribeTracksUpdated } from "../tracksSync";
 import { toast } from "../Toast";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
-import { readId3Tags } from "@/lib/id3";
+import { pictureToFile, readId3Tags } from "@/lib/id3";
 
 type SignUploadResponse = {
   ok?: boolean;
@@ -99,10 +99,13 @@ type BatchStatus = "pending" | "uploading" | "done" | "error";
 type BatchFile = {
   id: string;
   file: File;
+  cover: File | null;
+  coverPreview: string;
   title: string;
   artist: string;
   status: BatchStatus;
   error?: string;
+  duplicate: boolean;
 };
 
 const MAX_BATCH_FILES = 30;
@@ -126,6 +129,7 @@ async function saveMetaForSrc(src: string, title: string, artist: string, access
 
 async function uploadTrackFile(
   audio: File,
+  cover: File | null,
   title: string,
   artist: string,
   accessToken: string
@@ -134,7 +138,7 @@ async function uploadTrackFile(
     const signRes = await fetch("/api/upload/sign", {
       method: "POST",
       headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
-      body: JSON.stringify({ audioName: audio.name, audioSize: audio.size, coverName: null }),
+      body: JSON.stringify({ audioName: audio.name, audioSize: audio.size, coverName: cover?.name ?? null }),
     });
     const signJson: SignUploadResponse = await signRes.json().catch(() => ({}));
 
@@ -147,10 +151,18 @@ async function uploadTrackFile(
         .uploadToSignedUrl(signJson.audio.path, signJson.audio.token, audio);
       if (uploadError) return { ok: false, error: uploadError.message };
 
+      let coverPath: string | null = null;
+      if (cover && signJson.cover) {
+        const { error: coverUploadError } = await supabase.storage
+          .from(signJson.bucket!)
+          .uploadToSignedUrl(signJson.cover.path, signJson.cover.token, cover);
+        if (!coverUploadError) coverPath = signJson.cover.path;
+      }
+
       const completeRes = await fetch("/api/upload/complete", {
         method: "POST",
         headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
-        body: JSON.stringify({ audioPath: signJson.audio.path, coverPath: null }),
+        body: JSON.stringify({ audioPath: signJson.audio.path, coverPath }),
       });
       const completeJson: CompleteUploadResponse = await completeRes.json().catch(() => ({}));
       if (!completeRes.ok || !completeJson.ok || !completeJson.track?.src) {
@@ -170,6 +182,7 @@ async function uploadTrackFile(
 
   const formData = new FormData();
   formData.append("audio", audio);
+  if (cover) formData.append("cover", cover);
   const uploadRes = await fetch("/api/upload", {
     method: "POST",
     headers: createAuthorizedHeaders(accessToken),
@@ -218,20 +231,29 @@ export default function UploadPage() {
           return {
             id: crypto.randomUUID(),
             file,
+            cover: null,
+            coverPreview: "",
             title: guessTitleFromFile(file.name),
             artist: "",
             status: "error",
             error: "Fichier trop lourd (max 80MB)",
+            duplicate: false,
           };
         }
 
         const tags = await readId3Tags(file);
+        const resolvedTitle = tags.title || guessTitleFromFile(file.name);
+        const cover = tags.picture ? pictureToFile(tags.picture, guessTitleFromFile(file.name)) : null;
+
         return {
           id: crypto.randomUUID(),
           file,
-          title: tags.title || guessTitleFromFile(file.name),
+          cover,
+          coverPreview: cover ? URL.createObjectURL(cover) : "",
+          title: resolvedTitle,
           artist: tags.artist || "",
           status: "pending",
+          duplicate: existingNames.includes(normalizeText(resolvedTitle)),
         };
       })
     );
@@ -240,14 +262,31 @@ export default function UploadPage() {
   }
 
   function updateBatchField(id: string, field: "title" | "artist", value: string) {
-    setBatchFiles((prev) => prev.map((f) => (f.id === id ? { ...f, [field]: value } : f)));
+    setBatchFiles((prev) =>
+      prev.map((f) =>
+        f.id === id
+          ? {
+              ...f,
+              [field]: value,
+              duplicate: field === "title" ? existingNames.includes(normalizeText(value)) : f.duplicate,
+            }
+          : f
+      )
+    );
   }
 
   function removeBatchFile(id: string) {
-    setBatchFiles((prev) => prev.filter((f) => f.id !== id));
+    setBatchFiles((prev) => {
+      const target = prev.find((f) => f.id === id);
+      if (target?.coverPreview) URL.revokeObjectURL(target.coverPreview);
+      return prev.filter((f) => f.id !== id);
+    });
   }
 
   function resetBatch() {
+    for (const item of batchFiles) {
+      if (item.coverPreview) URL.revokeObjectURL(item.coverPreview);
+    }
     setBatchFiles([]);
     setBatchBusy(false);
   }
@@ -260,7 +299,7 @@ export default function UploadPage() {
       if (item.status === "done" || item.status === "error") continue;
 
       setBatchFiles((prev) => prev.map((f) => (f.id === item.id ? { ...f, status: "uploading" } : f)));
-      const result = await uploadTrackFile(item.file, item.title, item.artist, accessToken);
+      const result = await uploadTrackFile(item.file, item.cover, item.title, item.artist, accessToken);
       setBatchFiles((prev) =>
         prev.map((f) => (f.id === item.id ? { ...f, status: result.ok ? "done" : "error", error: result.error } : f))
       );
@@ -543,31 +582,59 @@ export default function UploadPage() {
               </button>
             </div>
 
+            {batchFiles.some((f) => f.duplicate) ? (
+              <div className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-3 py-2 text-xs text-amber-100">
+                {batchFiles.filter((f) => f.duplicate).length} doublon(s) potentiel(s) detecte(s) - verifie les titres surlignes.
+              </div>
+            ) : null}
+
             <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
               {batchFiles.map((item) => (
                 <div
                   key={item.id}
                   className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2.5"
                 >
-                  <div className="shrink-0 h-8 w-8 rounded-lg flex items-center justify-center bg-white/5">
-                    {item.status === "uploading" ? (
-                      <Loader2 size={14} className="animate-spin text-white/50" />
-                    ) : item.status === "done" ? (
-                      <Check size={14} className="text-emerald-400" />
-                    ) : item.status === "error" ? (
-                      <AlertCircle size={14} className="text-red-400" />
-                    ) : (
-                      <UploadCloud size={14} className="text-white/30" />
-                    )}
+                  <div className="relative shrink-0 h-8 w-8 rounded-lg overflow-hidden flex items-center justify-center bg-white/5">
+                    {item.coverPreview ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={item.coverPreview} alt="" className="h-full w-full object-cover" />
+                    ) : null}
+                    {item.status !== "pending" || !item.coverPreview ? (
+                      <div
+                        className={[
+                          "absolute inset-0 flex items-center justify-center",
+                          item.coverPreview ? "bg-black/50" : "",
+                        ].join(" ")}
+                      >
+                        {item.status === "uploading" ? (
+                          <Loader2 size={14} className="animate-spin text-white/70" />
+                        ) : item.status === "done" ? (
+                          <Check size={14} className="text-emerald-400" />
+                        ) : item.status === "error" ? (
+                          <AlertCircle size={14} className="text-red-400" />
+                        ) : (
+                          <UploadCloud size={14} className="text-white/30" />
+                        )}
+                      </div>
+                    ) : null}
                   </div>
                   <div className="flex-1 min-w-0 grid grid-cols-2 gap-2">
-                    <input
-                      value={item.title}
-                      onChange={(e) => updateBatchField(item.id, "title", e.target.value)}
-                      disabled={item.status !== "pending"}
-                      placeholder="Titre"
-                      className="w-full rounded-lg bg-[#111118] border border-white/10 px-2.5 py-1.5 text-xs text-white/90 outline-none disabled:opacity-60"
-                    />
+                    <div className="relative">
+                      <input
+                        value={item.title}
+                        onChange={(e) => updateBatchField(item.id, "title", e.target.value)}
+                        disabled={item.status !== "pending"}
+                        placeholder="Titre"
+                        title={item.duplicate ? "Doublon potentiel: un titre similaire existe deja" : undefined}
+                        className={[
+                          "w-full rounded-lg bg-[#111118] border px-2.5 py-1.5 text-xs text-white/90 outline-none disabled:opacity-60",
+                          item.duplicate ? "border-amber-300/40" : "border-white/10",
+                        ].join(" ")}
+                      />
+                      {item.duplicate ? (
+                        <AlertCircle size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-amber-300/70" />
+                      ) : null}
+                    </div>
                     <input
                       value={item.artist}
                       onChange={(e) => updateBatchField(item.id, "artist", e.target.value)}

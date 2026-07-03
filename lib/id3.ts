@@ -1,6 +1,12 @@
+export type Id3Picture = {
+  mimeType: string;
+  data: Uint8Array;
+};
+
 export type Id3Tags = {
   title?: string;
   artist?: string;
+  picture?: Id3Picture;
 };
 
 function readSyncSafeInt(bytes: Uint8Array, offset: number): number {
@@ -33,10 +39,58 @@ function decodeText(bytes: Uint8Array): string {
   }
 }
 
+function findNullTerminator(bytes: Uint8Array, start: number): number {
+  for (let i = start; i < bytes.length; i++) {
+    if (bytes[i] === 0x00) return i;
+  }
+  return bytes.length;
+}
+
+function parsePictureFrame(frameBody: Uint8Array, isV2: boolean): Id3Picture | null {
+  if (frameBody.length < 4) return null;
+  const encodingByte = frameBody[0];
+  let offset = 1;
+  let mimeType: string;
+
+  if (isV2) {
+    // ID3v2.2 "PIC" frame: 3-char format code instead of a MIME string.
+    if (frameBody.length < 5) return null;
+    const fmt = String.fromCharCode(frameBody[1], frameBody[2], frameBody[3]).toUpperCase();
+    mimeType = fmt === "PNG" ? "image/png" : "image/jpeg";
+    offset = 4;
+  } else {
+    const mimeEnd = findNullTerminator(frameBody, offset);
+    const decoded = new TextDecoder("iso-8859-1").decode(frameBody.subarray(offset, mimeEnd)).trim();
+    mimeType = decoded || "image/jpeg";
+    offset = mimeEnd + 1;
+  }
+
+  // picture type byte
+  offset += 1;
+  if (offset >= frameBody.length) return null;
+
+  // description string, null-terminated per the encoding byte
+  if (encodingByte === 1 || encodingByte === 2) {
+    let descEnd = offset;
+    while (descEnd + 1 < frameBody.length && !(frameBody[descEnd] === 0 && frameBody[descEnd + 1] === 0)) {
+      descEnd += 2;
+    }
+    offset = descEnd + 2;
+  } else {
+    offset = findNullTerminator(frameBody, offset) + 1;
+  }
+
+  if (offset >= frameBody.length) return null;
+  const data = frameBody.subarray(offset);
+  if (data.length === 0) return null;
+
+  return { mimeType, data };
+}
+
 /**
- * Minimal ID3v2 (2.2/2.3/2.4) reader: extracts the title (TIT2/TT2) and
- * artist (TPE1/TP1) text frames from an MP3 file, without decoding audio.
- * Reads only the ID3 header region of the file, not the whole file.
+ * Minimal ID3v2 (2.2/2.3/2.4) reader: extracts the title (TIT2/TT2), artist
+ * (TPE1/TP1) and embedded cover (APIC/PIC) from an MP3 file, without
+ * decoding audio. Reads only the ID3 header region of the file.
  */
 export async function readId3Tags(file: File): Promise<Id3Tags> {
   try {
@@ -58,6 +112,7 @@ export async function readId3Tags(file: File): Promise<Id3Tags> {
     const frameHeaderSize = majorVersion === 2 ? 6 : 10;
     const titleId = majorVersion === 2 ? "TT2" : "TIT2";
     const artistId = majorVersion === 2 ? "TP1" : "TPE1";
+    const pictureId = majorVersion === 2 ? "PIC" : "APIC";
 
     let offset = 0;
     while (offset + frameHeaderSize <= body.length) {
@@ -89,9 +144,12 @@ export async function readId3Tags(file: File): Promise<Id3Tags> {
       } else if (frameId === artistId && !tags.artist) {
         const text = decodeText(frameBody);
         if (text) tags.artist = text;
+      } else if (frameId === pictureId && !tags.picture) {
+        const picture = parsePictureFrame(frameBody, majorVersion === 2);
+        if (picture) tags.picture = picture;
       }
 
-      if (tags.title && tags.artist) break;
+      if (tags.title && tags.artist && tags.picture) break;
       offset = frameEnd;
     }
 
@@ -99,4 +157,15 @@ export async function readId3Tags(file: File): Promise<Id3Tags> {
   } catch {
     return {};
   }
+}
+
+function extensionForMimeType(mimeType: string): string {
+  if (mimeType.includes("png")) return "png";
+  if (mimeType.includes("webp")) return "webp";
+  return "jpg";
+}
+
+export function pictureToFile(picture: Id3Picture, baseName: string): File {
+  const ext = extensionForMimeType(picture.mimeType);
+  return new File([picture.data as BlobPart], `${baseName}-cover.${ext}`, { type: picture.mimeType });
 }

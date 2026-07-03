@@ -3,8 +3,12 @@ import { isValidAudioUpload, isValidCoverUpload, uploadTrackForApi } from "@/lib
 import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
 import { readAccountProfile } from "@/lib/accountData";
 import { notifyAllUsersOfUpload } from "@/lib/notificationData";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
+
+const UPLOAD_LIMIT = 20;
+const UPLOAD_WINDOW_MS = 10 * 60 * 1000;
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
@@ -15,6 +19,14 @@ export async function POST(req: Request) {
     const auth = await readAuthenticatedUser(req);
     if (!auth.user) {
       return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    }
+
+    const rateLimit = checkRateLimit(`upload:${auth.user.id}`, UPLOAD_LIMIT, UPLOAD_WINDOW_MS);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { ok: false, error: "Trop d'uploads recents, reessaie dans quelques minutes." },
+        { status: 429 }
+      );
     }
 
     const form = await req.formData();

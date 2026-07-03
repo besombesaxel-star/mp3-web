@@ -3,9 +3,13 @@ import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
 import { readAccountProfile, saveAccountProfile } from "@/lib/accountData";
 import { pushNotification } from "@/lib/notificationData";
 import { broadcastToUser } from "@/lib/realtimeBroadcast";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const FOLLOW_LIMIT = 15;
+const FOLLOW_WINDOW_MS = 60 * 1000;
 
 type Ctx = { params: Promise<{ userId: string }> };
 
@@ -13,6 +17,11 @@ export async function POST(req: Request, ctx: Ctx) {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  }
+
+  const rateLimit = checkRateLimit(`follow:${auth.user.id}`, FOLLOW_LIMIT, FOLLOW_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ ok: false, error: "Trop d'actions, patiente un instant." }, { status: 429 });
   }
 
   const { userId: targetId } = await ctx.params;

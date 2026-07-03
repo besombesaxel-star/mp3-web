@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Heart, LayoutGrid, List as ListIcon, Play, Shuffle } from "lucide-react";
 import AlbumCard from "../AlbumCard";
 import { Track, usePlayer } from "../PlayerContext";
@@ -98,14 +98,14 @@ function FavoriteRow({
 export default function FavoritesPage() {
   const { favorites, setQueueAndPlay, track: currentTrack, playing } = usePlayer();
   const [menuTrack, setMenuTrack] = useState<Track | null>(null);
-  const [view, setView] = useState<"grid" | "list">("list");
-
-  useEffect(() => {
+  const [view, setView] = useState<"grid" | "list">(() => {
     try {
       const stored = localStorage.getItem(FAVORITES_VIEW_KEY);
-      if (stored === "grid" || stored === "list") setView(stored);
-    } catch {}
-  }, []);
+      return stored === "grid" || stored === "list" ? stored : "list";
+    } catch {
+      return "list";
+    }
+  });
 
   function changeView(next: "grid" | "list") {
     setView(next);

@@ -27,33 +27,33 @@ function parseLrc(lrc: string): LrcLine[] {
 
 const lyricsCache = new Map<string, LyricsState>();
 
+const EMPTY_LYRICS_STATE: LyricsState = { lines: [], plain: null, loading: false, hasLyrics: false };
+
+function cacheKeyFor(track: Track | null): string | null {
+  return track?.title ? `${track.title}|||${track.artist ?? ""}` : null;
+}
+
+type FetchedResult = { key: string; value: LyricsState };
+
 export function useLyrics(track: Track | null): LyricsState {
-  const [state, setState] = useState<LyricsState>({
-    lines: [],
-    plain: null,
-    loading: false,
-    hasLyrics: false,
-  });
+  const [fetched, setFetched] = useState<FetchedResult | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const key = cacheKeyFor(track);
+  const cached = key ? lyricsCache.get(key) : undefined;
 
   useEffect(() => {
-    if (!track?.title) {
-      setState({ lines: [], plain: null, loading: false, hasLyrics: false });
+    if (!key || !track?.title) {
+      abortRef.current?.abort();
       return;
     }
 
-    const key = `${track.title}|||${track.artist ?? ""}`;
-    const cached = lyricsCache.get(key);
-    if (cached) {
-      setState(cached);
+    if (lyricsCache.has(key)) {
       return;
     }
 
     abortRef.current?.abort();
     const ctrl = new AbortController();
     abortRef.current = ctrl;
-
-    setState((prev) => ({ ...prev, loading: true }));
 
     const params = new URLSearchParams({ track_name: track.title });
     if (track.artist) params.set("artist_name", track.artist);
@@ -63,24 +63,28 @@ export function useLyrics(track: Track | null): LyricsState {
       .then((data: { syncedLyrics?: string | null; plainLyrics?: string | null } | null) => {
         const lines = data?.syncedLyrics ? parseLrc(data.syncedLyrics) : [];
         const plain = data?.plainLyrics ?? null;
-        const result: LyricsState = {
+        const value: LyricsState = {
           lines,
           plain,
           loading: false,
           hasLyrics: lines.length > 0 || Boolean(plain),
         };
-        lyricsCache.set(key, result);
-        setState(result);
+        lyricsCache.set(key, value);
+        setFetched({ key, value });
       })
       .catch((e: unknown) => {
         if ((e as Error)?.name === "AbortError") return;
-        const result: LyricsState = { lines: [], plain: null, loading: false, hasLyrics: false };
-        lyricsCache.set(key, result);
-        setState(result);
+        const value: LyricsState = { lines: [], plain: null, loading: false, hasLyrics: false };
+        lyricsCache.set(key, value);
+        setFetched({ key, value });
       });
 
     return () => ctrl.abort();
-  }, [track?.title, track?.artist]);
+  }, [key, track?.title, track?.artist]);
 
-  return state;
+  if (!key) return EMPTY_LYRICS_STATE;
+  if (cached) return cached;
+  if (fetched?.key === key) return fetched.value;
+
+  return { lines: [], plain: null, loading: true, hasLyrics: false };
 }

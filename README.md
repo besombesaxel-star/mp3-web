@@ -13,17 +13,15 @@ Ensuite ouvre `http://localhost:3000`.
 
 ## Stockage
 
-L'app sait fonctionner de 3 facons:
+L'app sait fonctionner de 2 facons:
 
 - mode local: les nouveaux fichiers vont dans `public/audio` et `public/cover`
 - mode Supabase: les nouveaux fichiers vont dans un bucket Storage partage
-- mode Firebase: backend alternatif deja prepare dans le code
 
 Priorite actuelle:
 
 1. Supabase si configure
-2. sinon Firebase si configure
-3. sinon local
+2. sinon local
 
 Si aucun backend cloud n'est configure, l'app continue de fonctionner en local.
 
@@ -65,25 +63,6 @@ Pour re-uploader des fichiers deja presents:
 
 ```bash
 npm run supabase:migrate -- --force
-```
-
-## Configuration Firebase
-
-Le backend Firebase reste disponible dans le projet si tu veux l'utiliser plus tard.
-
-Variables attendues:
-
-```env
-FIREBASE_PROJECT_ID=your-project-id
-FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project-id.iam.gserviceaccount.com
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-FIREBASE_STORAGE_BUCKET=your-project-id.firebasestorage.app
-```
-
-Migration locale vers Firebase:
-
-```bash
-npm run firebase:migrate
 ```
 
 ## Notifications push (optionnel)

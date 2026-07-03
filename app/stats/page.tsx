@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { usePlayer } from "@/app/PlayerContext";
 
 function formatSeconds(s: number) {
@@ -149,8 +149,10 @@ export default function StatsPage() {
     [stats.byArtist]
   );
 
+  const [now] = useState(() => Date.now());
+
   const topTracksMonth = useMemo(() => {
-    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
     const playsBySrc = new Map<string, number>();
     for (const play of stats.recentPlays) {
       if (play.playedAt < thirtyDaysAgo) continue;
@@ -164,7 +166,7 @@ export default function StatsPage() {
       })
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);
-  }, [stats.recentPlays, stats.byTrack]);
+  }, [stats.recentPlays, stats.byTrack, now]);
 
   const recentHistory = useMemo(() =>
     [...stats.recentPlays]

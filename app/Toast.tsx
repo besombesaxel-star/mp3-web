@@ -18,10 +18,12 @@ export function toast(message: string, icon: ToastItem["icon"] = "check") {
 
 function ToastRow({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) => void }) {
   const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef<number | null>(null);
 
   function onTouchStart(e: React.TouchEvent) {
     dragStartRef.current = e.touches[0].clientX;
+    setIsDragging(true);
   }
 
   function onTouchMove(e: React.TouchEvent) {
@@ -36,6 +38,7 @@ function ToastRow({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number
       setDragX(0);
     }
     dragStartRef.current = null;
+    setIsDragging(false);
   }
 
   return (
@@ -47,7 +50,7 @@ function ToastRow({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number
       style={{
         transform: dragX ? `translateX(${dragX}px)` : undefined,
         opacity: dragX ? Math.max(0.2, 1 - Math.abs(dragX) / 200) : undefined,
-        transition: dragStartRef.current ? "none" : "transform 200ms ease, opacity 200ms ease",
+        transition: isDragging ? "none" : "transform 200ms ease, opacity 200ms ease",
       }}
       className="mp3-fade-up pointer-events-auto cursor-pointer bg-black/80 backdrop-blur-md rounded-2xl px-4 py-2.5 flex items-center gap-2.5 ring-1 ring-white/10 text-sm text-white/90 shadow-xl"
     >

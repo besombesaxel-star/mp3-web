@@ -1,5 +1,3 @@
-import { isFirebaseConfigured } from "@/lib/firebaseAdmin";
-import { isFirebaseTrackSrc, listFirebaseTracks, saveFirebaseTrackMeta, uploadFirebaseTrack } from "@/lib/firebaseLibrary";
 import { isAcceptedCoverUpload, isAcceptedMp3Upload } from "@/lib/libraryFiles";
 import { listLocalTracks, saveLocalTrackMeta, uploadLocalTrack } from "@/lib/localLibrary";
 import { isValidLibraryAudioSrc } from "@/lib/libraryStorage";
@@ -26,12 +24,11 @@ function dedupeTrackKey(track: LibraryTrack) {
 }
 
 export function getLibraryBackendMode(): LibraryBackend {
-  if (isSupabaseConfigured()) return "supabase";
-  return isFirebaseConfigured() ? "firebase" : "local";
+  return isSupabaseConfigured() ? "supabase" : "local";
 }
 
 export function isValidTrackSrc(src: string) {
-  return isValidLibraryAudioSrc(src) || isFirebaseTrackSrc(src) || isSupabaseTrackSrc(src);
+  return isValidLibraryAudioSrc(src) || isSupabaseTrackSrc(src);
 }
 
 export function isValidAudioUpload(audio: File) {
@@ -43,36 +40,17 @@ export function isValidCoverUpload(cover: File) {
 }
 
 export async function listTracksForApi() {
-  if (isSupabaseConfigured()) {
-    const [supabaseTracks, localTracks] = await Promise.all([listSupabaseTracks(), listLocalTracks()]);
-    if (supabaseTracks.length === 0) {
-      return localTracks;
-    }
-
-    const merged = [...supabaseTracks];
-    const knownKeys = new Set(supabaseTracks.map((track) => dedupeTrackKey(track)));
-
-    for (const localTrack of localTracks) {
-      const key = dedupeTrackKey(localTrack);
-      if (knownKeys.has(key)) continue;
-      merged.push(localTrack);
-    }
-
-    merged.sort((a, b) => b.createdAt - a.createdAt || a.title.localeCompare(b.title, "fr"));
-    return merged;
-  }
-
-  if (!isFirebaseConfigured()) {
+  if (!isSupabaseConfigured()) {
     return listLocalTracks();
   }
 
-  const [firebaseTracks, localTracks] = await Promise.all([listFirebaseTracks(), listLocalTracks()]);
-  if (firebaseTracks.length === 0) {
+  const [supabaseTracks, localTracks] = await Promise.all([listSupabaseTracks(), listLocalTracks()]);
+  if (supabaseTracks.length === 0) {
     return localTracks;
   }
 
-  const merged = [...firebaseTracks];
-  const knownKeys = new Set(firebaseTracks.map((track) => dedupeTrackKey(track)));
+  const merged = [...supabaseTracks];
+  const knownKeys = new Set(supabaseTracks.map((track) => dedupeTrackKey(track)));
 
   for (const localTrack of localTracks) {
     const key = dedupeTrackKey(localTrack);
@@ -95,10 +73,6 @@ export async function uploadTrackForApi(
     }
 
     return uploadSupabaseTrack(audio, cover, owner);
-  }
-
-  if (isFirebaseConfigured()) {
-    return uploadFirebaseTrack(audio, cover);
   }
 
   return uploadLocalTrack(audio, cover);
@@ -138,10 +112,6 @@ export async function saveTrackMetaForApi(
     return saveSupabaseTrackMeta(src, title, artist, actorUserId);
   }
 
-  if (isFirebaseTrackSrc(src)) {
-    return (await saveFirebaseTrackMeta(src, title, artist)) ? "ok" : "not_found";
-  }
-
   if (isValidLibraryAudioSrc(src)) {
     await saveLocalTrackMeta(src, title, artist);
     return "ok";
@@ -149,10 +119,6 @@ export async function saveTrackMetaForApi(
 
   if (isSupabaseConfigured()) {
     return saveSupabaseTrackMeta(src, title, artist, actorUserId);
-  }
-
-  if (isFirebaseConfigured()) {
-    return (await saveFirebaseTrackMeta(src, title, artist)) ? "ok" : "not_found";
   }
 
   return "not_found";

@@ -16,12 +16,15 @@ export type AccountPlaylist = {
   trackSrcs: string[];
 };
 
-export type EqPreset = "off" | "bass" | "vocal" | "night";
+export type EqPreset = "off" | "bass" | "vocal" | "night" | "custom";
 
-const EQ_PRESETS: EqPreset[] = ["off", "bass", "vocal", "night"];
+const EQ_PRESETS: EqPreset[] = ["off", "bass", "vocal", "night", "custom"];
+
+export type EqGains = [number, number, number, number, number];
 
 type AccountProfileData = {
   avatarUrl: string;
+  customEqGains: EqGains | null;
   eqPreset: EqPreset | null;
   favoriteSrcs: string[];
   followersCount: number;
@@ -37,6 +40,7 @@ type AccountProfileData = {
 
 const EMPTY_PROFILE: AccountProfileData = {
   avatarUrl: "",
+  customEqGains: null,
   eqPreset: null,
   favoriteSrcs: [],
   followersCount: 0,
@@ -126,6 +130,12 @@ function normalizeEqPreset(value: unknown): EqPreset | null {
   return typeof value === "string" && EQ_PRESETS.includes(value as EqPreset) ? (value as EqPreset) : null;
 }
 
+function normalizeCustomEqGains(value: unknown): EqGains | null {
+  if (!Array.isArray(value) || value.length !== 5) return null;
+  const gains = value.map((v) => (typeof v === "number" && isFinite(v) ? Math.max(-12, Math.min(12, v)) : 0));
+  return gains as EqGains;
+}
+
 function normalizeFollowing(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
@@ -157,6 +167,7 @@ function normalizeProfile(raw: unknown): AccountProfileData {
   const v = raw as Record<string, unknown>;
   return {
     avatarUrl: typeof v.avatarUrl === "string" ? v.avatarUrl.trim() : "",
+    customEqGains: normalizeCustomEqGains(v.customEqGains),
     eqPreset: normalizeEqPreset(v.eqPreset),
     favoriteSrcs: normalizeFavoriteSrcs(v.favoriteSrcs),
     followersCount: normalizeFollowersCount(v.followersCount),
@@ -221,6 +232,7 @@ async function writeAccountProfile(userId: string, profile: AccountProfileData) 
 
   const payload = JSON.stringify({
     avatarUrl: typeof profile.avatarUrl === "string" ? profile.avatarUrl.trim() : "",
+    customEqGains: normalizeCustomEqGains(profile.customEqGains),
     eqPreset: normalizeEqPreset(profile.eqPreset),
     favoriteSrcs: normalizeFavoriteSrcs(profile.favoriteSrcs),
     followersCount: normalizeFollowersCount(profile.followersCount),
@@ -249,6 +261,7 @@ export async function saveAccountProfile(
   userId: string,
   patch: {
     avatarUrl?: string;
+    customEqGains?: EqGains | null;
     eqPreset?: EqPreset | null;
     favoriteSrcs?: string[];
     followersCount?: number;
@@ -263,6 +276,7 @@ export async function saveAccountProfile(
   const current = await readAccountProfile(userId);
   const next: AccountProfileData = {
     avatarUrl: patch.avatarUrl === undefined ? current.avatarUrl : patch.avatarUrl.trim(),
+    customEqGains: patch.customEqGains === undefined ? current.customEqGains : normalizeCustomEqGains(patch.customEqGains),
     eqPreset: patch.eqPreset === undefined ? current.eqPreset : normalizeEqPreset(patch.eqPreset),
     favoriteSrcs: patch.favoriteSrcs === undefined ? current.favoriteSrcs : normalizeFavoriteSrcs(patch.favoriteSrcs),
     followersCount: patch.followersCount === undefined ? current.followersCount : normalizeFollowersCount(patch.followersCount),

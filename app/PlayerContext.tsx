@@ -29,7 +29,8 @@ export type Track = {
 
 type RepeatMode = "off" | "all" | "one";
 type ThemeMode = "midnight" | "sunset" | "ocean";
-type EqPreset = "off" | "bass" | "vocal" | "night";
+type EqPreset = "off" | "bass" | "vocal" | "night" | "custom";
+export type EqGains = [number, number, number, number, number];
 
 
 export type PlayerStats = {
@@ -85,6 +86,8 @@ type PlayerCtx = {
   eqPreset: EqPreset;
   setEqPreset: (value: EqPreset) => void;
   cycleEqPreset: () => void;
+  customEqGains: EqGains;
+  setCustomEqGains: (value: EqGains) => void;
 
   expanded: boolean;
   setExpanded: (v: boolean) => void;
@@ -169,11 +172,13 @@ const SOFT_CROSSFADE_LEAD = 0.48;
 const THEME_ORDER: ThemeMode[] = ["midnight", "sunset", "ocean"];
 const EQ_ORDER: EqPreset[] = ["off", "bass", "vocal", "night"];
 const EQ_BANDS = [90, 250, 1000, 3500, 9000];
-const EQ_PRESET_GAINS: Record<EqPreset, [number, number, number, number, number]> = {
+const DEFAULT_CUSTOM_EQ_GAINS: EqGains = [0, 0, 0, 0, 0];
+const EQ_PRESET_GAINS: Record<EqPreset, EqGains> = {
   off: [0, 0, 0, 0, 0],
   bass: [5, 3, 0, -1, -2],
   vocal: [-2, -1, 3, 4, 2],
   night: [-1, 1, 2, 1, -1],
+  custom: DEFAULT_CUSTOM_EQ_GAINS,
 };
 
 type PlayerSession = {
@@ -195,6 +200,7 @@ type PlayerPrefs = {
   loudnessNorm: boolean;
   theme: ThemeMode;
   eqPreset: EqPreset;
+  customEqGains: EqGains;
 };
 
 type ApiTrack = {
@@ -342,6 +348,11 @@ function safeSession(parsed: unknown): PlayerSession | null {
   };
 }
 
+function normalizeCustomEqGains(value: unknown): EqGains {
+  if (!Array.isArray(value) || value.length !== 5) return [...DEFAULT_CUSTOM_EQ_GAINS];
+  return value.map((v) => (typeof v === "number" && isFinite(v) ? Math.max(-12, Math.min(12, v)) : 0)) as EqGains;
+}
+
 function safePrefs(parsed: unknown): PlayerPrefs {
   if (!isRecord(parsed)) {
     return {
@@ -353,6 +364,7 @@ function safePrefs(parsed: unknown): PlayerPrefs {
       loudnessNorm: true,
       theme: "midnight",
       eqPreset: "off",
+      customEqGains: [...DEFAULT_CUSTOM_EQ_GAINS],
     };
   }
 
@@ -370,9 +382,14 @@ function safePrefs(parsed: unknown): PlayerPrefs {
         ? parsed.theme
         : "midnight",
     eqPreset:
-      parsed.eqPreset === "off" || parsed.eqPreset === "bass" || parsed.eqPreset === "vocal" || parsed.eqPreset === "night"
+      parsed.eqPreset === "off" ||
+      parsed.eqPreset === "bass" ||
+      parsed.eqPreset === "vocal" ||
+      parsed.eqPreset === "night" ||
+      parsed.eqPreset === "custom"
         ? parsed.eqPreset
         : "off",
+    customEqGains: normalizeCustomEqGains(parsed.customEqGains),
   };
 }
 
@@ -583,6 +600,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [focusMode, setFocusMode] = useState(false);
   const [theme, setTheme] = useState<ThemeMode>("midnight");
   const [eqPreset, setEqPreset] = useState<EqPreset>("off");
+  const [customEqGains, setCustomEqGains] = useState<EqGains>(DEFAULT_CUSTOM_EQ_GAINS);
+  const customEqGainsRef = useRef(customEqGains);
+  customEqGainsRef.current = customEqGains;
 
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState<RepeatMode>("off");
@@ -660,6 +680,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const lastSyncedFavoritesSignatureRef = useRef("");
   const eqPresetRemoteHydratedRef = useRef(false);
   const lastSyncedEqPresetRef = useRef("");
+  const lastSyncedCustomEqGainsRef = useRef("");
   const nowPlayingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const statsRemoteHydratedRef = useRef(false);
   const statsSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -699,7 +720,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   function applyEqPresetToFilters(preset: EqPreset) {
     const filters = eqFiltersRef.current;
     if (!filters.length) return;
-    const gains = EQ_PRESET_GAINS[preset];
+    const gains = preset === "custom" ? customEqGainsRef.current : EQ_PRESET_GAINS[preset];
     for (let i = 0; i < filters.length; i += 1) {
       filters[i].gain.value = gains[i] ?? 0;
     }
@@ -1186,7 +1207,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       audioCtx.resume().catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eqPreset, playing]);
+  }, [eqPreset, playing, customEqGains]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -1349,13 +1370,23 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           remoteEqPreset === "off" ||
           remoteEqPreset === "bass" ||
           remoteEqPreset === "vocal" ||
-          remoteEqPreset === "night"
+          remoteEqPreset === "night" ||
+          remoteEqPreset === "custom"
         ) {
           lastSyncedEqPresetRef.current = remoteEqPreset;
           setEqPreset(remoteEqPreset);
         } else {
           lastSyncedEqPresetRef.current = "";
         }
+
+        const remoteCustomEqGains = normalizeCustomEqGains(json.customEqGains);
+        if (Array.isArray(json.customEqGains)) {
+          lastSyncedCustomEqGainsRef.current = JSON.stringify(remoteCustomEqGains);
+          setCustomEqGains(remoteCustomEqGains);
+        } else {
+          lastSyncedCustomEqGainsRef.current = "";
+        }
+
         eqPresetRemoteHydratedRef.current = true;
       } catch {
         eqPresetRemoteHydratedRef.current = false;
@@ -1367,6 +1398,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (!isAuthenticated || !accessToken) {
       eqPresetRemoteHydratedRef.current = false;
       lastSyncedEqPresetRef.current = "";
+      lastSyncedCustomEqGainsRef.current = "";
       return;
     }
 
@@ -1377,13 +1409,16 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     };
   }, [accessToken, authLoading, isAuthenticated]);
 
-  // push eq preset changes to the account
+  // push eq preset + custom gains changes to the account
   useEffect(() => {
     if (authLoading || !isAuthenticated || !accessToken || !eqPresetRemoteHydratedRef.current) {
       return;
     }
 
-    if (eqPreset === lastSyncedEqPresetRef.current) {
+    const customEqGainsSignature = JSON.stringify(customEqGains);
+    const presetChanged = eqPreset !== lastSyncedEqPresetRef.current;
+    const gainsChanged = customEqGainsSignature !== lastSyncedCustomEqGainsRef.current;
+    if (!presetChanged && !gainsChanged) {
       return;
     }
 
@@ -1391,7 +1426,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       void fetch("/api/account", {
         method: "PUT",
         headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
-        body: JSON.stringify({ eqPreset }),
+        body: JSON.stringify({ eqPreset, customEqGains }),
       })
         .then((res) => {
           if (!res.ok) {
@@ -1399,12 +1434,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           }
 
           lastSyncedEqPresetRef.current = eqPreset;
+          lastSyncedCustomEqGainsRef.current = customEqGainsSignature;
         })
         .catch(() => {});
     }, 250);
 
     return () => window.clearTimeout(timeoutId);
-  }, [accessToken, authLoading, eqPreset, isAuthenticated]);
+  }, [accessToken, authLoading, eqPreset, customEqGains, isAuthenticated]);
 
   // load stats (localStorage first, then merge remote if authenticated)
   useEffect(() => {
@@ -1481,6 +1517,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setLoudnessNorm(prefs.loudnessNorm);
       setTheme(prefs.theme);
       setEqPreset(prefs.eqPreset);
+      setCustomEqGains(prefs.customEqGains);
     } catch {}
   }, []);
 
@@ -1609,11 +1646,22 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       loudnessNorm,
       theme,
       eqPreset,
+      customEqGains,
     };
     try {
       localStorage.setItem(LS_PREFS, JSON.stringify(payload));
     } catch {}
-  }, [focusMode, smoothTransitions, smartAutoplay, uiSounds, hapticsEnabled, loudnessNorm, theme, eqPreset]);
+  }, [
+    focusMode,
+    smoothTransitions,
+    smartAutoplay,
+    uiSounds,
+    hapticsEnabled,
+    loudnessNorm,
+    theme,
+    eqPreset,
+    customEqGains,
+  ]);
 
   // persist playback session
   useEffect(() => {
@@ -2360,6 +2408,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     eqPreset,
     setEqPreset,
     cycleEqPreset,
+    customEqGains,
+    setCustomEqGains,
 
     expanded,
     setExpanded,

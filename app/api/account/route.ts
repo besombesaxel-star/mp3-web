@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { readAccountProfile, saveAccountProfile, type AccountPlaylist, type EqPreset, type ProfileLink } from "@/lib/accountData";
+import { readAccountProfile, saveAccountProfile, type AccountPlaylist, type EqGains, type EqPreset, type ProfileLink } from "@/lib/accountData";
 
-const EQ_PRESETS: EqPreset[] = ["off", "bass", "vocal", "night"];
+const EQ_PRESETS: EqPreset[] = ["off", "bass", "vocal", "night", "custom"];
 import { listTracksForApi } from "@/lib/libraryRepository";
 import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
 
@@ -41,6 +41,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     ok: true,
     avatarUrl: profile.avatarUrl ?? "",
+    customEqGains: profile.customEqGains ?? null,
     eqPreset: profile.eqPreset ?? null,
     favoriteSrcs: profile.favoriteSrcs,
     favoriteTracks: favoriteTracks.map(serializeTrack),
@@ -81,12 +82,18 @@ export async function PUT(req: Request) {
       : typeof body?.eqPreset === "string" && EQ_PRESETS.includes(body.eqPreset as EqPreset)
         ? (body.eqPreset as EqPreset)
         : undefined;
+  const customEqGains =
+    body?.customEqGains === null
+      ? null
+      : Array.isArray(body?.customEqGains) && body.customEqGains.length === 5
+        ? (body.customEqGains as EqGains)
+        : undefined;
   const themeHue = body?.themeHue === null ? null : typeof body?.themeHue === "number" ? body.themeHue : undefined;
 
-  if ([favoriteSrcs, publicBio, avatarUrl, links, pinnedTrackSrcs, playlists, eqPreset, themeHue].every((v) => v === undefined)) {
+  if ([favoriteSrcs, publicBio, avatarUrl, links, pinnedTrackSrcs, playlists, eqPreset, customEqGains, themeHue].every((v) => v === undefined)) {
     return NextResponse.json({ ok: false, error: "Aucune mise a jour fournie" }, { status: 400 });
   }
 
-  await saveAccountProfile(user.id, { avatarUrl, eqPreset, favoriteSrcs, links, pinnedTrackSrcs, playlists, publicBio, themeHue });
+  await saveAccountProfile(user.id, { avatarUrl, customEqGains, eqPreset, favoriteSrcs, links, pinnedTrackSrcs, playlists, publicBio, themeHue });
   return NextResponse.json({ ok: true });
 }

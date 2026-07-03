@@ -2,8 +2,48 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/AuthProvider";
-import { usePlayer } from "@/app/PlayerContext";
+import { usePlayer, type EqGains } from "@/app/PlayerContext";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
+
+const EQ_BAND_LABELS = ["90 Hz", "250 Hz", "1 kHz", "3.5 kHz", "9 kHz"];
+
+function EqGainsEditor({ gains, onChange }: { gains: EqGains; onChange: (gains: EqGains) => void }) {
+  function updateBand(index: number, value: number) {
+    const next = [...gains] as EqGains;
+    next[index] = value;
+    onChange(next);
+  }
+
+  return (
+    <div className="mt-4 space-y-3">
+      {EQ_BAND_LABELS.map((label, i) => (
+        <div key={label} className="flex items-center gap-3">
+          <span className="text-xs text-white/40 w-14 shrink-0">{label}</span>
+          <input
+            type="range"
+            min={-12}
+            max={12}
+            step={1}
+            value={gains[i]}
+            onChange={(e) => updateBand(i, Number(e.target.value))}
+            className="flex-1 mp3-ov-volume-slider"
+            aria-label={`Gain ${label}`}
+          />
+          <span className="text-xs text-white/50 w-8 text-right tabular-nums">
+            {gains[i] > 0 ? `+${gains[i]}` : gains[i]}
+          </span>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => onChange([0, 0, 0, 0, 0])}
+        className="text-xs text-white/35 hover:text-white/60 transition"
+      >
+        Reinitialiser
+      </button>
+    </div>
+  );
+}
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -101,6 +141,7 @@ export default function SettingsPage() {
     hapticsEnabled, toggleHaptics,
     theme, setTheme,
     eqPreset, setEqPreset,
+    customEqGains, setCustomEqGains,
   } = usePlayer();
 
   const [pushSupported, setPushSupported] = useState(false);
@@ -219,8 +260,12 @@ export default function SettingsPage() {
             { value: "bass", label: "Basses" },
             { value: "vocal", label: "Voix" },
             { value: "night", label: "Nuit" },
+            { value: "custom", label: "Perso" },
           ]}
         />
+        {eqPreset === "custom" ? (
+          <EqGainsEditor gains={customEqGains} onChange={setCustomEqGains} />
+        ) : null}
       </SettingsSection>
 
       <SettingsSection title="Ambiance" delay={120}>

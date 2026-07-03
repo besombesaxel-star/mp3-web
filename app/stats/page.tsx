@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { usePlayer } from "@/app/PlayerContext";
 
 function formatSeconds(s: number) {
@@ -190,7 +192,18 @@ export default function StatsPage() {
 
   return (
     <div className="max-w-3xl lg:max-w-5xl xl:max-w-6xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-40">
-      <h2 className="text-3xl font-light mb-8 mp3-fade-up">Statistiques</h2>
+      <div className="flex items-center justify-between mb-8 mp3-fade-up">
+        <h2 className="text-3xl font-light">Statistiques</h2>
+        {stats.totalPlays > 0 ? (
+          <Link
+            href="/wrapped"
+            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-white/8 hover:bg-white/12 text-sm text-white/80 transition"
+          >
+            <Sparkles size={14} />
+            Mon bilan
+          </Link>
+        ) : null}
+      </div>
 
       {stats.totalPlays === 0 ? (
         <p className="text-center text-white/25 text-sm py-32">

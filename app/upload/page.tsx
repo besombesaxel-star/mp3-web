@@ -10,6 +10,7 @@ import { dispatchTracksUpdated, subscribeTracksUpdated } from "../tracksSync";
 import { toast } from "../Toast";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import { pictureToFile, readId3Tags } from "@/lib/id3";
+import { compressAudioFile, shouldSuggestCompression } from "@/lib/audioCompress";
 
 type SignUploadResponse = {
   ok?: boolean;
@@ -94,7 +95,7 @@ function uploadWithProgress(formData: FormData, onProgress: (ratio: number) => v
   });
 }
 
-type BatchStatus = "pending" | "uploading" | "done" | "error";
+type BatchStatus = "pending" | "compressing" | "uploading" | "done" | "error";
 
 type BatchFile = {
   id: string;
@@ -213,6 +214,7 @@ export default function UploadPage() {
   const [batchFiles, setBatchFiles] = useState<BatchFile[]>([]);
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchReadingTags, setBatchReadingTags] = useState(false);
+  const [compressLarge, setCompressLarge] = useState(true);
 
   async function handleAudioFiles(files: File[]) {
     const mp3Files = files.filter((f) => f.name.toLowerCase().endsWith(".mp3"));
@@ -298,8 +300,14 @@ export default function UploadPage() {
     for (const item of batchFiles) {
       if (item.status === "done" || item.status === "error") continue;
 
+      let fileToUpload = item.file;
+      if (compressLarge && shouldSuggestCompression(item.file)) {
+        setBatchFiles((prev) => prev.map((f) => (f.id === item.id ? { ...f, status: "compressing" } : f)));
+        fileToUpload = await compressAudioFile(item.file);
+      }
+
       setBatchFiles((prev) => prev.map((f) => (f.id === item.id ? { ...f, status: "uploading" } : f)));
-      const result = await uploadTrackFile(item.file, item.cover, item.title, item.artist, accessToken);
+      const result = await uploadTrackFile(fileToUpload, item.cover, item.title, item.artist, accessToken);
       setBatchFiles((prev) =>
         prev.map((f) => (f.id === item.id ? { ...f, status: result.ok ? "done" : "error", error: result.error } : f))
       );
@@ -420,15 +428,15 @@ export default function UploadPage() {
     setStep(4);
   }
 
-  async function uploadDirectToStorage(): Promise<boolean> {
-    if (!audio || !accessToken) return false;
+  async function uploadDirectToStorage(fileToUpload: File): Promise<boolean> {
+    if (!accessToken) return false;
 
     const signRes = await fetch("/api/upload/sign", {
       method: "POST",
       headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
       body: JSON.stringify({
-        audioName: audio.name,
-        audioSize: audio.size,
+        audioName: fileToUpload.name,
+        audioSize: fileToUpload.size,
         coverName: cover?.name ?? null,
       }),
     });
@@ -453,7 +461,7 @@ export default function UploadPage() {
     setProgress(0.15);
     const { error: audioUploadError } = await supabase.storage
       .from(signJson.bucket!)
-      .uploadToSignedUrl(signJson.audio.path, signJson.audio.token, audio);
+      .uploadToSignedUrl(signJson.audio.path, signJson.audio.token, fileToUpload);
 
     if (audioUploadError) {
       setMessage(`Erreur: ${audioUploadError.message}`);
@@ -510,11 +518,18 @@ export default function UploadPage() {
     setProgress(0);
 
     try {
-      const handled = await uploadDirectToStorage();
+      let fileToUpload = audio;
+      if (compressLarge && shouldSuggestCompression(audio)) {
+        setMessage("Compression en cours...");
+        fileToUpload = await compressAudioFile(audio);
+        setMessage("");
+      }
+
+      const handled = await uploadDirectToStorage(fileToUpload);
       if (handled) return;
 
       const formData = new FormData();
-      formData.append("audio", audio);
+      formData.append("audio", fileToUpload);
       if (cover) formData.append("cover", cover);
 
       const { status, json } = await uploadWithProgress(formData, setProgress, accessToken);
@@ -588,6 +603,19 @@ export default function UploadPage() {
               </div>
             ) : null}
 
+            {batchFiles.some((f) => shouldSuggestCompression(f.file)) ? (
+              <label className="flex items-center gap-2 text-xs text-white/50 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={compressLarge}
+                  onChange={(e) => setCompressLarge(e.target.checked)}
+                  disabled={batchBusy}
+                  className="h-3.5 w-3.5 rounded accent-white"
+                />
+                Compresser les fichiers volumineux avant l&apos;envoi
+              </label>
+            ) : null}
+
             <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
               {batchFiles.map((item, i) => (
                 <div
@@ -607,7 +635,7 @@ export default function UploadPage() {
                           item.coverPreview ? "bg-black/50" : "",
                         ].join(" ")}
                       >
-                        {item.status === "uploading" ? (
+                        {item.status === "uploading" || item.status === "compressing" ? (
                           <Loader2 size={14} className="animate-spin text-white/70" />
                         ) : item.status === "done" ? (
                           <Check size={14} className="text-emerald-400" />
@@ -738,6 +766,18 @@ export default function UploadPage() {
               ) : (
                 <div className="mt-2 text-xs text-white/40">Aucun fichier selectionne.</div>
               )}
+
+              {audio && shouldSuggestCompression(audio) ? (
+                <label className="mt-3 flex items-center gap-2 text-xs text-white/50 cursor-pointer mp3-fade-up">
+                  <input
+                    type="checkbox"
+                    checked={compressLarge}
+                    onChange={(e) => setCompressLarge(e.target.checked)}
+                    className="h-3.5 w-3.5 rounded accent-white"
+                  />
+                  Compresser avant l&apos;envoi (economise de l&apos;espace, legere perte de qualite)
+                </label>
+              ) : null}
 
               <div className="mt-4 flex justify-end">
                 <button

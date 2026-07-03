@@ -14,6 +14,7 @@ import {
   Shuffle,
   SkipBack,
   SkipForward,
+  Smartphone,
   Trophy,
   Volume1,
   Volume2,
@@ -92,6 +93,9 @@ export default function MiniPlayer() {
     queueSuggestion,
     acceptQueueSuggestion,
     dismissQueueSuggestion,
+    remoteSession,
+    resumeOnThisDevice,
+    dismissRemoteSession,
     stats,
     hapticsEnabled,
   } = usePlayer();
@@ -454,6 +458,45 @@ export default function MiniPlayer() {
                   onClick={dismissQueueSuggestion}
                   className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10 transition"
                   aria-label="Ignorer la suggestion"
+                >
+                  <X size={16} className="mx-auto opacity-90 text-white/80" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {remoteSession ? (
+        <div
+          className="fixed bottom-[calc(env(safe-area-inset-bottom)+234px)] sm:bottom-[162px] left-1/2 -translate-x-1/2 z-[61] px-4 w-full max-w-lg"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="mp3-toast-in rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
+            <div className="flex items-center gap-3 p-4">
+              <div className="h-10 w-10 rounded-2xl bg-white/8 border border-white/10 flex items-center justify-center shrink-0">
+                <Smartphone size={18} className="text-white/85" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-white/88 truncate">
+                  En cours sur <span className="font-medium">{remoteSession.deviceLabel}</span>
+                </p>
+                <p className="text-xs text-white/50 truncate">{remoteSession.track.title}</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={resumeOnThisDevice}
+                  className="h-9 px-3 rounded-full bg-white text-black text-xs font-medium hover:opacity-90 transition"
+                >
+                  Reprendre ici
+                </button>
+                <button
+                  type="button"
+                  onClick={dismissRemoteSession}
+                  className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10 transition"
+                  aria-label="Ignorer"
                 >
                   <X size={16} className="mx-auto opacity-90 text-white/80" />
                 </button>

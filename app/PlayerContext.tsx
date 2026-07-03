@@ -18,6 +18,7 @@ import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import { cacheTracksForOffline } from "@/lib/offlineCache";
+import { getDeviceId, getDeviceLabel } from "@/lib/deviceId";
 
 export type Track = {
   title: string;
@@ -70,6 +71,13 @@ export type QueueSuggestion = {
   fromUserId: string;
   fromDisplayName: string;
   track: Track;
+} | null;
+
+export type RemoteSession = {
+  track: Track;
+  position: number;
+  deviceLabel: string;
+  updatedAt: number;
 } | null;
 
 type PlayerCtx = {
@@ -167,6 +175,10 @@ type PlayerCtx = {
   acceptQueueSuggestion: () => void;
   dismissQueueSuggestion: () => void;
   suggestTrackToUser: (targetUserId: string, track: Track) => Promise<boolean>;
+
+  remoteSession: RemoteSession;
+  resumeOnThisDevice: () => void;
+  dismissRemoteSession: () => void;
 
   /** âœ… pour dÃ©clencher lâ€™achievement â€œPremière playlistâ€ depuis PlaylistsPage */
   markPlaylistCreated: () => void;
@@ -648,6 +660,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    deviceIdRef.current = getDeviceId();
+    deviceLabelRef.current = getDeviceLabel();
+  }, []);
+
   const shuffleHistoryRef = useRef<number[]>([]);
   const preloadAudioRef = useRef<HTMLAudioElement | null>(null);
   const plannedShuffleNextRef = useRef<number | null>(null);
@@ -681,6 +698,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [achievementToast, setAchievementToast] = useState<AchievementToast>(null);
   const [undoToast, setUndoToast] = useState<UndoToast>(null);
   const [queueSuggestion, setQueueSuggestion] = useState<QueueSuggestion>(null);
+  const [remoteSession, setRemoteSession] = useState<RemoteSession>(null);
 
   // refs pour calcul delta temps
   const lastCtRef = useRef<number>(0);
@@ -700,6 +718,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const nowPlayingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const statsRemoteHydratedRef = useRef(false);
   const statsSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deviceIdRef = useRef("");
+  const deviceLabelRef = useRef("Appareil");
+  const remoteSessionHydratedRef = useRef(false);
+  const playbackSessionPushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playbackSessionIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   function dismissAchievementToast() {
     setAchievementToast(null);
@@ -856,6 +879,37 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       return Boolean(res.ok && json.ok);
     } catch {
       return false;
+    }
+  }
+
+  function dismissRemoteSession() {
+    setRemoteSession(null);
+  }
+
+  function resumeOnThisDevice() {
+    if (!remoteSession) return;
+    resumeTimeRef.current = remoteSession.position;
+    playTrack(remoteSession.track);
+    setRemoteSession(null);
+
+    if (accessToken) {
+      void fetch("/api/playback-session", {
+        method: "PUT",
+        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          track: {
+            title: remoteSession.track.title,
+            artist: remoteSession.track.artist ?? null,
+            cover: remoteSession.track.cover ?? null,
+            src: remoteSession.track.src,
+          },
+          position: remoteSession.position,
+          duration: 0,
+          deviceId: deviceIdRef.current,
+          deviceLabel: deviceLabelRef.current,
+          takeover: true,
+        }),
+      }).catch(() => {});
     }
   }
 
@@ -1534,6 +1588,27 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           queueSuggestionTimerRef.current = null;
         }, 20000);
       })
+      .on("broadcast", { event: "session_update" }, ({ payload }) => {
+        const data = payload as {
+          session?: { track?: Track; position?: number; deviceId?: string; deviceLabel?: string; updatedAt?: number };
+        };
+        const session = data?.session;
+        if (!session?.track?.title || !session.track.src || !session.deviceId) return;
+        if (session.deviceId === deviceIdRef.current) return;
+
+        setRemoteSession({
+          track: session.track,
+          position: session.position ?? 0,
+          deviceLabel: session.deviceLabel ?? "Un autre appareil",
+          updatedAt: session.updatedAt ?? Date.now(),
+        });
+      })
+      .on("broadcast", { event: "session_takeover" }, ({ payload }) => {
+        const data = payload as { deviceId?: string };
+        if (!data?.deviceId || data.deviceId === deviceIdRef.current) return;
+        setPlaying(false);
+        setRemoteSession(null);
+      })
       .subscribe();
 
     return () => {
@@ -1733,6 +1808,66 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       if (nowPlayingTimerRef.current) clearTimeout(nowPlayingTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on track?.src only, not the whole track object
+  }, [track?.src, playing, isAuthenticated, accessToken, authLoading]);
+
+  // hydrate cross-device playback session once per auth session (offers a "resume here" prompt)
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || !accessToken) return;
+    if (remoteSessionHydratedRef.current) return;
+    remoteSessionHydratedRef.current = true;
+
+    void fetch("/api/playback-session", {
+      cache: "no-store",
+      headers: createAuthorizedHeaders(accessToken),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { session?: { track?: Track; position?: number; deviceId?: string; deviceLabel?: string; updatedAt?: number } } | null) => {
+        const session = data?.session;
+        if (!session?.track?.title || !session.track.src || !session.deviceId) return;
+        if (session.deviceId === deviceIdRef.current) return;
+
+        setRemoteSession({
+          track: session.track,
+          position: session.position ?? 0,
+          deviceLabel: session.deviceLabel ?? "Un autre appareil",
+          updatedAt: session.updatedAt ?? Date.now(),
+        });
+      })
+      .catch(() => {});
+  }, [authLoading, isAuthenticated, accessToken]);
+
+  // push local playback position to the server (debounced on change + periodic while playing)
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || !accessToken || !track) return;
+
+    function pushSession() {
+      const audio = audioRef.current;
+      void fetch("/api/playback-session", {
+        method: "PUT",
+        headers: createAuthorizedHeaders(accessToken!, { "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          track: { title: track!.title, artist: track!.artist ?? null, cover: track!.cover ?? null, src: track!.src },
+          position: audio?.currentTime ?? 0,
+          duration: audio?.duration ?? 0,
+          deviceId: deviceIdRef.current,
+          deviceLabel: deviceLabelRef.current,
+        }),
+      }).catch(() => {});
+    }
+
+    if (playbackSessionPushTimerRef.current) clearTimeout(playbackSessionPushTimerRef.current);
+    playbackSessionPushTimerRef.current = setTimeout(pushSession, 2000);
+
+    if (playbackSessionIntervalRef.current) clearInterval(playbackSessionIntervalRef.current);
+    if (playing) {
+      playbackSessionIntervalRef.current = setInterval(pushSession, 20_000);
+    }
+
+    return () => {
+      if (playbackSessionPushTimerRef.current) clearTimeout(playbackSessionPushTimerRef.current);
+      if (playbackSessionIntervalRef.current) clearInterval(playbackSessionIntervalRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed on track?.src/playing only; position is read live from audioRef
   }, [track?.src, playing, isAuthenticated, accessToken, authLoading]);
 
   // persist prefs
@@ -2576,6 +2711,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     acceptQueueSuggestion,
     dismissQueueSuggestion,
     suggestTrackToUser,
+
+    remoteSession,
+    resumeOnThisDevice,
+    dismissRemoteSession,
 
     markPlaylistCreated,
 

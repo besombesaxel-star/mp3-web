@@ -4,9 +4,13 @@ import { useEffect, useState } from "react";
 import { WifiOff } from "lucide-react";
 
 export default function OfflineBanner() {
-  const [offline, setOffline] = useState(() => typeof navigator !== "undefined" && !navigator.onLine);
+  // Starts false to match SSR (navigator is unavailable server-side); corrected on mount below.
+  const [offline, setOffline] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- must read the real client-only navigator.onLine after mount
+    setOffline(!navigator.onLine);
+
     function onOnline() {
       setOffline(false);
     }

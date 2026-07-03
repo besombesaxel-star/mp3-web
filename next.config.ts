@@ -12,6 +12,8 @@ const supabaseHostname = (() => {
 })();
 
 const nextConfig: NextConfig = {
+  // 127.0.0.1: acces direct/tests locaux. *.loca.lt: tunnel public du script share:4g (scripts/share-4g.mjs).
+  allowedDevOrigins: ["127.0.0.1", "localhost", "*.loca.lt"],
   images: {
     remotePatterns: [
       {

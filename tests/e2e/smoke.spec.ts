@@ -4,7 +4,7 @@ test("home page renders and can navigate to search", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Accueil" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Recharger" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Recemment ajoutes" })).toBeVisible();
 
   await page.getByRole("link", { name: "Recherche" }).click();
   await expect(page).toHaveURL(/\/search$/);

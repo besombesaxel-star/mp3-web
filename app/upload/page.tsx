@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Image as ImageIcon, UploadCloud } from "lucide-react";
+import { AlertCircle, Check, Image as ImageIcon, Layers, Loader2, UploadCloud, X as XIcon } from "lucide-react";
 import { useAuth } from "../AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { fetchTracksShared } from "../tracksCache";
 import { dispatchTracksUpdated, subscribeTracksUpdated } from "../tracksSync";
 import { toast } from "../Toast";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
+import { readId3Tags } from "@/lib/id3";
 
 type SignUploadResponse = {
   ok?: boolean;
@@ -93,6 +94,96 @@ function uploadWithProgress(formData: FormData, onProgress: (ratio: number) => v
   });
 }
 
+type BatchStatus = "pending" | "uploading" | "done" | "error";
+
+type BatchFile = {
+  id: string;
+  file: File;
+  title: string;
+  artist: string;
+  status: BatchStatus;
+  error?: string;
+};
+
+const MAX_BATCH_FILES = 30;
+const MAX_UPLOAD_BYTES = 80 * 1024 * 1024;
+
+async function saveMetaForSrc(src: string, title: string, artist: string, accessToken: string) {
+  const cleanTitle = title.trim();
+  const cleanArtist = artist.trim();
+  if (!cleanTitle && !cleanArtist) return;
+
+  await fetch("/api/meta", {
+    method: "POST",
+    headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+    body: JSON.stringify({
+      src,
+      title: cleanTitle || "Sans titre",
+      artist: cleanArtist || "Local upload",
+    }),
+  }).catch(() => {});
+}
+
+async function uploadTrackFile(
+  audio: File,
+  title: string,
+  artist: string,
+  accessToken: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const signRes = await fetch("/api/upload/sign", {
+      method: "POST",
+      headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+      body: JSON.stringify({ audioName: audio.name, audioSize: audio.size, coverName: null }),
+    });
+    const signJson: SignUploadResponse = await signRes.json().catch(() => ({}));
+
+    if (signRes.ok && signJson.ok && signJson.audio) {
+      const supabase = getSupabaseBrowserAuthClient();
+      if (!supabase) return { ok: false, error: "Client de stockage indisponible." };
+
+      const { error: uploadError } = await supabase.storage
+        .from(signJson.bucket!)
+        .uploadToSignedUrl(signJson.audio.path, signJson.audio.token, audio);
+      if (uploadError) return { ok: false, error: uploadError.message };
+
+      const completeRes = await fetch("/api/upload/complete", {
+        method: "POST",
+        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+        body: JSON.stringify({ audioPath: signJson.audio.path, coverPath: null }),
+      });
+      const completeJson: CompleteUploadResponse = await completeRes.json().catch(() => ({}));
+      if (!completeRes.ok || !completeJson.ok || !completeJson.track?.src) {
+        return { ok: false, error: completeJson.error ?? `Finalisation impossible (HTTP ${completeRes.status})` };
+      }
+
+      await saveMetaForSrc(completeJson.track.src, title, artist, accessToken);
+      return { ok: true };
+    }
+
+    if (signRes.status !== 500 && signJson.error) {
+      return { ok: false, error: signJson.error };
+    }
+  } catch {
+    // fall through to direct upload
+  }
+
+  const formData = new FormData();
+  formData.append("audio", audio);
+  const uploadRes = await fetch("/api/upload", {
+    method: "POST",
+    headers: createAuthorizedHeaders(accessToken),
+    body: formData,
+  });
+  const uploadJson: UploadResponse = await uploadRes.json().catch(() => ({}));
+  if (!uploadRes.ok || !uploadJson.ok || !uploadJson.track?.src) {
+    return { ok: false, error: uploadJson.error ?? `Upload impossible (HTTP ${uploadRes.status})` };
+  }
+
+  await saveMetaForSrc(uploadJson.track.src, title, artist, accessToken);
+  return { ok: true };
+}
+
 export default function UploadPage() {
   const { accessToken, isAuthenticated, loading } = useAuth();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -106,12 +197,85 @@ export default function UploadPage() {
   const [coverPreview, setCoverPreview] = useState<string>("");
   const [existingNames, setExistingNames] = useState<string[]>([]);
   const [dragActive, setDragActive] = useState(false);
+  const [batchFiles, setBatchFiles] = useState<BatchFile[]>([]);
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [batchReadingTags, setBatchReadingTags] = useState(false);
+
+  async function handleAudioFiles(files: File[]) {
+    const mp3Files = files.filter((f) => f.name.toLowerCase().endsWith(".mp3"));
+    if (mp3Files.length === 0) return;
+
+    if (mp3Files.length === 1) {
+      setAudio(mp3Files[0]);
+      return;
+    }
+
+    setBatchReadingTags(true);
+    const limited = mp3Files.slice(0, MAX_BATCH_FILES);
+    const items = await Promise.all(
+      limited.map(async (file): Promise<BatchFile> => {
+        if (file.size > MAX_UPLOAD_BYTES) {
+          return {
+            id: crypto.randomUUID(),
+            file,
+            title: guessTitleFromFile(file.name),
+            artist: "",
+            status: "error",
+            error: "Fichier trop lourd (max 80MB)",
+          };
+        }
+
+        const tags = await readId3Tags(file);
+        return {
+          id: crypto.randomUUID(),
+          file,
+          title: tags.title || guessTitleFromFile(file.name),
+          artist: tags.artist || "",
+          status: "pending",
+        };
+      })
+    );
+    setBatchFiles(items);
+    setBatchReadingTags(false);
+  }
+
+  function updateBatchField(id: string, field: "title" | "artist", value: string) {
+    setBatchFiles((prev) => prev.map((f) => (f.id === id ? { ...f, [field]: value } : f)));
+  }
+
+  function removeBatchFile(id: string) {
+    setBatchFiles((prev) => prev.filter((f) => f.id !== id));
+  }
+
+  function resetBatch() {
+    setBatchFiles([]);
+    setBatchBusy(false);
+  }
+
+  async function startBatchUpload() {
+    if (!accessToken || batchBusy) return;
+    setBatchBusy(true);
+
+    for (const item of batchFiles) {
+      if (item.status === "done" || item.status === "error") continue;
+
+      setBatchFiles((prev) => prev.map((f) => (f.id === item.id ? { ...f, status: "uploading" } : f)));
+      const result = await uploadTrackFile(item.file, item.title, item.artist, accessToken);
+      setBatchFiles((prev) =>
+        prev.map((f) => (f.id === item.id ? { ...f, status: result.ok ? "done" : "error", error: result.error } : f))
+      );
+    }
+
+    setBatchBusy(false);
+    await loadExistingNames();
+    dispatchTracksUpdated();
+    toast("Import termine", "music");
+  }
 
   function onDropAudio(e: React.DragEvent) {
     e.preventDefault();
     setDragActive(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) setAudio(file);
+    void handleAudioFiles(Array.from(e.dataTransfer.files ?? []));
   }
 
   function onDropCover(e: React.DragEvent) {
@@ -355,6 +519,96 @@ export default function UploadPage() {
           </div>
         ) : null}
 
+        {batchReadingTags ? (
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-8 flex flex-col items-center gap-3 text-center">
+            <Loader2 size={22} className="animate-spin text-white/40" />
+            <p className="text-sm text-white/60">Lecture des tags ID3...</p>
+          </div>
+        ) : batchFiles.length > 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Layers size={16} className="text-white/50" />
+                <p className="text-sm text-white/80">
+                  Import de {batchFiles.length} morceau{batchFiles.length > 1 ? "x" : ""}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={resetBatch}
+                disabled={batchBusy}
+                className="text-xs text-white/40 hover:text-white/70 transition disabled:opacity-50"
+              >
+                Annuler
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
+              {batchFiles.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-2.5"
+                >
+                  <div className="shrink-0 h-8 w-8 rounded-lg flex items-center justify-center bg-white/5">
+                    {item.status === "uploading" ? (
+                      <Loader2 size={14} className="animate-spin text-white/50" />
+                    ) : item.status === "done" ? (
+                      <Check size={14} className="text-emerald-400" />
+                    ) : item.status === "error" ? (
+                      <AlertCircle size={14} className="text-red-400" />
+                    ) : (
+                      <UploadCloud size={14} className="text-white/30" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0 grid grid-cols-2 gap-2">
+                    <input
+                      value={item.title}
+                      onChange={(e) => updateBatchField(item.id, "title", e.target.value)}
+                      disabled={item.status !== "pending"}
+                      placeholder="Titre"
+                      className="w-full rounded-lg bg-[#111118] border border-white/10 px-2.5 py-1.5 text-xs text-white/90 outline-none disabled:opacity-60"
+                    />
+                    <input
+                      value={item.artist}
+                      onChange={(e) => updateBatchField(item.id, "artist", e.target.value)}
+                      disabled={item.status !== "pending"}
+                      placeholder="Artiste"
+                      className="w-full rounded-lg bg-[#111118] border border-white/10 px-2.5 py-1.5 text-xs text-white/90 outline-none disabled:opacity-60"
+                    />
+                  </div>
+                  {item.status === "pending" ? (
+                    <button
+                      type="button"
+                      onClick={() => removeBatchFile(item.id)}
+                      aria-label={`Retirer ${item.file.name}`}
+                      className="shrink-0 h-7 w-7 rounded-full flex items-center justify-center text-white/25 hover:text-white/70 hover:bg-white/8 transition"
+                    >
+                      <XIcon size={13} />
+                    </button>
+                  ) : item.status === "error" ? (
+                    <span className="shrink-0 text-[10px] text-red-400 max-w-[90px] truncate" title={item.error}>
+                      {item.error}
+                    </span>
+                  ) : (
+                    <span className="shrink-0 w-7" />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => void startBatchUpload()}
+                disabled={batchBusy || !isAuthenticated || batchFiles.every((f) => f.status !== "pending")}
+                className="h-10 px-4 rounded-xl bg-white text-black text-sm font-semibold disabled:opacity-50"
+              >
+                {batchBusy ? "Import en cours..." : `Importer ${batchFiles.filter((f) => f.status === "pending").length} morceau(x)`}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
         <div className="mb-6 grid grid-cols-4 gap-2">
           {[
             { id: 1, label: "Fichier" },
@@ -397,12 +651,13 @@ export default function UploadPage() {
                 <p className="text-sm text-white/70">
                   <span className="font-medium text-white/90">Clique pour choisir</span> ou glisse-depose ton MP3 ici
                 </p>
-                <p className="text-xs text-white/30">Fichier .mp3 uniquement</p>
+                <p className="text-xs text-white/30">Fichier .mp3 uniquement - selection multiple possible</p>
                 <input
                   id="audio-input"
                   type="file"
                   accept=".mp3,audio/mpeg"
-                  onChange={(e) => setAudio(e.target.files?.[0] ?? null)}
+                  multiple
+                  onChange={(e) => void handleAudioFiles(Array.from(e.target.files ?? []))}
                   className="sr-only"
                   disabled={busy || loading || !isAuthenticated}
                 />
@@ -601,6 +856,8 @@ export default function UploadPage() {
             <code className="text-white/70">public/cover</code>. L&apos;upload reel utilise un <b>POST</b> protege par compte.
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   );

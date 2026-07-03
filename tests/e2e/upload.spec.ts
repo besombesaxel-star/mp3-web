@@ -9,7 +9,10 @@ test("le wizard d'upload est bloque tant qu'on n'est pas connecte", async ({ pag
 
   // Non connecte: le bandeau d'invite doit etre visible et la selection de fichier desactivee.
   await expect(page.getByText("Connecte-toi dans")).toBeVisible();
-  await expect(page.locator("#audio-input")).toBeDisabled();
+  const audioInput = page.locator("#audio-input");
+  await expect(audioInput).toBeDisabled();
+  // La selection multiple (import batch) doit rester disponible une fois connecte.
+  await expect(audioInput).toHaveAttribute("multiple", "");
   await expect(page.getByRole("button", { name: "Continuer" })).toBeDisabled();
 
   expect(pageErrors).toEqual([]);

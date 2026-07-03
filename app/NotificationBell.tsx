@@ -10,7 +10,7 @@ import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 
 type AppNotification = {
   id: string;
-  type: "follow" | "upload" | "reaction" | "mention" | "comment";
+  type: "follow" | "upload" | "reaction" | "mention";
   fromUserId: string;
   fromDisplayName: string;
   fromAvatarUrl: string;
@@ -66,14 +66,6 @@ function NotifRow({ notif, onClose }: { notif: AppNotification; onClose: () => v
           ) : notif.type === "mention" ? (
             <>
               vous a mentionné dans le chat
-              {notif.excerpt && (
-                <span className="block text-white/45 italic mt-0.5 truncate">« {notif.excerpt} »</span>
-              )}
-            </>
-          ) : notif.type === "comment" ? (
-            <>
-              a commenté{" "}
-              <span className="font-medium text-white/90">{notif.trackTitle}</span>
               {notif.excerpt && (
                 <span className="block text-white/45 italic mt-0.5 truncate">« {notif.excerpt} »</span>
               )}

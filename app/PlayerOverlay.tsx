@@ -23,10 +23,8 @@ import {
   Volume1,
   Volume2,
   Mic,
-  MessageCircle,
 } from "lucide-react";
 import { useLyrics } from "./useLyrics";
-import TrackComments from "./TrackComments";
 
 function withAlpha(color: string, alpha: number) {
   if (!color) return `rgba(255,255,255,${alpha})`;
@@ -216,7 +214,6 @@ export default function PlayerOverlay() {
   const lastCoverTapRef = useRef(0);
 
   const [showLyrics, setShowLyrics] = useState(false);
-  const [showComments, setShowComments] = useState(false);
   const lyrics = useLyrics(track);
   const lyricsContainerRef = useRef<HTMLDivElement | null>(null);
   const activeLyricRef = useRef<HTMLDivElement | null>(null);
@@ -495,20 +492,6 @@ export default function PlayerOverlay() {
               type="button"
             >
               <Mic size={18} className="mx-auto opacity-90 text-white/85" />
-            </button>
-
-            <button
-              onClick={() => setShowComments((v) => !v)}
-              aria-pressed={showComments}
-              disabled={!track}
-              className={[
-                "h-11 w-11 rounded-full transition active:scale-[0.98] disabled:opacity-50",
-                showComments ? "bg-white/12 ring-1 ring-white/15" : "bg-white/8 hover:bg-white/12",
-              ].join(" ")}
-              title="Commentaires"
-              type="button"
-            >
-              <MessageCircle size={18} className="mx-auto opacity-90 text-white/85" />
             </button>
 
             <button
@@ -906,23 +889,6 @@ export default function PlayerOverlay() {
                   >
                     <ListMusic size={17} className="mx-auto opacity-80" />
                   </button>
-
-                  <button
-                    onClick={() => {
-                      tapHaptic();
-                      setShowComments((v) => !v);
-                    }}
-                    aria-pressed={showComments}
-                    disabled={!track}
-                    className={[
-                      "h-10 w-10 rounded-full transition active:scale-95 disabled:opacity-50",
-                      showComments ? "bg-white/12 ring-1 ring-white/20" : "text-white/75",
-                    ].join(" ")}
-                    title="Commentaires"
-                    type="button"
-                  >
-                    <MessageCircle size={17} className="mx-auto opacity-80" />
-                  </button>
                 </div>
               </div>
 
@@ -1191,8 +1157,6 @@ export default function PlayerOverlay() {
           </div>
         </div>
       </div>
-
-      <TrackComments trackSrc={track?.src ?? null} open={showComments} onClose={() => setShowComments(false)} />
     </>
   );
 }

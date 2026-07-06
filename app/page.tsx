@@ -387,7 +387,7 @@ export default function Home() {
           <span className="text-sm text-white/35">{todayMomentLabel(currentTodayMoment)}</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-1 -mx-4 px-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:mx-0 md:px-0 md:pb-0 md:snap-none">
           {todayMomentCards.map((momentItem, momentIndex) => {
             const count = momentItem.tracks.length;
             const featuredTrack = momentItem.featuredTrack;
@@ -401,7 +401,7 @@ export default function Home() {
                 onClick={() => playTodayMoment(momentItem.tracks)}
                 disabled={disabled}
                 title={disabled ? `${momentItem.title} vide` : `Lire le mix ${momentItem.title.toLowerCase()}`}
-                className="group text-left disabled:cursor-default disabled:opacity-65 transition hover:-translate-y-0.5 mp3-fade-up"
+                className="group text-left disabled:cursor-default disabled:opacity-65 transition hover:-translate-y-0.5 mp3-fade-up shrink-0 w-[72%] snap-start md:w-auto md:shrink"
                 style={{ animationDelay: `${momentIndex * 60}ms` }}
               >
                 <div
@@ -416,7 +416,7 @@ export default function Home() {
                         alt={featuredTrack.title}
                         fill
                         className="object-cover transition-transform duration-200 group-hover:scale-[1.02]"
-                        sizes="(max-width: 1024px) 90vw, 33vw"
+                        sizes="(max-width: 768px) 72vw, (max-width: 1024px) 45vw, 33vw"
                       />
                     ) : (
                       <div className="h-full w-full flex items-center justify-center text-white/35 text-lg uppercase bg-[#0F0F14]">

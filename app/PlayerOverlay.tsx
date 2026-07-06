@@ -537,7 +537,7 @@ export default function PlayerOverlay() {
         </div>
 
         {/* Body */}
-        <div className="relative z-10 h-[calc(100vh-82px)] md:h-[calc(100vh-88px)] flex items-center justify-center px-4 md:px-8 lg:px-12 pb-[calc(env(safe-area-inset-bottom)+12px)] md:pb-10">
+        <div className="relative z-10 h-[calc(100vh-82px)] md:h-[calc(100vh-88px)] flex items-start md:items-center justify-center overflow-y-auto px-4 md:px-8 lg:px-12 pb-[calc(env(safe-area-inset-bottom)+12px)] md:pb-10">
           <div
             className={[
               "w-full max-w-[1680px] grid gap-5 md:gap-10 lg:gap-14 items-start",

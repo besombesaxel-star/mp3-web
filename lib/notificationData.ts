@@ -3,7 +3,7 @@ import { sendPushToUser } from "@/lib/pushSubscriptions";
 
 export type AppNotification = {
   id: string;
-  type: "follow" | "upload" | "reaction" | "mention" | "queue_suggestion";
+  type: "follow" | "upload" | "reaction" | "mention" | "queue_suggestion" | "message";
   fromUserId: string;
   fromDisplayName: string;
   fromAvatarUrl: string;
@@ -63,12 +63,19 @@ export async function pushNotification(
           ? `${notif.fromDisplayName} vous a mentionne dans le chat`
           : notif.type === "queue_suggestion"
             ? `${notif.fromDisplayName} vous a suggere "${notif.trackTitle}"`
-            : `${notif.fromDisplayName} a partage "${notif.trackTitle}"`;
+            : notif.type === "message"
+              ? `${notif.fromDisplayName} vous a envoye un message`
+              : `${notif.fromDisplayName} a partage "${notif.trackTitle}"`;
 
   void sendPushToUser(userId, {
     title: ".mp3",
     body: pushBody,
-    url: notif.type === "upload" ? "/library" : `/users/${notif.fromUserId}`,
+    url:
+      notif.type === "upload"
+        ? "/library"
+        : notif.type === "message"
+          ? `/messages/${notif.fromUserId}`
+          : `/users/${notif.fromUserId}`,
   });
 }
 

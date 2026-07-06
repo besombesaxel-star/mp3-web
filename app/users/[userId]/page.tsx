@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Check, Copy, ExternalLink, Crown, ListMusic, Music, Play, Shield, Shuffle, Sparkles, UserCheck, UserPlus } from "lucide-react";
+import { Check, Copy, ExternalLink, Crown, ListMusic, MessageCircle, Music, Play, Shield, Shuffle, Sparkles, UserCheck, UserPlus } from "lucide-react";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
 import { BADGE_LABELS, type BadgeKey } from "@/lib/badges";
@@ -514,6 +514,15 @@ export default function PublicUserProfilePage() {
                   )}
                   {following ? "Abonné" : "S'abonner"}
                 </button>
+              )}
+              {isAuthenticated && !isOwnProfile && (
+                <Link
+                  href={`/messages/${userId}`}
+                  className="flex items-center gap-2 h-10 px-5 rounded-full text-sm font-medium border border-white/12 bg-white/6 text-white/70 hover:bg-white/10 hover:text-white transition"
+                >
+                  <MessageCircle size={14} />
+                  Message
+                </Link>
               )}
             </div>
           </div>

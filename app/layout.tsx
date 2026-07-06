@@ -2,22 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
-import Sidebar from "../app/Sidebar";
-import MobileTabBar from "../app/MobileTabBar";
-import LandscapeGuard from "../app/LandscapeGuard";
-import OfflineBanner from "../app/OfflineBanner";
-import PageTransition from "../app/PageTransition";
-import DynamicBackdrop from "../app/DynamicBackdrop";
-import MiniPlayer from "../app/MiniPlayer";
-import PlayerOverlay from "../app/PlayerOverlay";
-import KeyboardShortcuts from "../app/KeyboardShortcuts";
-import PwaInstaller from "../app/PwaInstaller";
+import AppShell from "../app/AppShell";
 import { AuthProvider } from "../app/AuthProvider";
 import { PlayerProvider } from "../app/PlayerContext";
 import Toast from "../app/Toast";
-import GlobalChat from "../app/GlobalChat";
-import NotificationBell from "../app/NotificationBell";
-import LauncherHeartbeat from "../app/LauncherHeartbeat";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -70,25 +58,7 @@ export default function RootLayout({
 
         <AuthProvider>
           <PlayerProvider>
-            <DynamicBackdrop />
-            <OfflineBanner />
-
-            <div className="relative z-10 flex h-screen">
-              <Sidebar />
-              <main id="main-content" className="flex-1 overflow-y-auto p-4 pt-[calc(4rem+env(safe-area-inset-top))] md:p-8" tabIndex={-1}>
-                <PageTransition>{children}</PageTransition>
-              </main>
-            </div>
-
-            <KeyboardShortcuts />
-            <PwaInstaller />
-            <LauncherHeartbeat />
-            <LandscapeGuard />
-            <MobileTabBar />
-            <MiniPlayer />
-            <PlayerOverlay />
-            <GlobalChat />
-            <NotificationBell />
+            <AppShell>{children}</AppShell>
             <Toast />
           </PlayerProvider>
         </AuthProvider>

@@ -1,0 +1,85 @@
+import { NextResponse } from "next/server";
+import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
+import { appendMessage, getConversationId, readConversation } from "@/lib/directMessages";
+import { readAccountProfile } from "@/lib/accountData";
+import { pushNotification } from "@/lib/notificationData";
+import { broadcastToChannel, broadcastToUser } from "@/lib/realtimeBroadcast";
+import { checkRateLimit } from "@/lib/rateLimit";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+const MAX_CONTENT = 1000;
+const DM_LIMIT = 20;
+const DM_WINDOW_MS = 60 * 1000;
+
+type Ctx = { params: Promise<{ userId: string }> };
+
+export async function GET(req: Request, ctx: Ctx) {
+  const auth = await readAuthenticatedUser(req);
+  if (!auth.user) {
+    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  }
+
+  const { userId: otherId } = await ctx.params;
+  if (!otherId || otherId === auth.user.id) {
+    return NextResponse.json({ ok: false, error: "Cible invalide" }, { status: 400 });
+  }
+
+  const conversationId = getConversationId(auth.user.id, otherId);
+  const messages = await readConversation(conversationId);
+  return NextResponse.json({ ok: true, messages });
+}
+
+export async function POST(req: Request, ctx: Ctx) {
+  const auth = await readAuthenticatedUser(req);
+  if (!auth.user) {
+    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+  }
+
+  const { userId: otherId } = await ctx.params;
+  if (!otherId || otherId === auth.user.id) {
+    return NextResponse.json({ ok: false, error: "Cible invalide" }, { status: 400 });
+  }
+
+  const rateLimit = checkRateLimit(`dm:${auth.user.id}`, DM_LIMIT, DM_WINDOW_MS);
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ ok: false, error: "Trop de messages, patiente un instant." }, { status: 429 });
+  }
+
+  const body = await req.json().catch(() => null);
+  const content = typeof body?.content === "string" ? body.content.trim().slice(0, MAX_CONTENT) : "";
+  if (!content) return NextResponse.json({ ok: false, error: "Message vide" }, { status: 400 });
+
+  const conversationId = getConversationId(auth.user.id, otherId);
+  const message = {
+    id: crypto.randomUUID(),
+    senderId: auth.user.id,
+    content,
+    createdAt: Date.now(),
+  };
+
+  const messages = await appendMessage(conversationId, message);
+
+  void broadcastToChannel(`dm:${conversationId}`, "dm_message", { message }).catch(() => {});
+
+  const profile = await readAccountProfile(auth.user.id).catch(() => null);
+  const fromDisplayName =
+    (auth.user.user_metadata?.display_name as string | undefined)?.trim() ||
+    auth.user.email?.trim() ||
+    "Quelqu'un";
+
+  const notifPayload = {
+    type: "message" as const,
+    fromUserId: auth.user.id,
+    fromDisplayName,
+    fromAvatarUrl: profile?.avatarUrl ?? "",
+    excerpt: content.slice(0, 140),
+    createdAt: Date.now(),
+  };
+  void pushNotification(otherId, notifPayload).catch(() => {});
+  void broadcastToUser(otherId, "new_notification", { ...notifPayload, id: crypto.randomUUID(), read: false }).catch(() => {});
+
+  return NextResponse.json({ ok: true, messages });
+}

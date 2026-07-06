@@ -10,7 +10,7 @@ import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 
 type AppNotification = {
   id: string;
-  type: "follow" | "upload" | "reaction" | "mention" | "queue_suggestion";
+  type: "follow" | "upload" | "reaction" | "mention" | "queue_suggestion" | "message";
   fromUserId: string;
   fromDisplayName: string;
   fromAvatarUrl: string;
@@ -29,9 +29,11 @@ function NotifRow({ notif, onClose }: { notif: AppNotification; onClose: () => v
     month: "short",
   });
 
+  const profileHref = notif.type === "message" ? `/messages/${notif.fromUserId}` : `/users/${notif.fromUserId}`;
+
   return (
     <div className={`flex items-start gap-3 px-4 py-3 ${!notif.read ? "bg-white/5" : ""}`}>
-      <Link href={`/users/${notif.fromUserId}`} onClick={onClose} className="shrink-0 mt-0.5">
+      <Link href={profileHref} onClick={onClose} className="shrink-0 mt-0.5">
         <div className="w-8 h-8 rounded-full overflow-hidden bg-white/10 flex items-center justify-center text-xs font-semibold text-white/60">
           {notif.fromAvatarUrl ? (
             <Image
@@ -50,7 +52,7 @@ function NotifRow({ notif, onClose }: { notif: AppNotification; onClose: () => v
       <div className="flex-1 min-w-0">
         <p className="text-sm text-white/75 leading-snug">
           <Link
-            href={`/users/${notif.fromUserId}`}
+            href={profileHref}
             onClick={onClose}
             className="font-semibold text-white/90 hover:underline"
           >
@@ -74,6 +76,13 @@ function NotifRow({ notif, onClose }: { notif: AppNotification; onClose: () => v
             <>
               vous a suggéré{" "}
               <span className="font-medium text-white/90">{notif.trackTitle}</span>
+            </>
+          ) : notif.type === "message" ? (
+            <>
+              vous a envoyé un message
+              {notif.excerpt && (
+                <span className="block text-white/45 italic mt-0.5 truncate">« {notif.excerpt} »</span>
+              )}
             </>
           ) : (
             <>

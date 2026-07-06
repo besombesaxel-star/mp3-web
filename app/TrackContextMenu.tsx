@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Heart, Link2, ListEnd, ListPlus, X } from "lucide-react";
+import { Check, Code, Heart, Link2, ListEnd, ListPlus, X } from "lucide-react";
 import { usePlayer, type Track } from "./PlayerContext";
 import { vibrate } from "./haptics";
 
@@ -13,6 +13,7 @@ type Props = {
 export default function TrackContextMenu({ track, onClose }: Props) {
   const { addToQueueNext, addToQueueEnd, toggleFavorite, isFavorite, hapticsEnabled } = usePlayer();
   const [copied, setCopied] = useState(false);
+  const [embedCopied, setEmbedCopied] = useState(false);
   if (!track) return null;
 
   const liked = isFavorite(track.src);
@@ -33,6 +34,28 @@ export default function TrackContextMenu({ track, onClose }: Props) {
         setCopied(true);
         setTimeout(() => {
           setCopied(false);
+          onClose();
+        }, 1200);
+      })
+      .catch(() => {});
+  }
+
+  function copyEmbed() {
+    if (!track) return;
+    const params = new URLSearchParams({ src: track.src, title: track.title });
+    if (track.artist) params.set("artist", track.artist);
+    if (track.cover) params.set("cover", track.cover);
+
+    const embedUrl = `${window.location.origin}/embed?${params.toString()}`;
+    const snippet = `<iframe src="${embedUrl}" width="380" height="90" frameborder="0" allow="autoplay"></iframe>`;
+
+    navigator.clipboard
+      .writeText(snippet)
+      .then(() => {
+        if (hapticsEnabled) vibrate(12);
+        setEmbedCopied(true);
+        setTimeout(() => {
+          setEmbedCopied(false);
           onClose();
         }, 1200);
       })
@@ -109,6 +132,15 @@ export default function TrackContextMenu({ track, onClose }: Props) {
         >
           {copied ? <Check size={18} className="text-green-400" /> : <Link2 size={18} className="opacity-80" />}
           {copied ? "Lien copie" : "Copier le lien"}
+        </button>
+
+        <button
+          type="button"
+          className="w-full flex items-center gap-3 px-2 py-3 rounded-xl hover:bg-white/5 transition text-left text-sm text-white/85"
+          onClick={copyEmbed}
+        >
+          {embedCopied ? <Check size={18} className="text-green-400" /> : <Code size={18} className="opacity-80" />}
+          {embedCopied ? "Code copie" : "Copier le code d'integration"}
         </button>
       </div>
     </>

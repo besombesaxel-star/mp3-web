@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePlayer } from "./PlayerContext";
 
 type Rgb = [number, number, number];
-type ThemeKey = "midnight" | "sunset" | "ocean";
+type ThemeKey = "midnight" | "sunset" | "ocean" | "day";
 
 type BackdropPalette = {
   base: Rgb;
@@ -35,6 +35,13 @@ const THEME_PALETTES: Record<ThemeKey, BackdropPalette> = {
     secondary: [45, 212, 191],
     tertiary: [56, 189, 248],
     imageOpacity: 0.2,
+  },
+  day: {
+    base: [246, 246, 249],
+    primary: [124, 111, 240],
+    secondary: [236, 130, 176],
+    tertiary: [79, 140, 230],
+    imageOpacity: 0.08,
   },
 };
 
@@ -161,7 +168,7 @@ function shiftHue(rgb: Rgb, shift: number, saturationBoost = 0.06, lightnessDelt
 }
 
 function getThemePalette(theme: string | undefined): BackdropPalette {
-  if (theme === "sunset" || theme === "ocean" || theme === "midnight") {
+  if (theme === "sunset" || theme === "ocean" || theme === "midnight" || theme === "day") {
     return THEME_PALETTES[theme];
   }
 
@@ -406,6 +413,24 @@ export default function DynamicBackdrop() {
 
   const imageOpacity = track?.cover ? palette.imageOpacity : 0;
 
+  const vignetteStyle = useMemo(() => {
+    if (theme === "day") {
+      return {
+        background: [
+          `linear-gradient(180deg, ${rgbToCss([255, 255, 255], 0.4)} 0%, transparent 18%)`,
+          `linear-gradient(180deg, ${rgbToCss([255, 255, 255], 0.02)} 0%, ${rgbToCss([15, 15, 23], 0.07)} 100%)`,
+        ].join(", "),
+      };
+    }
+
+    return {
+      background: [
+        `linear-gradient(180deg, ${rgbToCss([255, 255, 255], 0.02)} 0%, transparent 18%)`,
+        `linear-gradient(180deg, ${rgbToCss([6, 7, 10], 0.06)} 0%, ${rgbToCss([4, 5, 8], 0.56)} 100%)`,
+      ].join(", "),
+    };
+  }, [theme]);
+
   return (
     <>
       <style jsx global>{`
@@ -490,15 +515,7 @@ export default function DynamicBackdrop() {
           style={tertiaryBlobStyle}
         />
 
-        <div
-          className="absolute inset-0"
-          style={{
-            background: [
-              `linear-gradient(180deg, ${rgbToCss([255, 255, 255], 0.02)} 0%, transparent 18%)`,
-              `linear-gradient(180deg, ${rgbToCss([6, 7, 10], 0.06)} 0%, ${rgbToCss([4, 5, 8], 0.56)} 100%)`,
-            ].join(", "),
-          }}
-        />
+        <div className="absolute inset-0" style={vignetteStyle} />
       </div>
     </>
   );

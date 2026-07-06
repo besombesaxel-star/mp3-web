@@ -140,6 +140,8 @@ export default function SettingsPage() {
     uiSounds, toggleUiSounds,
     hapticsEnabled, toggleHaptics,
     theme, setTheme,
+    fontSize, setFontSize,
+    highContrast, toggleHighContrast,
     eqPreset, setEqPreset,
     customEqGains, setCustomEqGains,
   } = usePlayer();
@@ -277,7 +279,28 @@ export default function SettingsPage() {
             { value: "midnight", label: "Minuit" },
             { value: "sunset", label: "Coucher de soleil" },
             { value: "ocean", label: "Ocean" },
+            { value: "day", label: "Jour" },
           ]}
+        />
+      </SettingsSection>
+
+      <SettingsSection title="Accessibilite" delay={150}>
+        <SegmentedRow
+          label="Taille du texte"
+          value={fontSize}
+          onChange={setFontSize}
+          options={[
+            { value: "sm", label: "Petit" },
+            { value: "md", label: "Normal" },
+            { value: "lg", label: "Grand" },
+            { value: "xl", label: "Tres grand" },
+          ]}
+        />
+        <ToggleRow
+          label="Contraste renforce"
+          desc="Eclaircit les textes et bordures les plus discrets."
+          checked={highContrast}
+          onChange={toggleHighContrast}
         />
       </SettingsSection>
 

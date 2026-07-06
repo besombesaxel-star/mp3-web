@@ -31,7 +31,8 @@ export type Track = {
 };
 
 type RepeatMode = "off" | "all" | "one";
-type ThemeMode = "midnight" | "sunset" | "ocean";
+type ThemeMode = "midnight" | "sunset" | "ocean" | "day";
+type FontSizeMode = "sm" | "md" | "lg" | "xl";
 type EqPreset = "off" | "bass" | "vocal" | "night" | "custom";
 export type EqGains = [number, number, number, number, number];
 
@@ -100,6 +101,10 @@ type PlayerCtx = {
   theme: ThemeMode;
   setTheme: (value: ThemeMode) => void;
   cycleTheme: () => void;
+  fontSize: FontSizeMode;
+  setFontSize: (value: FontSizeMode) => void;
+  highContrast: boolean;
+  toggleHighContrast: () => void;
   eqPreset: EqPreset;
   setEqPreset: (value: EqPreset) => void;
   cycleEqPreset: () => void;
@@ -195,7 +200,7 @@ const LS_PREFS = "mp3:prefs:v1";
 const MAX_RECENT_PLAYS = 600;
 const SOFT_CROSSFADE_MS = 620;
 const SOFT_CROSSFADE_LEAD = 0.48;
-const THEME_ORDER: ThemeMode[] = ["midnight", "sunset", "ocean"];
+const THEME_ORDER: ThemeMode[] = ["midnight", "sunset", "ocean", "day"];
 const EQ_ORDER: EqPreset[] = ["off", "bass", "vocal", "night"];
 const EQ_BANDS = [90, 250, 1000, 3500, 9000];
 const DEFAULT_CUSTOM_EQ_GAINS: EqGains = [0, 0, 0, 0, 0];
@@ -225,6 +230,8 @@ type PlayerPrefs = {
   hapticsEnabled: boolean;
   loudnessNorm: boolean;
   theme: ThemeMode;
+  fontSize: FontSizeMode;
+  highContrast: boolean;
   eqPreset: EqPreset;
   customEqGains: EqGains;
 };
@@ -389,6 +396,8 @@ function safePrefs(parsed: unknown): PlayerPrefs {
       hapticsEnabled: true,
       loudnessNorm: true,
       theme: "midnight",
+      fontSize: "md",
+      highContrast: false,
       eqPreset: "off",
       customEqGains: [...DEFAULT_CUSTOM_EQ_GAINS],
     };
@@ -404,9 +413,17 @@ function safePrefs(parsed: unknown): PlayerPrefs {
     hapticsEnabled: typeof parsed.hapticsEnabled === "boolean" ? parsed.hapticsEnabled : true,
     loudnessNorm: typeof parsed.loudnessNorm === "boolean" ? parsed.loudnessNorm : true,
     theme:
-      parsed.theme === "midnight" || parsed.theme === "sunset" || parsed.theme === "ocean"
+      parsed.theme === "midnight" ||
+      parsed.theme === "sunset" ||
+      parsed.theme === "ocean" ||
+      parsed.theme === "day"
         ? parsed.theme
         : "midnight",
+    fontSize:
+      parsed.fontSize === "sm" || parsed.fontSize === "md" || parsed.fontSize === "lg" || parsed.fontSize === "xl"
+        ? parsed.fontSize
+        : "md",
+    highContrast: typeof parsed.highContrast === "boolean" ? parsed.highContrast : false,
     eqPreset:
       parsed.eqPreset === "off" ||
       parsed.eqPreset === "bass" ||
@@ -625,6 +642,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [muted, _setMuted] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [theme, setTheme] = useState<ThemeMode>("midnight");
+  const [fontSize, setFontSize] = useState<FontSizeMode>("md");
+  const [highContrast, setHighContrast] = useState(false);
   const [eqPreset, setEqPreset] = useState<EqPreset>("off");
   const [customEqGains, setCustomEqGains] = useState<EqGains>(DEFAULT_CUSTOM_EQ_GAINS);
   const customEqGainsRef = useRef(customEqGains);
@@ -1326,6 +1345,16 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.dataset.mp3Theme = theme;
   }, [theme]);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.documentElement.dataset.mp3FontSize = fontSize;
+  }, [fontSize]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.documentElement.dataset.mp3Contrast = highContrast ? "high" : "normal";
+  }, [highContrast]);
+
   // preload next track for smoother transitions
   useEffect(() => {
     const preloadAudio = preloadAudioRef.current;
@@ -1691,6 +1720,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setHapticsEnabled(prefs.hapticsEnabled);
       setLoudnessNorm(prefs.loudnessNorm);
       setTheme(prefs.theme);
+      setFontSize(prefs.fontSize);
+      setHighContrast(prefs.highContrast);
       setEqPreset(prefs.eqPreset);
       setCustomEqGains(prefs.customEqGains);
     } catch {}
@@ -1880,6 +1911,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       hapticsEnabled,
       loudnessNorm,
       theme,
+      fontSize,
+      highContrast,
       eqPreset,
       customEqGains,
     };
@@ -1894,6 +1927,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     hapticsEnabled,
     loudnessNorm,
     theme,
+    fontSize,
+    highContrast,
     eqPreset,
     customEqGains,
   ]);
@@ -2409,6 +2444,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setFocusMode((value) => !value);
   }
 
+  function toggleHighContrast() {
+    setHighContrast((value) => !value);
+  }
+
   function cycleTheme() {
     setTheme((value) => {
       const index = THEME_ORDER.indexOf(value);
@@ -2641,6 +2680,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     theme,
     setTheme,
     cycleTheme,
+    fontSize,
+    setFontSize,
+    highContrast,
+    toggleHighContrast,
     eqPreset,
     setEqPreset,
     cycleEqPreset,

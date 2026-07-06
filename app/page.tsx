@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Radio } from "lucide-react";
+import { History, Radio } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AlbumCard from "./AlbumCard";
 import { useAuth } from "./AuthProvider";
@@ -71,6 +71,7 @@ export default function Home() {
   const [error, setError] = useState("");
   const [todayHour, setTodayHour] = useState<number | null>(null);
   const [radioLoading, setRadioLoading] = useState(false);
+  const [now] = useState(() => Date.now());
 
   async function onStartRadio() {
     if (radioLoading) return;
@@ -162,6 +163,30 @@ export default function Home() {
   const recentTracks = useMemo<Track[]>(() => libraryTracks.slice(0, 20), [libraryTracks]);
   const favoriteTracks = useMemo<Track[]>(() => favorites.slice(0, 20), [favorites]);
   const recentPlayEvents = stats.recentPlays;
+
+  const onThisDayMemory = useMemo(() => {
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const windows = [
+      { label: "Il y a 1 an", center: now - 365 * DAY_MS },
+      { label: "Il y a 1 mois", center: now - 30 * DAY_MS },
+    ];
+
+    for (const w of windows) {
+      const match = recentPlayEvents.find((p) => Math.abs(p.playedAt - w.center) <= 2 * DAY_MS);
+      const track = match ? trackBySrc.get(match.src) : null;
+      if (track) return { track, label: w.label };
+    }
+
+    for (const w of windows) {
+      for (const [src, firstAt] of Object.entries(stats.firstPlayedAtByTrack)) {
+        if (Math.abs(firstAt - w.center) > 2 * DAY_MS) continue;
+        const track = trackBySrc.get(src);
+        if (track) return { track, label: `Decouvert ${w.label.toLowerCase()}` };
+      }
+    }
+
+    return null;
+  }, [now, recentPlayEvents, stats.firstPlayedAtByTrack, trackBySrc]);
 
   const morningTracks = useMemo<Track[]>(() => {
     const score = new Map<string, number>();
@@ -290,6 +315,39 @@ export default function Home() {
         </p>
       ) : null}
 
+      {onThisDayMemory ? (
+        <button
+          type="button"
+          onClick={() => setQueueAndPlay([onThisDayMemory.track], 0)}
+          className="group w-full mb-10 flex items-center gap-4 rounded-3xl border border-white/10 bg-white/[0.03] p-4 text-left hover:bg-white/[0.05] transition mp3-fade-up"
+        >
+          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-[#1A1A22]">
+            {onThisDayMemory.track.cover ? (
+              <Image
+                src={onThisDayMemory.track.cover}
+                alt={onThisDayMemory.track.title}
+                fill
+                className="object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+                sizes="64px"
+              />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center text-white/25">
+                <History size={18} />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="flex items-center gap-1.5 text-xs uppercase tracking-[0.18em] text-white/35">
+              <History size={12} />
+              {onThisDayMemory.label}
+            </p>
+            <p className="text-base text-white/90 truncate mt-1">{onThisDayMemory.track.title}</p>
+            {onThisDayMemory.track.artist ? (
+              <p className="text-sm text-white/45 truncate">{onThisDayMemory.track.artist}</p>
+            ) : null}
+          </div>
+        </button>
+      ) : null}
 
       <section className="mb-12">
         <div className="flex items-end justify-between mb-6 mp3-fade-up">

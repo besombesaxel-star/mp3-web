@@ -661,9 +661,9 @@ export default function AccountPage() {
                     type="button"
                     onClick={() => setIsPrivate((v) => !v)}
                     aria-pressed={isPrivate}
-                    className={["shrink-0 h-7 w-12 rounded-full transition relative", isPrivate ? "bg-white" : "bg-white/15"].join(" ")}
+                    className={["shrink-0 h-8 w-14 rounded-full transition relative", isPrivate ? "bg-white" : "bg-white/15"].join(" ")}
                   >
-                    <span className={["absolute top-1 h-5 w-5 rounded-full transition-all", isPrivate ? "left-6 bg-black" : "left-1 bg-white"].join(" ")} />
+                    <span className={["absolute top-1 h-6 w-6 rounded-full transition-all", isPrivate ? "left-7 bg-black" : "left-1 bg-white"].join(" ")} />
                   </button>
                 </div>
                 <div className="flex items-center justify-between">

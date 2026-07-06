@@ -102,7 +102,7 @@ function SectionHeader({
       </p>
       {onMore && (
         <button onClick={onMore} type="button"
-          className="text-xs text-white/35 hover:text-white/70 transition">
+          className="text-xs text-white/35 hover:text-white/70 transition py-2.5 -my-2.5 pl-2 -ml-2">
           Voir plus →
         </button>
       )}
@@ -750,7 +750,7 @@ export default function SearchPage() {
 
       {/* Search input */}
       <div className="mb-4 mp3-fade-up" style={{ animationDelay: "30ms" }}>
-        <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 focus-within:border-white/20 transition">
+        <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 focus-within:border-white/20 transition">
           <Search size={15} className="text-white/30 shrink-0" />
           <input
             aria-label="Rechercher"
@@ -770,7 +770,7 @@ export default function SearchPage() {
               <X size={14} />
             </button>
           )}
-        </div>
+        </label>
       </div>
 
       {/* Tabs + favorites toggle */}

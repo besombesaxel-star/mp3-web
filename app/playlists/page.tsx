@@ -749,7 +749,7 @@ export default function PlaylistsPage() {
 
                 {activeTracks.length > 8 ? (
                   <div className="mb-3 px-2">
-                    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                    <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
                       <span className="text-white/35" aria-hidden="true">
                         /
                       </span>
@@ -770,7 +770,7 @@ export default function PlaylistsPage() {
                           X
                         </button>
                       ) : null}
-                    </div>
+                    </label>
                     <p className="mt-2 text-xs text-white/40">
                       {filteredActiveTracks.length}/{activeTracks.length} morceau
                       {filteredActiveTracks.length > 1 ? "x" : ""}

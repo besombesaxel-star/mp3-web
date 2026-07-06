@@ -82,14 +82,14 @@ function ToggleRow({
         onClick={onChange}
         aria-pressed={checked}
         className={[
-          "shrink-0 h-7 w-12 rounded-full transition relative",
+          "shrink-0 h-8 w-14 rounded-full transition relative",
           checked ? "bg-white" : "bg-white/15",
         ].join(" ")}
       >
         <span
           className={[
-            "absolute top-1 h-5 w-5 rounded-full transition-all",
-            checked ? "left-6 bg-black" : "left-1 bg-white",
+            "absolute top-1 h-6 w-6 rounded-full transition-all",
+            checked ? "left-7 bg-black" : "left-1 bg-white",
           ].join(" ")}
         />
       </button>

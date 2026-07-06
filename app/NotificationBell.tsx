@@ -119,6 +119,25 @@ export default function NotificationBell() {
     const channel = supabase
       .channel(`user:${user.id}`)
       .on("broadcast", { event: "new_notification" }, ({ payload }) => {
+        const data = payload as Partial<AppNotification>;
+
+        // Message notifications never carry content/sender identity on the broadcast payload
+        // (that channel is reachable by anyone holding the public anon key who knows the user's
+        // id) - re-fetch the authenticated list instead of trusting the ping's fields.
+        if (data?.type === "message") {
+          if (!accessToken) return;
+          fetch("/api/notifications", {
+            cache: "no-store",
+            headers: createAuthorizedHeaders(accessToken),
+          })
+            .then((r) => r.json())
+            .then((json: { notifications?: AppNotification[] }) => {
+              if (Array.isArray(json.notifications)) setNotifs(json.notifications);
+            })
+            .catch(() => {});
+          return;
+        }
+
         const notif = payload as AppNotification;
         setNotifs((prev) => {
           if (prev.some((n) => n.id === notif.id)) return prev;
@@ -128,7 +147,7 @@ export default function NotificationBell() {
       .subscribe();
 
     return () => { void supabase.removeChannel(channel); };
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user?.id, accessToken]);
 
   useEffect(() => {
     if (!isAuthenticated || !accessToken) return;

@@ -62,7 +62,10 @@ export async function POST(req: Request, ctx: Ctx) {
 
   const messages = await appendMessage(conversationId, message);
 
-  void broadcastToChannel(`dm:${conversationId}`, "dm_message", { message }).catch(() => {});
+  // Do not put message content on the realtime broadcast: that channel is reachable by anyone
+  // holding the public anon key who knows/derives the topic name. Send an empty ping only -
+  // recipients re-fetch the conversation through the authenticated GET endpoint above.
+  void broadcastToChannel(`dm:${conversationId}`, "dm_message", {}).catch(() => {});
 
   const profile = await readAccountProfile(auth.user.id).catch(() => null);
   const fromDisplayName =
@@ -79,7 +82,10 @@ export async function POST(req: Request, ctx: Ctx) {
     createdAt: Date.now(),
   };
   void pushNotification(otherId, notifPayload).catch(() => {});
-  void broadcastToUser(otherId, "new_notification", { ...notifPayload, id: crypto.randomUUID(), read: false }).catch(() => {});
+  // Same reasoning: the broadcast payload must not carry the excerpt or sender identity.
+  // The full notification is safely persisted above and read back via the authenticated
+  // /api/notifications endpoint; this ping just tells the client to go fetch it.
+  void broadcastToUser(otherId, "new_notification", { type: "message", id: crypto.randomUUID() }).catch(() => {});
 
   return NextResponse.json({ ok: true, messages });
 }

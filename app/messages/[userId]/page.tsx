@@ -78,24 +78,32 @@ export default function ConversationPage() {
   }, [accessToken, otherId]);
 
   useEffect(() => {
-    if (!user?.id || !otherId) return;
+    if (!user?.id || !otherId || !accessToken) return;
     const conversationId = [user.id, otherId].sort().join("__");
     const supabase = getSupabaseBrowserAuthClient();
     if (!supabase) return;
 
+    // The broadcast payload intentionally carries no message content (that channel is reachable
+    // by anyone holding the public anon key) - it's just a ping to re-fetch via the authenticated endpoint.
     const channel = supabase
       .channel(`dm:${conversationId}`)
-      .on("broadcast", { event: "dm_message" }, ({ payload }) => {
-        const data = payload as { message?: DirectMessage };
-        if (!data?.message) return;
-        setMessages((prev) => (prev.some((m) => m.id === data.message!.id) ? prev : [...prev, data.message!]));
+      .on("broadcast", { event: "dm_message" }, () => {
+        fetch(`/api/messages/${encodeURIComponent(otherId)}`, {
+          cache: "no-store",
+          headers: createAuthorizedHeaders(accessToken),
+        })
+          .then((r) => r.json())
+          .then((json: { ok?: boolean; messages?: DirectMessage[] }) => {
+            if (json.ok && json.messages) setMessages(json.messages);
+          })
+          .catch(() => {});
       })
       .subscribe();
 
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [user?.id, otherId]);
+  }, [user?.id, otherId, accessToken]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });

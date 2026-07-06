@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { readAccountProfile, saveAccountProfile, type AccountPlaylist, type EqGains, type EqPreset, type ProfileLink } from "@/lib/accountData";
+import { logActivity } from "@/lib/activityLog";
 
 const EQ_PRESETS: EqPreset[] = ["off", "bass", "vocal", "night", "custom"];
 import { listTracksForApi } from "@/lib/libraryRepository";
@@ -53,6 +54,7 @@ export async function GET(req: Request) {
     playlists: profile.playlists ?? [],
     publicBio: profile.publicBio,
     themeHue: profile.themeHue ?? null,
+    isPrivate: Boolean(profile.isPrivate),
     uploads: uploads.map(serializeTrack),
     uploadsCount: uploads.length,
   });
@@ -89,11 +91,32 @@ export async function PUT(req: Request) {
         ? (body.customEqGains as EqGains)
         : undefined;
   const themeHue = body?.themeHue === null ? null : typeof body?.themeHue === "number" ? body.themeHue : undefined;
+  const isPrivate = typeof body?.isPrivate === "boolean" ? body.isPrivate : undefined;
 
-  if ([favoriteSrcs, publicBio, avatarUrl, links, pinnedTrackSrcs, playlists, eqPreset, customEqGains, themeHue].every((v) => v === undefined)) {
+  if (
+    [favoriteSrcs, publicBio, avatarUrl, links, pinnedTrackSrcs, playlists, eqPreset, customEqGains, themeHue, isPrivate].every(
+      (v) => v === undefined
+    )
+  ) {
     return NextResponse.json({ ok: false, error: "Aucune mise a jour fournie" }, { status: 400 });
   }
 
-  await saveAccountProfile(user.id, { avatarUrl, customEqGains, eqPreset, favoriteSrcs, links, pinnedTrackSrcs, playlists, publicBio, themeHue });
+  await saveAccountProfile(user.id, {
+    avatarUrl,
+    customEqGains,
+    eqPreset,
+    favoriteSrcs,
+    links,
+    pinnedTrackSrcs,
+    playlists,
+    publicBio,
+    themeHue,
+    isPrivate,
+  });
+
+  if (isPrivate !== undefined) {
+    void logActivity(user.id, "profile_privacy_changed", isPrivate ? "prive" : "public").catch(() => {});
+  }
+
   return NextResponse.json({ ok: true });
 }

@@ -34,6 +34,7 @@ type AccountProfileData = {
   playlists: AccountPlaylist[];
   publicBio: string;
   themeHue: number | null;
+  isPrivate: boolean;
   updatedAt: number;
   version: number;
 };
@@ -50,6 +51,7 @@ const EMPTY_PROFILE: AccountProfileData = {
   playlists: [],
   publicBio: "",
   themeHue: null,
+  isPrivate: false,
   updatedAt: 0,
   version: 1,
 };
@@ -177,6 +179,7 @@ function normalizeProfile(raw: unknown): AccountProfileData {
     playlists: normalizePlaylists(v.playlists),
     publicBio: normalizePublicBio(v.publicBio),
     themeHue: normalizeThemeHue(v.themeHue),
+    isPrivate: Boolean(v.isPrivate),
     updatedAt: typeof v.updatedAt === "number" ? v.updatedAt : 0,
     version: typeof v.version === "number" ? v.version : 1,
   };
@@ -242,6 +245,7 @@ async function writeAccountProfile(userId: string, profile: AccountProfileData) 
     playlists: normalizePlaylists(profile.playlists),
     publicBio: normalizePublicBio(profile.publicBio),
     themeHue: normalizeThemeHue(profile.themeHue),
+    isPrivate: Boolean(profile.isPrivate),
     updatedAt: Date.now(),
     version: 1,
   }, null, 2);
@@ -271,6 +275,7 @@ export async function saveAccountProfile(
     playlists?: AccountPlaylist[];
     publicBio?: string;
     themeHue?: number | null;
+    isPrivate?: boolean;
   }
 ) {
   const current = await readAccountProfile(userId);
@@ -286,6 +291,7 @@ export async function saveAccountProfile(
     playlists: patch.playlists === undefined ? current.playlists : normalizePlaylists(patch.playlists),
     publicBio: patch.publicBio === undefined ? current.publicBio : normalizePublicBio(patch.publicBio),
     themeHue: patch.themeHue === undefined ? current.themeHue : normalizeThemeHue(patch.themeHue),
+    isPrivate: patch.isPrivate === undefined ? current.isPrivate : Boolean(patch.isPrivate),
     updatedAt: Date.now(),
     version: 1,
   };

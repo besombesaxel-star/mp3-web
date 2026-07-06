@@ -26,6 +26,7 @@ export async function POST(req: Request) {
     const src = body?.src;
     const title = body?.title;
     const artist = body?.artist;
+    const credits = typeof body?.credits === "string" ? body.credits : undefined;
 
     if (typeof src !== "string" || !isValidTrackSrc(src)) {
       return NextResponse.json({ ok: false, error: "src invalide" }, { status: 400 });
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Le titre ne peut pas etre vide" }, { status: 400 });
     }
 
-    const result = await saveTrackMetaForApi(src, cleanTitle, cleanArtist, auth.user.id);
+    const result = await saveTrackMetaForApi(src, cleanTitle, cleanArtist, auth.user.id, credits);
     if (result === "forbidden") {
       return NextResponse.json({ ok: false, error: "Seul le proprietaire peut modifier ce son" }, { status: 403 });
     }

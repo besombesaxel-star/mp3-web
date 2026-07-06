@@ -14,6 +14,7 @@ type SerializedPublicTrack = {
   ownerLabel: string | null;
   src: string;
   title: string;
+  credits: string | null;
 };
 
 export type PublicUserProfileData = {
@@ -32,6 +33,7 @@ export type PublicUserProfileData = {
   userId: string;
   uniqueArtistsCount: number;
   unlockedAchievements: AchievementId[];
+  isPrivate: boolean;
 };
 
 const STATS_BUCKET = "account-data";
@@ -81,6 +83,7 @@ function serializeTrack(track: Awaited<ReturnType<typeof listTracksForApi>>[numb
     ownerLabel,
     src: track.src,
     title: track.title,
+    credits: track.credits ?? null,
   };
 }
 
@@ -102,7 +105,10 @@ async function readPublicUserBasics(userId: string) {
   };
 }
 
-export async function getPublicUserProfileData(userId: string): Promise<PublicUserProfileData | null> {
+export async function getPublicUserProfileData(
+  userId: string,
+  viewerId?: string | null
+): Promise<PublicUserProfileData | null> {
   const [tracks, profile, userBasics, badges, unlockedAchievements] = await Promise.all([
     listTracksForApi(),
     readAccountProfile(userId).catch(() => null),
@@ -133,6 +139,29 @@ export async function getPublicUserProfileData(userId: string): Promise<PublicUs
     .filter((t): t is Awaited<ReturnType<typeof listTracksForApi>>[number] => Boolean(t))
     .map(serializeTrack);
 
+  const isPrivate = Boolean(profile?.isPrivate) && viewerId !== userId;
+
+  if (isPrivate) {
+    return {
+      avatarUrl: profile?.avatarUrl ?? "",
+      badges: [],
+      bio: "",
+      displayName,
+      followersCount: profile?.followersCount ?? 0,
+      initials: getInitials(displayName, "MP"),
+      joinedAt: null,
+      links: [],
+      pinnedTracks: [],
+      themeHue: profile?.themeHue ?? null,
+      uploads: [],
+      uploadsCount: 0,
+      userId,
+      uniqueArtistsCount: 0,
+      unlockedAchievements: [],
+      isPrivate: true,
+    };
+  }
+
   return {
     avatarUrl: profile?.avatarUrl ?? "",
     badges,
@@ -149,6 +178,7 @@ export async function getPublicUserProfileData(userId: string): Promise<PublicUs
     userId,
     uniqueArtistsCount,
     unlockedAchievements,
+    isPrivate: false,
   };
 }
 

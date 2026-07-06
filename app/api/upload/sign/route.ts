@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createUploadTargetsForApi } from "@/lib/libraryRepository";
+import { createUploadTargetsForApi, isValidAudioFileName } from "@/lib/libraryRepository";
 import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
 import { checkRateLimit } from "@/lib/rateLimit";
 
@@ -32,8 +32,8 @@ export async function POST(req: Request) {
     const audioSize = typeof body?.audioSize === "number" ? body.audioSize : 0;
     const coverName = typeof body?.coverName === "string" ? body.coverName : null;
 
-    if (!audioName.toLowerCase().endsWith(".mp3")) {
-      return NextResponse.json({ ok: false, error: "Seuls les fichiers .mp3 sont acceptes." }, { status: 400 });
+    if (!isValidAudioFileName(audioName)) {
+      return NextResponse.json({ ok: false, error: "Formats acceptes: MP3, FLAC, WAV." }, { status: 400 });
     }
 
     const maxBytes = 80 * 1024 * 1024;

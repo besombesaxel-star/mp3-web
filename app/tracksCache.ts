@@ -11,6 +11,7 @@ export type ApiTrack = {
   ownerDisplayName?: string | null;
   ownerId?: string | null;
   ownerLabel?: string | null;
+  credits?: string | null;
 };
 
 type TracksResponse = {

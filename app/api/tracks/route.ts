@@ -24,6 +24,7 @@ export async function GET(req: Request) {
         ownerDisplayName: track.ownerDisplayName ?? null,
         ownerId: track.ownerId ?? null,
         ownerLabel: track.ownerDisplayName ?? track.ownerEmail ?? null,
+        credits: track.credits ?? null,
       })),
     },
     {

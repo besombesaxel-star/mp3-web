@@ -1,5 +1,6 @@
 import path from "path";
 import { promises as fs } from "fs";
+import { isAcceptedAudioFileName } from "@/lib/libraryFiles";
 
 const PUBLIC_DIR = path.join(process.cwd(), "public");
 
@@ -59,7 +60,7 @@ export function isValidLibraryAudioSrc(src: string) {
   const relativePath = getAudioRelativePath(src);
   return (
     typeof relativePath === "string" &&
-    relativePath.toLowerCase().endsWith(".mp3") &&
+    isAcceptedAudioFileName(relativePath) &&
     !relativePath.includes("..") &&
     !relativePath.includes("\\")
   );
@@ -73,7 +74,7 @@ export async function listLibraryAudioFiles(): Promise<LibraryAudioFile[]> {
 
     let names: string[] = [];
     try {
-      names = (await fs.readdir(dirPath)).filter((file) => file.toLowerCase().endsWith(".mp3"));
+      names = (await fs.readdir(dirPath)).filter((file) => isAcceptedAudioFileName(file));
     } catch {
       continue;
     }

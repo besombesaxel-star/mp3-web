@@ -424,6 +424,7 @@ export default function SearchPage() {
           cover: t.cover ?? undefined,
           ownerDisplayName: t.ownerDisplayName ?? undefined,
           ownerId: t.ownerId ?? undefined,
+          credits: t.credits ?? undefined,
         }))
       );
     } catch (e) {

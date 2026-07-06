@@ -69,6 +69,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(nextSession ?? null);
       setUser(nextSession?.user ?? null);
       setLoading(false);
+
+      if (_event === "SIGNED_IN" && nextSession?.access_token) {
+        void fetch("/api/activity", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${nextSession.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "sign_in" }),
+        }).catch(() => {});
+      }
     });
 
     return () => {
@@ -145,6 +153,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { error } = await client.auth.updateUser({ password });
       if (error) throw error;
+
+      if (session?.access_token) {
+        void fetch("/api/activity", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "password_changed" }),
+        }).catch(() => {});
+      }
     }
 
     return {

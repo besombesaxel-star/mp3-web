@@ -140,6 +140,7 @@ export default function PlaylistsPage() {
           cover: track.cover ?? undefined,
           ownerDisplayName: track.ownerDisplayName ?? undefined,
           ownerId: track.ownerId ?? undefined,
+          credits: track.credits ?? undefined,
         }))
       );
     } catch (errorValue: unknown) {

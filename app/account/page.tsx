@@ -6,14 +6,38 @@ import Link from "next/link";
 import {
   ArrowDown, ArrowUp, Camera, Check, ExternalLink, Heart,
   KeyRound, Link2, LogOut, Music, Palette, Play, Plus, Shield,
-  Trash2, Upload, User, UserCheck, UserPlus, X,
+  Smartphone, Trash2, Upload, User, UserCheck, UserPlus, X,
 } from "lucide-react";
 import { useAuth } from "@/app/AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { usePlayer } from "@/app/PlayerContext";
 import { getPublicProfileHref, hashStringToHue } from "@/lib/publicLinks";
+import { getDeviceId } from "@/lib/deviceId";
+import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import type { ProfileLink } from "@/lib/accountData";
 import AvatarCropper from "@/app/AvatarCropper";
+
+type DeviceSession = {
+  deviceId: string;
+  deviceLabel: string;
+  firstSeenAt: number;
+  lastActiveAt: number;
+};
+
+type ActivityEvent = {
+  id: string;
+  type: "sign_in" | "password_changed" | "sign_out_others" | "device_forgotten" | "profile_privacy_changed";
+  createdAt: number;
+  meta?: string;
+};
+
+const ACTIVITY_LABELS: Record<ActivityEvent["type"], string> = {
+  sign_in: "Connexion",
+  password_changed: "Mot de passe modifie",
+  sign_out_others: "Deconnexion des autres appareils",
+  device_forgotten: "Appareil oublie",
+  profile_privacy_changed: "Confidentialite du profil modifiee",
+};
 
 type AccountTrack = {
   artist: string;
@@ -36,6 +60,7 @@ type AccountResponse = {
   pinnedTracks?: AccountTrack[];
   publicBio?: string;
   themeHue?: number | null;
+  isPrivate?: boolean;
   uploads?: AccountTrack[];
   uploadsCount?: number;
 };
@@ -144,6 +169,7 @@ export default function AccountPage() {
   const [profileName, setProfileName] = useState(displayName);
   const [newPassword, setNewPassword] = useState("");
   const [publicBio, setPublicBio] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false);
 
   const [busy, setBusy] = useState<"" | "signin" | "signup" | "profile" | "password" | "logout" | "avatar" | "links">("");
   const [profileMsg, setProfileMsg] = useState<{ text: string; ok: boolean } | null>(null);
@@ -167,6 +193,19 @@ export default function AccountPage() {
   const [newLinkLabel, setNewLinkLabel] = useState("");
   const [newLinkUrl, setNewLinkUrl] = useState("");
   const [addingLink, setAddingLink] = useState(false);
+
+  const [sessions, setSessions] = useState<DeviceSession[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [forgettingId, setForgettingId] = useState("");
+  const [signOutOthersBusy, setSignOutOthersBusy] = useState(false);
+  const [signOutOthersMsg, setSignOutOthersMsg] = useState("");
+  const [currentDeviceId, setCurrentDeviceId] = useState("");
+  const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([]);
+  const [activityOpen, setActivityOpen] = useState(false);
+
+  useEffect(() => {
+    setCurrentDeviceId(getDeviceId());
+  }, []);
 
   const createdAtLabel = useMemo(() => {
     if (!user?.created_at) return "";
@@ -206,6 +245,7 @@ export default function AccountPage() {
         setFavoriteCount(Array.isArray(json.favoriteSrcs) ? json.favoriteSrcs.length : 0);
         setFavoriteTracks(Array.isArray(json.favoriteTracks) ? json.favoriteTracks : []);
         setPublicBio(json.publicBio ?? "");
+        setIsPrivate(Boolean(json.isPrivate));
         setLinks(Array.isArray(json.links) ? json.links : []);
         setPinnedSrcs(new Set(Array.isArray(json.pinnedTrackSrcs) ? json.pinnedTrackSrcs : []));
         setThemeHue(json.themeHue ?? null);
@@ -216,7 +256,7 @@ export default function AccountPage() {
         setTotalUploads(json.uploadsCount ?? uploadList.length);
       } catch {
         if (!cancelled) {
-          setAvatarUrl(""); setFavoriteCount(0); setFavoriteTracks([]); setPublicBio("");
+          setAvatarUrl(""); setFavoriteCount(0); setFavoriteTracks([]); setPublicBio(""); setIsPrivate(false);
           setLinks([]); setPinnedSrcs(new Set()); setThemeHue(null);
           setFollowingCount(0); setFollowersCount(0);
           setUploads([]); setTotalUploads(0);
@@ -226,7 +266,7 @@ export default function AccountPage() {
       }
     }
     if (!isAuthenticated || !accessToken) {
-      setAvatarUrl(""); setFavoriteCount(0); setFavoriteTracks([]); setPublicBio("");
+      setAvatarUrl(""); setFavoriteCount(0); setFavoriteTracks([]); setPublicBio(""); setIsPrivate(false);
       setLinks([]); setPinnedSrcs(new Set()); setThemeHue(null);
       setUploads([]); setTotalUploads(0); setProfileLoading(false);
       return;
@@ -234,6 +274,74 @@ export default function AccountPage() {
     void load();
     return () => { cancelled = true; };
   }, [accessToken, isAuthenticated]);
+
+  // --- Sessions actives ---
+  useEffect(() => {
+    if (!isAuthenticated || !accessToken) { setSessions([]); return; }
+    let cancelled = false;
+    setSessionsLoading(true);
+    fetch("/api/sessions", { cache: "no-store", headers: createAuthorizedHeaders(accessToken) })
+      .then((r) => r.json())
+      .then((json: { ok?: boolean; sessions?: DeviceSession[] }) => {
+        if (!cancelled && json.ok && Array.isArray(json.sessions)) setSessions(json.sessions);
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setSessionsLoading(false); });
+    return () => { cancelled = true; };
+  }, [isAuthenticated, accessToken]);
+
+  // --- Journal d'activite ---
+  useEffect(() => {
+    if (!isAuthenticated || !accessToken) { setActivityEvents([]); return; }
+    let cancelled = false;
+    fetch("/api/activity", { cache: "no-store", headers: createAuthorizedHeaders(accessToken) })
+      .then((r) => r.json())
+      .then((json: { ok?: boolean; events?: ActivityEvent[] }) => {
+        if (!cancelled && json.ok && Array.isArray(json.events)) setActivityEvents(json.events);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isAuthenticated, accessToken]);
+
+  async function forgetSession(deviceId: string) {
+    if (!accessToken || forgettingId) return;
+    setForgettingId(deviceId);
+    try {
+      const res = await fetch("/api/sessions", {
+        method: "DELETE",
+        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+        body: JSON.stringify({ deviceId }),
+      });
+      const json = (await res.json()) as { ok?: boolean; sessions?: DeviceSession[] };
+      if (res.ok && json.ok && Array.isArray(json.sessions)) setSessions(json.sessions);
+    } catch {}
+    finally { setForgettingId(""); }
+  }
+
+  async function signOutOtherDevices() {
+    if (signOutOthersBusy) return;
+    setSignOutOthersBusy(true);
+    setSignOutOthersMsg("");
+    try {
+      const client = getSupabaseBrowserAuthClient();
+      if (!client) throw new Error("Non configure.");
+      const { error } = await client.auth.signOut({ scope: "others" });
+      if (error) throw error;
+      setSessions((prev) => prev.filter((s) => s.deviceId === currentDeviceId));
+      setSignOutOthersMsg("Les autres appareils ont ete deconnectes.");
+      if (accessToken) {
+        void fetch("/api/activity", {
+          method: "POST",
+          headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+          body: JSON.stringify({ type: "sign_out_others" }),
+        }).catch(() => {});
+      }
+    } catch (e) {
+      setSignOutOthersMsg(getErrorMessage(e, "Impossible de deconnecter les autres appareils."));
+    } finally {
+      setSignOutOthersBusy(false);
+    }
+  }
 
   // --- Avatar ---
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
@@ -275,7 +383,7 @@ export default function AccountPage() {
         const res = await fetch("/api/account", {
           method: "PUT",
           headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
-          body: JSON.stringify({ publicBio }),
+          body: JSON.stringify({ publicBio, isPrivate }),
         });
         if (!res.ok) throw new Error(`Sauvegarde impossible (${res.status})`);
       }
@@ -448,6 +556,85 @@ export default function AccountPage() {
               </div>
             </section>
 
+            {/* Sessions actives */}
+            <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "20ms" }}>
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                  <Smartphone size={14} className="text-white/30" />
+                  <h2 className="text-sm font-medium text-white/70">Sessions actives</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void signOutOtherDevices()}
+                  disabled={signOutOthersBusy}
+                  className="text-xs text-white/40 hover:text-white/70 transition disabled:opacity-50"
+                >
+                  {signOutOthersBusy ? "..." : "Deconnecter les autres appareils"}
+                </button>
+              </div>
+
+              {signOutOthersMsg && <p className="text-xs text-white/45 mb-3">{signOutOthersMsg}</p>}
+
+              {sessionsLoading ? (
+                <p className="text-xs text-white/30">Chargement...</p>
+              ) : sessions.length === 0 ? (
+                <p className="text-xs text-white/30">Aucun appareil enregistre pour le moment.</p>
+              ) : (
+                <div className="space-y-2">
+                  {sessions.map((s) => (
+                    <div key={s.deviceId} className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/3 px-4 py-2.5">
+                      <div className="min-w-0">
+                        <p className="text-sm text-white/80 truncate">
+                          {s.deviceLabel}
+                          {s.deviceId === currentDeviceId && (
+                            <span className="ml-2 text-[10px] uppercase tracking-wide text-emerald-300/80">Cet appareil</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-white/30 mt-0.5">
+                          Actif {new Date(s.lastActiveAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
+                      {s.deviceId !== currentDeviceId && (
+                        <button
+                          type="button"
+                          onClick={() => void forgetSession(s.deviceId)}
+                          disabled={forgettingId === s.deviceId}
+                          className="shrink-0 h-8 px-3 rounded-lg bg-white/8 text-white/60 text-xs hover:bg-white/12 transition disabled:opacity-50"
+                        >
+                          {forgettingId === s.deviceId ? "..." : "Oublier"}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setActivityOpen((v) => !v)}
+                className="mt-4 text-xs text-white/35 hover:text-white/60 transition"
+              >
+                {activityOpen ? "Masquer le journal d'activite" : "Voir le journal d'activite"}
+              </button>
+
+              {activityOpen && (
+                <div className="mt-3 space-y-1.5 mp3-fade-up">
+                  {activityEvents.length === 0 ? (
+                    <p className="text-xs text-white/25">Aucune activite enregistree.</p>
+                  ) : (
+                    activityEvents.slice(0, 15).map((event) => (
+                      <div key={event.id} className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-white/55">{ACTIVITY_LABELS[event.type] ?? event.type}</span>
+                        <span className="text-white/25 shrink-0">
+                          {new Date(event.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </section>
+
             {/* Identité */}
             <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "50ms" }}>
               <div className="flex items-center gap-2 mb-5">
@@ -464,6 +651,20 @@ export default function AccountPage() {
                     maxLength={300} placeholder="Quelques mots sur toi..."
                   />
                   <p className="mt-1 text-xs text-white/25 text-right">{publicBio.trim().length}/300</p>
+                </div>
+                <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/8 bg-white/5 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm text-white/85">Profil privé</p>
+                    <p className="text-xs text-white/35 mt-0.5">Masque ta page profil (bio, liens, sons) aux autres utilisateurs.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsPrivate((v) => !v)}
+                    aria-pressed={isPrivate}
+                    className={["shrink-0 h-7 w-12 rounded-full transition relative", isPrivate ? "bg-white" : "bg-white/15"].join(" ")}
+                  >
+                    <span className={["absolute top-1 h-5 w-5 rounded-full transition-all", isPrivate ? "left-6 bg-black" : "left-1 bg-white"].join(" ")} />
+                  </button>
                 </div>
                 <div className="flex items-center justify-between">
                   <SectionMsg msg={profileMsg} />

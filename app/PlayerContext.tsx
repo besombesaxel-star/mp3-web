@@ -28,6 +28,7 @@ export type Track = {
   accent?: string; // ex: "#8B5CF6"
   ownerDisplayName?: string;
   ownerId?: string;
+  credits?: string;
 };
 
 type RepeatMode = "off" | "all" | "one";
@@ -243,6 +244,7 @@ type ApiTrack = {
   cover: string | null;
   ownerDisplayName?: string | null;
   ownerId?: string | null;
+  credits?: string | null;
 };
 
 type AccountResponse = {
@@ -296,6 +298,7 @@ function tracksToFavoritesMap(value: Array<ApiTrack | Track>) {
         accent: "accent" in item ? item.accent : undefined,
         ownerDisplayName: "ownerDisplayName" in item ? item.ownerDisplayName ?? undefined : undefined,
         ownerId: "ownerId" in item ? item.ownerId ?? undefined : undefined,
+        credits: "credits" in item ? item.credits ?? undefined : undefined,
       } satisfies Track,
     ] as const);
 
@@ -1009,6 +1012,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         cover: item.cover ?? undefined,
         ownerDisplayName: item.ownerDisplayName ?? undefined,
         ownerId: item.ownerId ?? undefined,
+        credits: item.credits ?? undefined,
       }));
 
       const queue = buildSmartQueue(library, statsState, favoritesMap, currentSrc);
@@ -1865,6 +1869,23 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         });
       })
       .catch(() => {});
+  }, [authLoading, isAuthenticated, accessToken]);
+
+  // register this device in the "active sessions" list (immediately, then every 5 min)
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || !accessToken) return;
+
+    function sendHeartbeat() {
+      void fetch("/api/sessions", {
+        method: "POST",
+        headers: createAuthorizedHeaders(accessToken!, { "Content-Type": "application/json" }),
+        body: JSON.stringify({ deviceId: deviceIdRef.current, deviceLabel: deviceLabelRef.current }),
+      }).catch(() => {});
+    }
+
+    sendHeartbeat();
+    const intervalId = setInterval(sendHeartbeat, 5 * 60_000);
+    return () => clearInterval(intervalId);
   }, [authLoading, isAuthenticated, accessToken]);
 
   // push local playback position to the server (debounced on change + periodic while playing)

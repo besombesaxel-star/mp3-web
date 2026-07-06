@@ -1,6 +1,13 @@
 import crypto from "crypto";
 import { getSupabaseAdmin, ensureSupabaseBucketReady, isSupabaseConfigured } from "@/lib/supabaseAdmin";
-import { getCoverExtension, safeBaseName } from "@/lib/libraryFiles";
+import {
+  getAudioContentType,
+  getAudioExtension,
+  getCoverExtension,
+  isAcceptedAudioFileName,
+  safeBaseName,
+  stripAudioExtension,
+} from "@/lib/libraryFiles";
 import type { LibraryMutationResult, LibraryTrack } from "@/lib/libraryTypes";
 
 type SupabaseCatalogTrack = {
@@ -16,6 +23,7 @@ type SupabaseCatalogTrack = {
   fileName?: string;
   audioPath?: string;
   coverPath?: string | null;
+  credits?: string | null;
 };
 
 type SupabaseTrackOwner = {
@@ -59,6 +67,7 @@ function toLibraryTrack(track: SupabaseCatalogTrack): LibraryTrack | null {
     ownerDisplayName: typeof track.ownerDisplayName === "string" ? track.ownerDisplayName : null,
     ownerEmail: typeof track.ownerEmail === "string" ? track.ownerEmail : null,
     ownerId: typeof track.ownerId === "string" ? track.ownerId : null,
+    credits: typeof track.credits === "string" ? track.credits : null,
   };
 }
 
@@ -239,9 +248,9 @@ async function listStorageFallbackTracks() {
   const tracks: SupabaseCatalogTrack[] = [];
   for (const object of audioObjects ?? []) {
     const name = typeof object.name === "string" ? object.name : "";
-    if (!name || !name.toLowerCase().endsWith(".mp3")) continue;
+    if (!name || !isAcceptedAudioFileName(name)) continue;
 
-    const base = name.replace(/\.mp3$/i, "");
+    const base = stripAudioExtension(name);
     const audioPath = `audio/${name}`;
     const publicData = admin.client.storage.from(admin.bucket).getPublicUrl(audioPath).data;
     const createdAtRaw =
@@ -346,12 +355,13 @@ export async function uploadSupabaseTrack(audio: File, cover: File | null, owner
   const finalBase = `${base}-${id}`;
   const createdAt = Date.now();
 
-  const audioFilename = `${finalBase}.mp3`;
+  const extension = getAudioExtension(audio.name || "", audio.type);
+  const audioFilename = `${finalBase}${extension}`;
   const audioPath = `audio/${audioFilename}`;
   const audioBuffer = Buffer.from(await audio.arrayBuffer());
 
   const { error: audioUploadError } = await admin.client.storage.from(admin.bucket).upload(audioPath, audioBuffer, {
-    contentType: audio.type || "audio/mpeg",
+    contentType: audio.type || getAudioContentType(extension),
     cacheControl: "31536000",
     upsert: false,
   });
@@ -422,7 +432,7 @@ export async function createSupabaseUploadTargets(audioName: string, coverName: 
   const base = safeBaseName(audioName || "track.mp3");
   const finalBase = `${base}-${id}`;
 
-  const audioPath = `audio/${finalBase}.mp3`;
+  const audioPath = `audio/${finalBase}${getAudioExtension(audioName || "")}`;
   const { data: audioSigned, error: audioError } = await admin.client.storage
     .from(admin.bucket)
     .createSignedUploadUrl(audioPath);
@@ -473,7 +483,7 @@ export async function finalizeSupabaseTrackUpload(params: {
 
   const createdAt = Date.now();
   const fileName = params.audioPath.split("/").pop() || "track.mp3";
-  const base = fileName.replace(/\.mp3$/i, "").replace(/-\w{8}$/i, "");
+  const base = stripAudioExtension(fileName).replace(/-\w{8}$/i, "");
 
   const catalog = await readSupabaseCatalog();
   const nextTrack: SupabaseCatalogTrack = {
@@ -506,7 +516,8 @@ export async function saveSupabaseTrackMeta(
   src: string,
   title: string,
   artist: string,
-  actorUserId?: string | null
+  actorUserId?: string | null,
+  credits?: string | null
 ): Promise<LibraryMutationResult> {
   if (!isSupabaseConfigured()) return "unsupported";
 
@@ -521,6 +532,7 @@ export async function saveSupabaseTrackMeta(
       ...track,
       title: title.trim(),
       artist: artist.trim() || "Local",
+      credits: typeof credits === "string" ? credits.trim().slice(0, 300) || null : track.credits ?? null,
       updatedAt: Date.now(),
     };
   });

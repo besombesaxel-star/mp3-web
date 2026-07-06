@@ -18,6 +18,7 @@ type ArtistTrack = {
   ownerLabel: string | null;
   src: string;
   title: string;
+  credits?: string | null;
 };
 
 type ArtistOwner = {
@@ -244,6 +245,7 @@ export default function ArtistPage() {
                       cover: track.cover ?? undefined,
                       ownerDisplayName: track.ownerDisplayName ?? undefined,
                       ownerId: track.ownerId ?? undefined,
+                      credits: track.credits ?? undefined,
                     }}
                     hoverEffect="shrink"
                     animationDelay={`${Math.min(index, 9) * 40}ms`}

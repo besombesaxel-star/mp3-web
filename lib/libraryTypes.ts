@@ -13,4 +13,5 @@ export type LibraryTrack = {
   ownerDisplayName?: string | null;
   ownerEmail?: string | null;
   ownerId?: string | null;
+  credits?: string | null;
 };

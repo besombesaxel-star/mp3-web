@@ -1,4 +1,4 @@
-import { isAcceptedCoverUpload, isAcceptedMp3Upload } from "@/lib/libraryFiles";
+import { isAcceptedAudioFileName, isAcceptedAudioUpload, isAcceptedCoverUpload } from "@/lib/libraryFiles";
 import { listLocalTracks, saveLocalTrackMeta, uploadLocalTrack } from "@/lib/localLibrary";
 import { isValidLibraryAudioSrc } from "@/lib/libraryStorage";
 import { isSupabaseConfigured } from "@/lib/supabaseAdmin";
@@ -32,7 +32,11 @@ export function isValidTrackSrc(src: string) {
 }
 
 export function isValidAudioUpload(audio: File) {
-  return isAcceptedMp3Upload(audio);
+  return isAcceptedAudioUpload(audio);
+}
+
+export function isValidAudioFileName(name: string) {
+  return isAcceptedAudioFileName(name);
 }
 
 export function isValidCoverUpload(cover: File) {
@@ -106,19 +110,20 @@ export async function saveTrackMetaForApi(
   src: string,
   title: string,
   artist: string,
-  actorUserId?: string | null
+  actorUserId?: string | null,
+  credits?: string | null
 ): Promise<LibraryMutationResult> {
   if (isSupabaseTrackSrc(src)) {
-    return saveSupabaseTrackMeta(src, title, artist, actorUserId);
+    return saveSupabaseTrackMeta(src, title, artist, actorUserId, credits);
   }
 
   if (isValidLibraryAudioSrc(src)) {
-    await saveLocalTrackMeta(src, title, artist);
+    await saveLocalTrackMeta(src, title, artist, credits);
     return "ok";
   }
 
   if (isSupabaseConfigured()) {
-    return saveSupabaseTrackMeta(src, title, artist, actorUserId);
+    return saveSupabaseTrackMeta(src, title, artist, actorUserId, credits);
   }
 
   return "not_found";

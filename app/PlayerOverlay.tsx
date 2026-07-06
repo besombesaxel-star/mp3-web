@@ -713,6 +713,7 @@ export default function PlayerOverlay() {
                       <span>-</span>
                     )}
                   </div>
+                  {track?.credits ? <p className="mt-1 text-xs text-white/30 truncate">{track.credits}</p> : null}
                 </>
               ) : null}
 
@@ -963,6 +964,9 @@ export default function PlayerOverlay() {
                           <span>-</span>
                         )}
                       </div>
+                      {track?.credits ? (
+                        <p className="mt-1.5 text-sm text-white/30 truncate">{track.credits}</p>
+                      ) : null}
                     </>
                   ) : null}
 

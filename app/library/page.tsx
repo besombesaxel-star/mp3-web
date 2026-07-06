@@ -26,6 +26,7 @@ type ApiTrack = {
   ownerDisplayName?: string | null;
   ownerId?: string | null;
   ownerLabel?: string | null;
+  credits?: string | null;
 };
 
 type MetaSaveResponse = {
@@ -42,6 +43,14 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
+function normalizeTitle(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
 function toTrack(track: ApiTrack): Track & { cover?: string } {
   return {
     title: track.title,
@@ -50,6 +59,7 @@ function toTrack(track: ApiTrack): Track & { cover?: string } {
     cover: track.cover ?? undefined,
     ownerDisplayName: track.ownerDisplayName ?? undefined,
     ownerId: track.ownerId ?? undefined,
+    credits: track.credits ?? undefined,
   };
 }
 
@@ -143,6 +153,7 @@ export default function LibraryPage() {
   const [editing, setEditing] = useState<ApiTrack | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editArtist, setEditArtist] = useState("");
+  const [editCredits, setEditCredits] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -151,6 +162,9 @@ export default function LibraryPage() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedSrcs, setSelectedSrcs] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [duplicatesOpen, setDuplicatesOpen] = useState(false);
+  const [keepChoice, setKeepChoice] = useState<Record<string, string>>({});
+  const [cleaningDuplicates, setCleaningDuplicates] = useState(false);
 
   function toggleSelect(src: string) {
     setSelectedSrcs((prev) => {
@@ -196,6 +210,64 @@ export default function LibraryPage() {
       setError(getErrorMessage(errorValue, "Erreur lors de la suppression"));
     } finally {
       setBulkDeleting(false);
+    }
+  }
+
+  const duplicateGroups = useMemo(() => {
+    const groups = new Map<string, ApiTrack[]>();
+    for (const t of tracks) {
+      if (!t.isOwnedByViewer) continue;
+      const key = normalizeTitle(t.title);
+      if (!key) continue;
+      const list = groups.get(key) ?? [];
+      list.push(t);
+      groups.set(key, list);
+    }
+    return [...groups.entries()].filter(([, list]) => list.length > 1);
+  }, [tracks]);
+
+  function openDuplicates() {
+    const defaults: Record<string, string> = {};
+    for (const [key, list] of duplicateGroups) {
+      defaults[key] = list[0].src;
+    }
+    setKeepChoice(defaults);
+    setDuplicatesOpen(true);
+  }
+
+  async function cleanupDuplicates() {
+    if (!accessToken || cleaningDuplicates) return;
+
+    const toDelete = duplicateGroups.flatMap(([key, list]) => {
+      const keepSrc = keepChoice[key] ?? list[0].src;
+      return list.filter((t) => t.src !== keepSrc);
+    });
+    if (toDelete.length === 0) return;
+
+    const confirmed = window.confirm(
+      `Supprimer ${toDelete.length} doublon${toDelete.length > 1 ? "s" : ""} ? Les morceaux conserves ne seront pas touches.`
+    );
+    if (!confirmed) return;
+
+    setCleaningDuplicates(true);
+    setError("");
+    try {
+      await Promise.all(
+        toDelete.map((t) =>
+          fetch("/api/tracks", {
+            method: "DELETE",
+            headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+            body: JSON.stringify({ src: t.src }),
+          })
+        )
+      );
+      setDuplicatesOpen(false);
+      dispatchTracksUpdated();
+      await loadTracks();
+    } catch (errorValue: unknown) {
+      setError(getErrorMessage(errorValue, "Erreur lors de la suppression"));
+    } finally {
+      setCleaningDuplicates(false);
     }
   }
 
@@ -257,6 +329,7 @@ export default function LibraryPage() {
     setEditing(track);
     setEditTitle(track.title);
     setEditArtist(track.artist);
+    setEditCredits(track.credits ?? "");
   }
 
   function closeEdit(force = false) {
@@ -264,6 +337,7 @@ export default function LibraryPage() {
     setEditing(null);
     setEditTitle("");
     setEditArtist("");
+    setEditCredits("");
   }
 
   async function saveEdit() {
@@ -292,6 +366,7 @@ export default function LibraryPage() {
           src: editing.src,
           title,
           artist,
+          credits: editCredits.trim(),
         }),
       });
 
@@ -378,6 +453,15 @@ export default function LibraryPage() {
               <option value="title">Titre</option>
               <option value="artist">Artiste</option>
             </select>
+          ) : null}
+          {isAuthenticated && duplicateGroups.length > 0 ? (
+            <button
+              type="button"
+              onClick={openDuplicates}
+              className="h-8 px-3 rounded-lg text-xs font-medium bg-amber-300/10 text-amber-100 border border-amber-300/25 hover:bg-amber-300/15 transition"
+            >
+              Doublons ({duplicateGroups.length})
+            </button>
           ) : null}
           {isAuthenticated && tracks.length > 0 ? (
             <button
@@ -556,6 +640,20 @@ export default function LibraryPage() {
                   placeholder="Artiste..."
                 />
               </div>
+
+              <div>
+                <label htmlFor="edit-credits" className="block text-xs text-white/45 mb-2">
+                  Credits (optionnel)
+                </label>
+                <input
+                  id="edit-credits"
+                  value={editCredits}
+                  onChange={(e) => setEditCredits(e.target.value)}
+                  maxLength={300}
+                  className="w-full rounded-2xl bg-[#111118] border border-white/10 px-3 py-2 text-base sm:text-sm text-white/90 outline-none"
+                  placeholder="Compositeur, featuring..."
+                />
+              </div>
             </div>
 
             <div className="mt-6 flex items-center justify-between gap-2">
@@ -586,6 +684,72 @@ export default function LibraryPage() {
                 {saving ? "Sauvegarde..." : "Sauvegarder"}
               </button>
               </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {duplicatesOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 mp3-backdrop-in">
+          <div className="w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-3xl border border-white/10 bg-[#111118] p-5 mp3-scale-in">
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-lg font-semibold text-white/90">Nettoyer les doublons</h2>
+              <button
+                type="button"
+                onClick={() => setDuplicatesOpen(false)}
+                className="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10 text-white/80"
+                aria-label="Fermer"
+              >
+                X
+              </button>
+            </div>
+            <p className="text-xs text-white/40 mb-4">
+              Choisis quel exemplaire garder pour chaque titre en double. Les autres seront supprimes.
+            </p>
+
+            <div className="space-y-5">
+              {duplicateGroups.map(([key, list]) => (
+                <div key={key} className="rounded-2xl border border-white/8 bg-white/[0.03] p-3">
+                  <p className="text-sm text-white/85 mb-2 truncate">{list[0].title}</p>
+                  <div className="space-y-1.5">
+                    {list.map((t) => (
+                      <label
+                        key={t.src}
+                        className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 hover:bg-white/5 cursor-pointer"
+                      >
+                        <input
+                          type="radio"
+                          name={`keep-${key}`}
+                          checked={(keepChoice[key] ?? list[0].src) === t.src}
+                          onChange={() => setKeepChoice((prev) => ({ ...prev, [key]: t.src }))}
+                          className="accent-white"
+                        />
+                        <span className="text-xs text-white/60 truncate flex-1">{t.artist || "-"}</span>
+                        <span className="text-[10px] text-white/25 shrink-0">{t.src.split("/").pop()}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDuplicatesOpen(false)}
+                className="h-10 px-4 rounded-2xl bg-white/10 text-white/85 hover:bg-white/15 transition"
+                disabled={cleaningDuplicates}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => void cleanupDuplicates()}
+                className="h-10 px-4 rounded-2xl bg-white text-black font-semibold hover:opacity-90 transition disabled:opacity-60"
+                disabled={cleaningDuplicates}
+              >
+                {cleaningDuplicates ? "Suppression..." : "Supprimer les doublons"}
+              </button>
             </div>
           </div>
         </div>

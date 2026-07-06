@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import path from "path";
 import { promises as fs } from "fs";
-import { getCoverExtension, safeBaseName } from "@/lib/libraryFiles";
+import { getAudioExtension, getCoverExtension, safeBaseName, stripAudioExtension } from "@/lib/libraryFiles";
 import type { LibraryTrack } from "@/lib/libraryTypes";
 import {
   ensureLibraryDirs,
@@ -16,6 +16,7 @@ import {
 type MetaEntry = {
   title?: string;
   artist?: string;
+  credits?: string;
 };
 
 type MetaFile = Record<string, MetaEntry>;
@@ -64,7 +65,7 @@ export async function listLocalTracks(): Promise<LibraryTrack[]> {
   const tracks: LibraryTrack[] = [];
 
   for (const { file, src, addedAt } of audioFiles) {
-    const base = file.replace(/\.mp3$/i, "");
+    const base = stripAudioExtension(file);
     const defaultTitle = base.replace(/-\w{8}$/i, "").replace(/-/g, " ");
     const defaultArtist = "Local library";
     const coverUrl = await findCoverUrl(base);
@@ -78,6 +79,7 @@ export async function listLocalTracks(): Promise<LibraryTrack[]> {
       createdAt: addedAt,
       backend: "local",
       fileName: file,
+      credits: metaEntry?.credits?.trim() || null,
     });
   }
 
@@ -91,7 +93,7 @@ export async function uploadLocalTrack(audio: File, cover: File | null) {
 
   await ensureLibraryDirs();
 
-  const audioFilename = `${finalBase}.mp3`;
+  const audioFilename = `${finalBase}${getAudioExtension(audio.name || "", audio.type)}`;
   const audioDir = getCanonicalAudioDir();
   const audioBuf = Buffer.from(await audio.arrayBuffer());
   await fs.writeFile(path.join(audioDir, audioFilename), audioBuf);
@@ -116,9 +118,14 @@ export async function uploadLocalTrack(audio: File, cover: File | null) {
   };
 }
 
-export async function saveLocalTrackMeta(src: string, title: string, artist: string) {
+export async function saveLocalTrackMeta(src: string, title: string, artist: string, credits?: string | null) {
   const key = normalizeAudioSrc(src);
   const meta = await readLocalMeta();
-  meta[key] = { title: title.trim(), artist: artist.trim() || "Local" };
+  const existing = meta[key];
+  meta[key] = {
+    title: title.trim(),
+    artist: artist.trim() || "Local",
+    credits: typeof credits === "string" ? credits.trim().slice(0, 300) || undefined : existing?.credits,
+  };
   await writeLocalMeta(meta);
 }

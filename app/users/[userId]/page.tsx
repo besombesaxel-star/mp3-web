@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Check, Copy, ExternalLink, Crown, ListMusic, MessageCircle, Music, Play, Shield, Shuffle, Sparkles, UserCheck, UserPlus } from "lucide-react";
+import { Check, Copy, ExternalLink, Crown, ListMusic, Lock, MessageCircle, Music, Play, Shield, Shuffle, Sparkles, UserCheck, UserPlus } from "lucide-react";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
 import { BADGE_LABELS, type BadgeKey } from "@/lib/badges";
@@ -54,6 +54,7 @@ type PublicProfile = {
   userId: string;
   uniqueArtistsCount: number;
   unlockedAchievements: AchievementId[];
+  isPrivate: boolean;
 };
 
 type PublicProfileResponse = {
@@ -178,7 +179,10 @@ export default function PublicUserProfilePage() {
       if (!userId) { setError("Profil introuvable."); setLoading(false); return; }
       try {
         setLoading(true); setError("");
-        const res = await fetch(`/api/public/users/${encodeURIComponent(userId)}`, { cache: "no-store" });
+        const res = await fetch(`/api/public/users/${encodeURIComponent(userId)}`, {
+          cache: "no-store",
+          headers: createAuthorizedHeaders(accessToken),
+        });
         const json = (await res.json().catch(() => ({}))) as PublicProfileResponse;
         if (!res.ok || !json.ok || !json.profile) throw new Error(json.error ?? `Profil introuvable (${res.status})`);
         if (!cancelled) {
@@ -193,7 +197,7 @@ export default function PublicUserProfilePage() {
     }
     void load();
     return () => { cancelled = true; };
-  }, [userId]);
+  }, [userId, accessToken]);
 
   // Load now-playing
   useEffect(() => {
@@ -590,7 +594,12 @@ export default function PublicUserProfilePage() {
               </span>
             </div>
 
-            {profile.uploads.length === 0 ? (
+            {profile.isPrivate ? (
+              <div className="rounded-2xl border border-white/8 bg-white/3 px-4 py-8 text-center">
+                <Lock size={22} className="mx-auto mb-2 text-white/15" />
+                <p className="text-sm text-white/35">Ce profil est privé.</p>
+              </div>
+            ) : profile.uploads.length === 0 ? (
               <div className="rounded-2xl border border-white/8 bg-white/3 px-4 py-8 text-center">
                 <Music size={22} className="mx-auto mb-2 text-white/15" />
                 <p className="text-sm text-white/35">Aucun son partagé pour le moment.</p>

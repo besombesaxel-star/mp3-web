@@ -34,11 +34,11 @@ export async function POST(req: Request) {
     const cover = form.get("cover");
 
     if (!(audio instanceof File)) {
-      return NextResponse.json({ ok: false, error: "Tu dois envoyer un fichier MP3 (audio)." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "Tu dois envoyer un fichier audio." }, { status: 400 });
     }
 
     if (!isValidAudioUpload(audio)) {
-      return NextResponse.json({ ok: false, error: "Seuls les fichiers .mp3 sont acceptes." }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "Formats acceptes: MP3, FLAC, WAV." }, { status: 400 });
     }
 
     const maxBytes = 80 * 1024 * 1024;

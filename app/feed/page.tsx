@@ -20,6 +20,7 @@ type FeedTrack = {
   ownerId?: string | null;
   src: string;
   title: string;
+  credits?: string | null;
 };
 
 type PlayerTrack = { artist: string; cover?: string; src: string; title: string };
@@ -234,6 +235,7 @@ export default function FeedPage() {
                 cover: track.cover ?? undefined,
                 ownerDisplayName: track.ownerDisplayName ?? undefined,
                 ownerId: track.ownerId ?? undefined,
+                credits: track.credits ?? undefined,
               }}
               hoverEffect="shrink"
               animationDelay={`${Math.min(idx, 9) * 40}ms`}

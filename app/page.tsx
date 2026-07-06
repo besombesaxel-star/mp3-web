@@ -17,6 +17,7 @@ type ApiTrack = {
   cover: string | null;
   ownerDisplayName?: string | null;
   ownerId?: string | null;
+  credits?: string | null;
 };
 
 type RecentCard = {
@@ -130,6 +131,7 @@ export default function Home() {
         cover: track.cover ?? undefined,
         ownerDisplayName: track.ownerDisplayName ?? undefined,
         ownerId: track.ownerId ?? undefined,
+        credits: track.credits ?? undefined,
       },
     }));
   }, [tracks]);
@@ -143,6 +145,7 @@ export default function Home() {
         cover: track.cover ?? undefined,
         ownerDisplayName: track.ownerDisplayName ?? undefined,
         ownerId: track.ownerId ?? undefined,
+        credits: track.credits ?? undefined,
       })),
     [tracks]
   );

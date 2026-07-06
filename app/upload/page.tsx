@@ -11,6 +11,8 @@ import { toast } from "../Toast";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import { pictureToFile, readId3Tags } from "@/lib/id3";
 import { compressAudioFile, shouldSuggestCompression } from "@/lib/audioCompress";
+import { trimAudioSilence } from "@/lib/audioTrim";
+import { isAcceptedAudioFileName } from "@/lib/libraryFiles";
 
 type SignUploadResponse = {
   ok?: boolean;
@@ -95,7 +97,7 @@ function uploadWithProgress(formData: FormData, onProgress: (ratio: number) => v
   });
 }
 
-type BatchStatus = "pending" | "compressing" | "uploading" | "done" | "error";
+type BatchStatus = "pending" | "trimming" | "compressing" | "uploading" | "done" | "error";
 
 type BatchFile = {
   id: string;
@@ -215,18 +217,19 @@ export default function UploadPage() {
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchReadingTags, setBatchReadingTags] = useState(false);
   const [compressLarge, setCompressLarge] = useState(true);
+  const [trimSilence, setTrimSilence] = useState(false);
 
   async function handleAudioFiles(files: File[]) {
-    const mp3Files = files.filter((f) => f.name.toLowerCase().endsWith(".mp3"));
-    if (mp3Files.length === 0) return;
+    const audioFiles = files.filter((f) => isAcceptedAudioFileName(f.name));
+    if (audioFiles.length === 0) return;
 
-    if (mp3Files.length === 1) {
-      setAudio(mp3Files[0]);
+    if (audioFiles.length === 1) {
+      setAudio(audioFiles[0]);
       return;
     }
 
     setBatchReadingTags(true);
-    const limited = mp3Files.slice(0, MAX_BATCH_FILES);
+    const limited = audioFiles.slice(0, MAX_BATCH_FILES);
     const items = await Promise.all(
       limited.map(async (file): Promise<BatchFile> => {
         if (file.size > MAX_UPLOAD_BYTES) {
@@ -243,7 +246,7 @@ export default function UploadPage() {
           };
         }
 
-        const tags = await readId3Tags(file);
+        const tags = file.name.toLowerCase().endsWith(".mp3") ? await readId3Tags(file) : {};
         const resolvedTitle = tags.title || guessTitleFromFile(file.name);
         const cover = tags.picture ? pictureToFile(tags.picture, guessTitleFromFile(file.name)) : null;
 
@@ -301,9 +304,13 @@ export default function UploadPage() {
       if (item.status === "done" || item.status === "error") continue;
 
       let fileToUpload = item.file;
-      if (compressLarge && shouldSuggestCompression(item.file)) {
+      if (trimSilence) {
+        setBatchFiles((prev) => prev.map((f) => (f.id === item.id ? { ...f, status: "trimming" } : f)));
+        fileToUpload = await trimAudioSilence(fileToUpload);
+      }
+      if (compressLarge && shouldSuggestCompression(fileToUpload)) {
         setBatchFiles((prev) => prev.map((f) => (f.id === item.id ? { ...f, status: "compressing" } : f)));
-        fileToUpload = await compressAudioFile(item.file);
+        fileToUpload = await compressAudioFile(fileToUpload);
       }
 
       setBatchFiles((prev) => prev.map((f) => (f.id === item.id ? { ...f, status: "uploading" } : f)));
@@ -519,9 +526,14 @@ export default function UploadPage() {
 
     try {
       let fileToUpload = audio;
-      if (compressLarge && shouldSuggestCompression(audio)) {
+      if (trimSilence) {
+        setMessage("Suppression des silences...");
+        fileToUpload = await trimAudioSilence(fileToUpload);
+        setMessage("");
+      }
+      if (compressLarge && shouldSuggestCompression(fileToUpload)) {
         setMessage("Compression en cours...");
-        fileToUpload = await compressAudioFile(audio);
+        fileToUpload = await compressAudioFile(fileToUpload);
         setMessage("");
       }
 
@@ -603,6 +615,17 @@ export default function UploadPage() {
               </div>
             ) : null}
 
+            <label className="flex items-center gap-2 text-xs text-white/50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={trimSilence}
+                onChange={(e) => setTrimSilence(e.target.checked)}
+                disabled={batchBusy}
+                className="h-3.5 w-3.5 rounded accent-white"
+              />
+              Couper les silences en debut/fin de chaque morceau
+            </label>
+
             {batchFiles.some((f) => shouldSuggestCompression(f.file)) ? (
               <label className="flex items-center gap-2 text-xs text-white/50 cursor-pointer">
                 <input
@@ -635,7 +658,7 @@ export default function UploadPage() {
                           item.coverPreview ? "bg-black/50" : "",
                         ].join(" ")}
                       >
-                        {item.status === "uploading" || item.status === "compressing" ? (
+                        {item.status === "uploading" || item.status === "compressing" || item.status === "trimming" ? (
                           <Loader2 size={14} className="animate-spin text-white/70" />
                         ) : item.status === "done" ? (
                           <Check size={14} className="text-emerald-400" />
@@ -747,11 +770,11 @@ export default function UploadPage() {
                 <p className="text-sm text-white/70">
                   <span className="font-medium text-white/90">Clique pour choisir</span> ou glisse-depose ton MP3 ici
                 </p>
-                <p className="text-xs text-white/30">Fichier .mp3 uniquement - selection multiple possible</p>
+                <p className="text-xs text-white/30">MP3, FLAC ou WAV - selection multiple possible</p>
                 <input
                   id="audio-input"
                   type="file"
-                  accept=".mp3,audio/mpeg"
+                  accept=".mp3,.flac,.wav,audio/mpeg,audio/flac,audio/wav,audio/x-wav"
                   multiple
                   onChange={(e) => void handleAudioFiles(Array.from(e.target.files ?? []))}
                   className="sr-only"
@@ -767,8 +790,20 @@ export default function UploadPage() {
                 <div className="mt-2 text-xs text-white/40">Aucun fichier selectionne.</div>
               )}
 
-              {audio && shouldSuggestCompression(audio) ? (
+              {audio ? (
                 <label className="mt-3 flex items-center gap-2 text-xs text-white/50 cursor-pointer mp3-fade-up">
+                  <input
+                    type="checkbox"
+                    checked={trimSilence}
+                    onChange={(e) => setTrimSilence(e.target.checked)}
+                    className="h-3.5 w-3.5 rounded accent-white"
+                  />
+                  Couper les silences en debut/fin
+                </label>
+              ) : null}
+
+              {audio && shouldSuggestCompression(audio) ? (
+                <label className="mt-2 flex items-center gap-2 text-xs text-white/50 cursor-pointer mp3-fade-up">
                   <input
                     type="checkbox"
                     checked={compressLarge}

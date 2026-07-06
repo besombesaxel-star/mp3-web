@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { History, Radio } from "lucide-react";
+import { History, PartyPopper, Radio } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AlbumCard from "./AlbumCard";
 import { useAuth } from "./AuthProvider";
@@ -66,7 +66,7 @@ function todayMomentLabel(moment: TodayMoment | null) {
 
 export default function Home() {
   const { favorites, setQueueAndPlay, stats, startRadio } = usePlayer();
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const [tracks, setTracks] = useState<ApiTrack[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -190,6 +190,22 @@ export default function Home() {
 
     return null;
   }, [now, recentPlayEvents, stats.firstPlayedAtByTrack, trackBySrc]);
+
+  const anniversary = useMemo(() => {
+    if (!user?.created_at) return null;
+    const createdAt = new Date(user.created_at);
+    if (Number.isNaN(createdAt.getTime())) return null;
+
+    const today = new Date(now);
+    const years = today.getFullYear() - createdAt.getFullYear();
+    if (years < 1) return null;
+
+    const isAnniversaryDay =
+      today.getMonth() === createdAt.getMonth() && today.getDate() === createdAt.getDate();
+    if (!isAnniversaryDay) return null;
+
+    return { years };
+  }, [now, user?.created_at]);
 
   const morningTracks = useMemo<Track[]>(() => {
     const score = new Map<string, number>();
@@ -318,7 +334,20 @@ export default function Home() {
         </p>
       ) : null}
 
-      {onThisDayMemory ? (
+      {anniversary ? (
+        <div className="w-full mb-10 flex items-center gap-4 rounded-3xl border border-amber-300/20 bg-gradient-to-r from-amber-300/10 to-transparent p-4 mp3-fade-up">
+          <div className="h-16 w-16 shrink-0 rounded-2xl bg-amber-300/10 flex items-center justify-center">
+            <PartyPopper size={24} className="text-amber-200" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs uppercase tracking-[0.18em] text-amber-200/70">Anniversaire</p>
+            <p className="text-base text-white/90 mt-1">
+              Ça fait {anniversary.years} an{anniversary.years > 1 ? "s" : ""} que tu es sur .mp3 🎉
+            </p>
+            <p className="text-sm text-white/45">Merci de faire partie de l&apos;aventure.</p>
+          </div>
+        </div>
+      ) : onThisDayMemory ? (
         <button
           type="button"
           onClick={() => setQueueAndPlay([onThisDayMemory.track], 0)}

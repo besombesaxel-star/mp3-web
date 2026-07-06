@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { usePlayer } from "@/app/PlayerContext";
+import ActivityHeatmap from "@/app/ActivityHeatmap";
+import { getCurrentWeeklyChallenge } from "@/lib/weeklyChallenges";
 
 function formatSeconds(s: number) {
   if (s < 60) return `${Math.round(s)}s`;
@@ -153,6 +155,8 @@ export default function StatsPage() {
 
   const [now] = useState(() => Date.now());
 
+  const weeklyChallenge = useMemo(() => getCurrentWeeklyChallenge(stats, now), [stats, now]);
+
   const topTracksMonth = useMemo(() => {
     const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
     const playsBySrc = new Map<string, number>();
@@ -229,6 +233,38 @@ export default function StatsPage() {
                 <p className="text-xs text-white/35 mt-1">{label}</p>
               </div>
             ))}
+          </div>
+
+          {/* Weekly challenge */}
+          <div className="rounded-2xl border border-white/10 bg-white/4 p-5 mp3-fade-up">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs uppercase tracking-[0.22em] text-white/25">Defi de la semaine</p>
+              {weeklyChallenge.completed && (
+                <span className="text-xs text-emerald-300/90 mp3-pop">Termine !</span>
+              )}
+            </div>
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-2xl shrink-0">{weeklyChallenge.icon}</span>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white/90">{weeklyChallenge.title}</p>
+                <p className="text-xs text-white/40 mt-0.5">{weeklyChallenge.description}</p>
+              </div>
+            </div>
+            <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-emerald-400/80 transition-[width] duration-500"
+                style={{ width: `${(weeklyChallenge.progress / weeklyChallenge.target) * 100}%` }}
+              />
+            </div>
+            <p className="text-xs text-white/30 mt-1.5 text-right tabular-nums">
+              {weeklyChallenge.progress}/{weeklyChallenge.target}
+            </p>
+          </div>
+
+          {/* Activity heatmap */}
+          <div className="rounded-2xl border border-white/10 bg-white/4 p-5 mp3-fade-up">
+            <p className="text-xs uppercase tracking-[0.22em] text-white/25 mb-4">Activite sur l&apos;annee</p>
+            <ActivityHeatmap playsByDay={stats.playsByDay} />
           </div>
 
           {/* Plays per day */}

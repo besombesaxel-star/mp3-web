@@ -52,6 +52,8 @@ export type PlayerStats = {
   byArtist: Record<string, { seconds: number; plays: number }>;
   recentPlays: Array<{ src: string; playedAt: number; hour: number }>;
   firstPlayedAtByTrack: Record<string, number>;
+  /** play counts keyed by local calendar day ("YYYY-MM-DD"), never pruned - powers the activity heatmap */
+  playsByDay: Record<string, number>;
 
   /** âœ… achievements map: unlockedAt timestamp (ms) */
   achievements: Partial<Record<AchievementId, { unlockedAt: number }>>;
@@ -450,8 +452,17 @@ function emptyStats(): PlayerStats {
     byArtist: {},
     recentPlays: [],
     firstPlayedAtByTrack: {},
+    playsByDay: {},
     achievements: {},
   };
+}
+
+function getDayKey(timestamp: number): string {
+  const d = new Date(timestamp);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 function safeStats(parsed: unknown): PlayerStats {
@@ -472,6 +483,7 @@ function safeStats(parsed: unknown): PlayerStats {
   const byArtist = isRecord(parsed.byArtist) ? parsed.byArtist : {};
   const recentPlays = Array.isArray(parsed.recentPlays) ? parsed.recentPlays : [];
   const firstPlayedAtByTrack = isRecord(parsed.firstPlayedAtByTrack) ? parsed.firstPlayedAtByTrack : {};
+  const playsByDay = isRecord(parsed.playsByDay) ? parsed.playsByDay : {};
   const achievements = isRecord(parsed.achievements) ? parsed.achievements : {};
 
   const cleanByTrack: PlayerStats["byTrack"] = {};
@@ -534,6 +546,13 @@ function safeStats(parsed: unknown): PlayerStats {
     cleanFirstPlayedAtByTrack[src] = Math.max(0, value);
   }
 
+  const cleanPlaysByDay: PlayerStats["playsByDay"] = {};
+  for (const [day, value] of Object.entries(playsByDay)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) continue;
+    if (typeof value !== "number" || !Number.isFinite(value)) continue;
+    cleanPlaysByDay[day] = Math.max(0, Math.round(value));
+  }
+
   const cleanAchievements: PlayerStats["achievements"] = {};
   for (const [id, value] of Object.entries(achievements)) {
     if (!id) continue;
@@ -558,6 +577,7 @@ function safeStats(parsed: unknown): PlayerStats {
     byArtist: cleanByArtist,
     recentPlays: cleanRecentPlays,
     firstPlayedAtByTrack: cleanFirstPlayedAtByTrack,
+    playsByDay: cleanPlaysByDay,
     achievements: cleanAchievements,
   });
 }
@@ -1121,6 +1141,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           byArtist: { ...prev.byArtist },
           recentPlays: prev.recentPlays,
           firstPlayedAtByTrack: prev.firstPlayedAtByTrack,
+          playsByDay: prev.playsByDay,
           achievements: { ...(prev.achievements ?? {}) },
           uniqueTracksPlayed: prev.uniqueTracksPlayed,
           totalPlays: prev.totalPlays,
@@ -1245,6 +1266,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           byArtist: { ...prev.byArtist },
           recentPlays: [...prev.recentPlays],
           firstPlayedAtByTrack: { ...prev.firstPlayedAtByTrack },
+          playsByDay: { ...prev.playsByDay },
           achievements: { ...(prev.achievements ?? {}) },
           uniqueTracksPlayed: prev.uniqueTracksPlayed,
           totalListenSeconds: prev.totalListenSeconds,
@@ -1264,6 +1286,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           artist: track?.artist ?? existingT.artist,
           plays: (existingT.plays ?? 0) + 1,
         };
+
+        const dayKey = getDayKey(playedAt);
+        next.playsByDay[dayKey] = (next.playsByDay[dayKey] ?? 0) + 1;
 
         const artistName = normalizeArtist(track?.artist);
         const existingA = next.byArtist[artistName] ?? { seconds: 0, plays: 0 };

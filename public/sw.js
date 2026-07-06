@@ -1,5 +1,7 @@
 const STATIC_CACHE = "mp3-static-v2";
 const RUNTIME_CACHE = "mp3-runtime-v2";
+const SHARE_CACHE = "mp3-share-target-v1";
+const SHARE_KEY = "/__share-target-stash__";
 const PRECACHE_URLS = ["/", "/manifest.webmanifest", "/favicon.ico"];
 
 self.addEventListener("install", (event) => {
@@ -48,8 +50,35 @@ async function staleWhileRevalidate(request) {
   return cached || (await networkPromise) || Response.error();
 }
 
+async function handleShareTarget(request) {
+  try {
+    const formData = await request.formData();
+    const file = formData.get("audio");
+    if (file && typeof file.arrayBuffer === "function") {
+      const cache = await caches.open(SHARE_CACHE);
+      const headers = new Headers({
+        "Content-Type": file.type || "application/octet-stream",
+        "X-Shared-File-Name": encodeURIComponent(file.name || "partage.mp3"),
+      });
+      await cache.put(SHARE_KEY, new Response(file, { headers }));
+    }
+  } catch {
+    // ignore malformed share payloads
+  }
+  return Response.redirect("/share-target?shared=1", 303);
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
+
+  if (request.method === "POST") {
+    const postUrl = new URL(request.url);
+    if (postUrl.origin === self.location.origin && postUrl.pathname === "/share-target") {
+      event.respondWith(handleShareTarget(request));
+    }
+    return;
+  }
+
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);

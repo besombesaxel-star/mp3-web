@@ -74,8 +74,10 @@ function seededShuffle<T>(items: T[], seed: number): T[] {
   return arr;
 }
 
+const SCHEDULE_SCHEMA_VERSION = 2;
+
 function getPath(dayKey: string) {
-  return `radio/schedule-${dayKey}.json`;
+  return `radio/schedule-v${SCHEDULE_SCHEMA_VERSION}-${dayKey}.json`;
 }
 
 async function readTrackBytes(src: string): Promise<Uint8Array | null> {

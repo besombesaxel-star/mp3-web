@@ -154,7 +154,6 @@ type PlayerCtx = {
   toggleUiSounds: () => void;
   toggleHaptics: () => void;
   toggleLoudnessNorm: () => void;
-  startRadio: () => Promise<boolean>;
   preloadedTrack: Track | null;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
@@ -1060,12 +1059,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   async function startSmartAutoplay(currentSrc: string) {
     if (!smartAutoplay) return false;
     return buildAndStartSmartQueue(currentSrc);
-  }
-
-  // Manual "radio" entry point: builds a personalized queue on demand,
-  // independent of the smartAutoplay auto-continuation preference.
-  async function startRadio() {
-    return buildAndStartSmartQueue(track?.src ?? "");
   }
 
   type RadioLiveTrackInfo = {
@@ -2873,7 +2866,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     toggleUiSounds,
     toggleHaptics,
     toggleLoudnessNorm,
-    startRadio,
     preloadedTrack,
     toggleShuffle,
     cycleRepeat,

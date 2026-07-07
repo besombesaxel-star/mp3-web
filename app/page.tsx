@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { History, PartyPopper, Radio } from "lucide-react";
+import { History, PartyPopper } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AlbumCard from "./AlbumCard";
 import { useAuth } from "./AuthProvider";
@@ -65,24 +65,14 @@ function todayMomentLabel(moment: TodayMoment | null) {
 }
 
 export default function Home() {
-  const { favorites, setQueueAndPlay, stats, startRadio } = usePlayer();
+  const { favorites, setQueueAndPlay, stats } = usePlayer();
   const { accessToken, user } = useAuth();
   const [tracks, setTracks] = useState<ApiTrack[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [todayHour, setTodayHour] = useState<number | null>(null);
-  const [radioLoading, setRadioLoading] = useState(false);
   const [now] = useState(() => Date.now());
 
-  async function onStartRadio() {
-    if (radioLoading) return;
-    setRadioLoading(true);
-    try {
-      await startRadio();
-    } finally {
-      setRadioLoading(false);
-    }
-  }
   const homeRef = useRef<HTMLDivElement | null>(null);
   useCoverScrollEffect(homeRef);
 
@@ -313,19 +303,6 @@ export default function Home() {
     <div ref={homeRef} className="pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
       <div className="flex items-end justify-between mb-8 mp3-fade-up">
         <h2 className="text-3xl font-light">Accueil</h2>
-
-        {!loading && tracks.length > 0 && (
-          <button
-            type="button"
-            onClick={() => void onStartRadio()}
-            disabled={radioLoading}
-            className="flex items-center gap-2 h-9 px-4 rounded-full bg-white/8 border border-white/10 text-xs text-white/60 hover:bg-white/12 transition shrink-0 disabled:opacity-50"
-            title="Lance une file continue basee sur tes gouts"
-          >
-            <Radio size={13} className={radioLoading ? "animate-pulse" : undefined} />
-            {radioLoading ? "Demarrage..." : "Radio"}
-          </button>
-        )}
       </div>
 
       {error ? (

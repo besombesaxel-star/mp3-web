@@ -1146,7 +1146,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (!radioMode) return;
     const id = setInterval(() => {
       void applyRadioSync();
-    }, 15000);
+    }, 10000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [radioMode]);

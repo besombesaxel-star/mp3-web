@@ -11,6 +11,7 @@ type RadioTrackData = {
   artist: string;
   cover: string | null;
   ownerDisplayName: string | null;
+  durationSeconds: number;
 };
 
 type RadioLiveResponse = {
@@ -20,13 +21,12 @@ type RadioLiveResponse = {
   trackIndex: number;
   totalTracks: number;
   offsetSeconds: number;
-  slotSeconds: number;
   serverNow: number;
-  slotEndsAt: number;
+  trackEndsAt: number;
   upNext: RadioTrackData[];
 };
 
-const POLL_MS = 15000;
+const POLL_MS = 10000;
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
@@ -70,7 +70,7 @@ export default function RadioLivePage() {
     if (!live) return;
     const update = () => {
       const elapsedSincePoll = (Date.now() - fetchedAtClient) / 1000;
-      setDisplayOffset(Math.min(live.slotSeconds, live.offsetSeconds + elapsedSincePoll));
+      setDisplayOffset(Math.min(live.track.durationSeconds, live.offsetSeconds + elapsedSincePoll));
     };
     update();
     const id = setInterval(update, 1000);
@@ -89,7 +89,8 @@ export default function RadioLivePage() {
   }
 
   const isTunedIn = radioMode && Boolean(live) && track?.src === live?.track.src;
-  const progressRatio = live && live.slotSeconds > 0 ? Math.min(1, displayOffset / live.slotSeconds) : 0;
+  const progressRatio =
+    live && live.track.durationSeconds > 0 ? Math.min(1, displayOffset / live.track.durationSeconds) : 0;
 
   return (
     <div className="max-w-2xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
@@ -150,7 +151,7 @@ export default function RadioLivePage() {
               </div>
               <div className="mt-2 flex items-center justify-between text-xs text-white/30 tabular-nums">
                 <span>{formatTime(displayOffset)}</span>
-                <span>{formatTime(live.slotSeconds)}</span>
+                <span>{formatTime(live.track.durationSeconds)}</span>
               </div>
             </div>
 

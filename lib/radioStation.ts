@@ -1,9 +1,12 @@
+import { parseBuffer } from "music-metadata";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { listTracksForApi } from "@/lib/libraryRepository";
 
 const BUCKET = "account-data";
-const SLOT_SECONDS = 210;
 const UP_NEXT_COUNT = 5;
+const FALLBACK_DURATION_SECONDS = 210;
+const MAX_SCHEDULE_TRACKS = 150;
+const DURATION_PROBE_CONCURRENCY = 8;
 
 export type RadioTrack = {
   src: string;
@@ -11,13 +14,14 @@ export type RadioTrack = {
   artist: string;
   cover: string | null;
   ownerDisplayName: string | null;
+  durationSeconds: number;
 };
 
 export type RadioSchedule = {
   dayKey: string;
   epoch: number;
-  slotSeconds: number;
   tracks: RadioTrack[];
+  totalDurationSeconds: number;
 };
 
 export type RadioNowPlaying = {
@@ -26,9 +30,8 @@ export type RadioNowPlaying = {
   trackIndex: number;
   totalTracks: number;
   offsetSeconds: number;
-  slotSeconds: number;
   serverNow: number;
-  slotEndsAt: number;
+  trackEndsAt: number;
   upNext: RadioTrack[];
 };
 
@@ -75,28 +78,90 @@ function getPath(dayKey: string) {
   return `radio/schedule-${dayKey}.json`;
 }
 
+async function readTrackBytes(src: string): Promise<Uint8Array | null> {
+  if (/^https?:\/\//i.test(src)) {
+    try {
+      const res = await fetch(src);
+      if (!res.ok) return null;
+      return new Uint8Array(await res.arrayBuffer());
+    } catch {
+      return null;
+    }
+  }
+
+  const relative = src.startsWith("/audio/") ? src.slice("/audio/".length) : null;
+  if (!relative) return null;
+
+  try {
+    const [{ promises: fs }, path] = await Promise.all([import("fs"), import("path")]);
+    const filePath = path.join(process.cwd(), "public", "audio", relative);
+    return new Uint8Array(await fs.readFile(filePath));
+  } catch {
+    return null;
+  }
+}
+
+async function probeDurationSeconds(src: string): Promise<number> {
+  try {
+    const bytes = await readTrackBytes(src);
+    if (!bytes || bytes.length === 0) return FALLBACK_DURATION_SECONDS;
+
+    const metadata = await parseBuffer(bytes, { mimeType: "audio/mpeg" }, { duration: true, skipCovers: true });
+    const duration = metadata.format.duration;
+    return typeof duration === "number" && Number.isFinite(duration) && duration > 1
+      ? duration
+      : FALLBACK_DURATION_SECONDS;
+  } catch {
+    return FALLBACK_DURATION_SECONDS;
+  }
+}
+
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    for (;;) {
+      const current = nextIndex++;
+      if (current >= items.length) return;
+      results[current] = await fn(items[current]);
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
 async function buildSchedule(dayKey: string, epoch: number): Promise<RadioSchedule> {
   const tracks = await listTracksForApi();
-  const pool: RadioTrack[] = tracks.map((t) => ({
+  const pool = seededShuffle(tracks, seedFromString(dayKey)).slice(0, MAX_SCHEDULE_TRACKS);
+
+  const durations = await mapWithConcurrency(pool, DURATION_PROBE_CONCURRENCY, (t) => probeDurationSeconds(t.src));
+
+  const radioTracks: RadioTrack[] = pool.map((t, i) => ({
     src: t.src,
     title: t.title,
     artist: t.artist,
     cover: t.cover,
     ownerDisplayName: t.ownerDisplayName ?? null,
+    durationSeconds: durations[i],
   }));
 
-  return {
-    dayKey,
-    epoch,
-    slotSeconds: SLOT_SECONDS,
-    tracks: seededShuffle(pool, seedFromString(dayKey)),
-  };
+  const totalDurationSeconds = radioTracks.reduce((sum, t) => sum + t.durationSeconds, 0);
+
+  return { dayKey, epoch, tracks: radioTracks, totalDurationSeconds };
 }
 
 function parseSchedule(raw: string): RadioSchedule | null {
   try {
     const parsed = JSON.parse(raw) as RadioSchedule;
-    if (parsed && Array.isArray(parsed.tracks) && typeof parsed.epoch === "number") {
+    if (
+      parsed &&
+      Array.isArray(parsed.tracks) &&
+      typeof parsed.epoch === "number" &&
+      typeof parsed.totalDurationSeconds === "number" &&
+      parsed.tracks.every((t) => typeof t.durationSeconds === "number")
+    ) {
       return parsed;
     }
     return null;
@@ -135,22 +200,33 @@ export async function getRadioSchedule(now: number = Date.now()): Promise<RadioS
   if (existing) return existing;
 
   const schedule = await buildSchedule(dayKey, getDayEpoch(now));
-  if (schedule.tracks.length === 0) return null;
+  if (schedule.tracks.length === 0 || schedule.totalDurationSeconds <= 0) return null;
 
   return (await persistSchedule(schedule)) ?? schedule;
 }
 
 export async function getRadioNowPlaying(now: number = Date.now()): Promise<RadioNowPlaying | null> {
   const schedule = await getRadioSchedule(now);
-  if (!schedule || schedule.tracks.length === 0) return null;
+  if (!schedule || schedule.tracks.length === 0 || schedule.totalDurationSeconds <= 0) return null;
 
   const totalTracks = schedule.tracks.length;
-  const slotSeconds = schedule.slotSeconds;
-  const elapsedSeconds = Math.floor((now - schedule.epoch) / 1000);
-  const slotNumber = Math.floor(elapsedSeconds / slotSeconds);
-  const trackIndex = ((slotNumber % totalTracks) + totalTracks) % totalTracks;
-  const offsetSeconds = ((elapsedSeconds % slotSeconds) + slotSeconds) % slotSeconds;
-  const slotEndsAt = schedule.epoch + (slotNumber + 1) * slotSeconds * 1000;
+  const totalDuration = schedule.totalDurationSeconds;
+  const elapsedSeconds = (((now - schedule.epoch) / 1000) % totalDuration + totalDuration) % totalDuration;
+
+  let cursor = 0;
+  let trackIndex = totalTracks - 1;
+  for (let i = 0; i < totalTracks; i++) {
+    const trackDuration = schedule.tracks[i].durationSeconds;
+    if (elapsedSeconds < cursor + trackDuration) {
+      trackIndex = i;
+      break;
+    }
+    cursor += trackDuration;
+  }
+
+  const track = schedule.tracks[trackIndex];
+  const offsetSeconds = Math.max(0, elapsedSeconds - cursor);
+  const trackEndsAt = now - offsetSeconds * 1000 + track.durationSeconds * 1000;
 
   const upNext: RadioTrack[] = [];
   for (let i = 1; i <= UP_NEXT_COUNT && i < totalTracks; i++) {
@@ -159,13 +235,12 @@ export async function getRadioNowPlaying(now: number = Date.now()): Promise<Radi
 
   return {
     dayKey: schedule.dayKey,
-    track: schedule.tracks[trackIndex],
+    track,
     trackIndex,
     totalTracks,
     offsetSeconds,
-    slotSeconds,
     serverNow: now,
-    slotEndsAt,
+    trackEndsAt,
     upNext,
   };
 }

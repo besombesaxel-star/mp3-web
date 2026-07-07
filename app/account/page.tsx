@@ -5,8 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDown, ArrowUp, Camera, Check, ExternalLink, Heart,
-  KeyRound, Link2, LogOut, Music, Palette, Play, Plus, Shield,
-  Smartphone, Trash2, Upload, User, UserCheck, UserPlus, X,
+  KeyRound, Link2, LogOut, Music, Palette, Play, Plus, Repeat, Shield,
+  Smartphone, Trash2, Upload, User, UserCheck, UserPlus, Users, X,
 } from "lucide-react";
 import { useAuth } from "@/app/AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
@@ -156,8 +156,9 @@ function formatDate(ts?: number): string {
 
 export default function AccountPage() {
   const {
-    accessToken, displayName, isAuthenticated, isConfigured, loading,
-    primaryLabel, signIn, signOut, signUp, updateDisplayName, updatePassword, user,
+    accessToken, accounts, displayName, isAuthenticated, isConfigured, loading,
+    primaryLabel, removeAccount, signIn, signOut, signUp, switchAccount,
+    updateDisplayName, updatePassword, user,
   } = useAuth();
   const { setQueueAndPlay } = usePlayer();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -193,6 +194,18 @@ export default function AccountPage() {
   const [newLinkLabel, setNewLinkLabel] = useState("");
   const [newLinkUrl, setNewLinkUrl] = useState("");
   const [addingLink, setAddingLink] = useState(false);
+
+  const otherAccounts = useMemo(
+    () => accounts.filter((a) => a.userId !== user?.id),
+    [accounts, user?.id]
+  );
+  const [switchBusyId, setSwitchBusyId] = useState("");
+  const [switchMsg, setSwitchMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [addAccountOpen, setAddAccountOpen] = useState(false);
+  const [addEmail, setAddEmail] = useState("");
+  const [addPassword, setAddPassword] = useState("");
+  const [addBusy, setAddBusy] = useState(false);
+  const [addMsg, setAddMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   const [sessions, setSessions] = useState<DeviceSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
@@ -316,6 +329,36 @@ export default function AccountPage() {
       if (res.ok && json.ok && Array.isArray(json.sessions)) setSessions(json.sessions);
     } catch {}
     finally { setForgettingId(""); }
+  }
+
+  // --- Comptes ---
+  async function handleSwitchAccount(userId: string) {
+    if (switchBusyId) return;
+    setSwitchBusyId(userId);
+    setSwitchMsg(null);
+    try {
+      await switchAccount(userId);
+    } catch (e) {
+      setSwitchMsg({ text: getErrorMessage(e, "Impossible de changer de compte."), ok: false });
+    } finally {
+      setSwitchBusyId("");
+    }
+  }
+
+  async function handleAddAccount(e: React.FormEvent) {
+    e.preventDefault();
+    setAddBusy(true);
+    setAddMsg(null);
+    try {
+      await signIn(addEmail, addPassword);
+      setAddEmail("");
+      setAddPassword("");
+      setAddAccountOpen(false);
+    } catch (e) {
+      setAddMsg({ text: getErrorMessage(e, "Connexion impossible."), ok: false });
+    } finally {
+      setAddBusy(false);
+    }
   }
 
   async function signOutOtherDevices() {
@@ -554,6 +597,96 @@ export default function AccountPage() {
                   </button>
                 </div>
               </div>
+            </section>
+
+            {/* Comptes */}
+            <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "10ms" }}>
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                  <Users size={14} className="text-white/30" />
+                  <h2 className="text-sm font-medium text-white/70">Comptes</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setAddAccountOpen((v) => !v); setAddMsg(null); }}
+                  className="flex items-center gap-1 text-xs text-white/40 hover:text-white/80 transition"
+                >
+                  <Plus size={12} />
+                  Ajouter un compte
+                </button>
+              </div>
+
+              <p className="text-xs text-white/30 mb-3">
+                Bascule entre plusieurs comptes sans te déconnecter completement.
+              </p>
+
+              {switchMsg && <SectionMsg msg={switchMsg} />}
+
+              {otherAccounts.length === 0 ? (
+                <p className="text-xs text-white/25 mb-1">Aucun autre compte enregistré pour l&apos;instant.</p>
+              ) : (
+                <div className="space-y-2">
+                  {otherAccounts.map((acc) => {
+                    const label = acc.displayName || acc.email || "Compte";
+                    return (
+                      <div key={acc.userId} className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/3 px-4 py-2.5">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`h-8 w-8 shrink-0 rounded-full bg-gradient-to-br ${avatarGradient(label)} flex items-center justify-center text-xs font-semibold text-white`}>
+                            {label.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm text-white/80 truncate">{label}</p>
+                            {acc.email && acc.email !== label && <p className="text-xs text-white/30 truncate">{acc.email}</p>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => void handleSwitchAccount(acc.userId)}
+                            disabled={switchBusyId === acc.userId}
+                            className="h-8 px-3 rounded-lg bg-white/8 text-white/60 text-xs hover:bg-white/12 transition disabled:opacity-50 flex items-center gap-1.5"
+                          >
+                            <Repeat size={11} />
+                            {switchBusyId === acc.userId ? "..." : "Basculer"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeAccount(acc.userId)}
+                            title="Oublier ce compte"
+                            className="h-8 w-8 rounded-lg flex items-center justify-center text-white/25 hover:text-red-400 hover:bg-white/8 transition"
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {addAccountOpen && (
+                <form onSubmit={handleAddAccount} className="mt-3 rounded-2xl border border-white/10 bg-white/3 p-4 space-y-3 mp3-fade-up">
+                  <InputField id="add-account-email" label="Email" type="email" value={addEmail} onChange={setAddEmail} placeholder="autre@email.com" required />
+                  <InputField id="add-account-password" label="Mot de passe" type="password" value={addPassword} onChange={setAddPassword} placeholder="Mot de passe" required />
+                  {addMsg && <SectionMsg msg={addMsg} />}
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="submit"
+                      disabled={addBusy || !addEmail.trim() || !addPassword}
+                      className="h-8 px-4 rounded-full bg-white text-black text-xs font-medium hover:opacity-90 transition disabled:opacity-40"
+                    >
+                      {addBusy ? "Connexion..." : "Se connecter"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setAddAccountOpen(false); setAddEmail(""); setAddPassword(""); setAddMsg(null); }}
+                      className="h-8 px-3 rounded-full border border-white/10 text-xs text-white/50 hover:text-white transition"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </form>
+              )}
             </section>
 
             {/* Sessions actives */}

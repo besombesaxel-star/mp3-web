@@ -13,6 +13,7 @@ import {
   LogOut,
   Menu,
   MessageCircle,
+  Repeat,
   Search as SearchIcon,
   Settings,
   TrendingUp,
@@ -24,6 +25,67 @@ import { useAuth } from "./AuthProvider";
 import { usePlayer } from "./PlayerContext";
 import { useFocusTrap } from "./useFocusTrap";
 import { openShortcutsHelp } from "./shortcutsUi";
+
+function AccountQuickSwitch({ onSwitched }: { onSwitched?: () => void }) {
+  const { accounts, switchAccount, user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [busyId, setBusyId] = useState("");
+  const [error, setError] = useState("");
+
+  const others = accounts.filter((a) => a.userId !== user?.id);
+  if (others.length === 0) return null;
+
+  async function handleSwitch(userId: string) {
+    if (busyId) return;
+    setBusyId(userId);
+    setError("");
+    try {
+      await switchAccount(userId);
+      setOpen(false);
+      onSwitched?.();
+    } catch {
+      setError("Session expiree pour ce compte.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 text-xs text-white/35 hover:text-white/70 transition"
+      >
+        <Repeat size={11} />
+        Changer de compte
+      </button>
+      {open ? (
+        <div className="mt-2 space-y-1 mp3-fade-up">
+          {others.map((acc) => {
+            const label = acc.displayName || acc.email || "Compte";
+            return (
+              <button
+                key={acc.userId}
+                type="button"
+                onClick={() => void handleSwitch(acc.userId)}
+                disabled={busyId === acc.userId}
+                className="flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left text-xs text-white/60 hover:bg-white/8 hover:text-white/90 transition disabled:opacity-50"
+              >
+                <span className="h-5 w-5 shrink-0 rounded-full bg-white/10 flex items-center justify-center text-[9px] font-medium text-white/70">
+                  {label.slice(0, 2).toUpperCase()}
+                </span>
+                <span className="truncate flex-1">{label}</span>
+                {busyId === acc.userId ? <span className="text-white/30">...</span> : null}
+              </button>
+            );
+          })}
+          {error ? <p className="px-2 text-[11px] text-red-400/80">{error}</p> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 const nav = [
   { href: "/", label: "Accueil", Icon: Home },
@@ -223,6 +285,7 @@ export default function Sidebar() {
                       </button>
                     ) : null}
                   </div>
+                  {isAuthenticated ? <AccountQuickSwitch /> : null}
                 </div>
               )}
 
@@ -374,6 +437,7 @@ export default function Sidebar() {
                   </button>
                 ) : null}
               </div>
+              {isAuthenticated ? <AccountQuickSwitch onSwitched={closeMobileMenu} /> : null}
             </div>
           </aside>
         </div>

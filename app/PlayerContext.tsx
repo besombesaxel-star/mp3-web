@@ -693,8 +693,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const radioModeRef = useRef(false);
   radioModeRef.current = radioMode;
   const radioPreviousRepeatRef = useRef<RepeatMode>("off");
-  const radioPendingSeekRef = useRef<{ src: string; offsetSeconds: number } | null>(null);
-  const radioSeekedForSrcRef = useRef("");
 
   // Browsers only let an AudioContext play sound after a direct user gesture.
   // Unlock on the very first click/keypress anywhere so favorite/achievement
@@ -1098,8 +1096,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }
 
   function playRadioTrack(data: RadioLiveTrackInfo) {
-    radioPendingSeekRef.current = { src: data.src, offsetSeconds: data.offsetSeconds };
-    radioSeekedForSrcRef.current = "";
+    resumeTimeRef.current = data.offsetSeconds > 0 ? data.offsetSeconds : null;
     setQueueAndPlay(
       [
         {
@@ -1160,20 +1157,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [radioMode]);
-
-  useEffect(() => {
-    const pending = radioPendingSeekRef.current;
-    if (!radioMode || !pending) return;
-    if (track?.src !== pending.src) return;
-    if (radioSeekedForSrcRef.current === pending.src) return;
-    if (duration <= 0) return;
-
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.currentTime = clamp(pending.offsetSeconds, 0, duration);
-    lastCtRef.current = audio.currentTime;
-    radioSeekedForSrcRef.current = pending.src;
-  }, [radioMode, track?.src, duration]);
 
   useEffect(() => {
     return () => {

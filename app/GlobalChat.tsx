@@ -464,17 +464,20 @@ export default function GlobalChat() {
         onClick={() => setOpen((v) => !v)}
         aria-label="Chat général"
         className={[
-          "fixed z-[55] flex items-center justify-center rounded-full border transition-all shadow-lg",
-          "top-[11px] right-16 h-9 w-9",
+          "fixed z-[55] flex items-center justify-center rounded-full border transition-all active:scale-90 shadow-lg shadow-black/30",
+          "top-1 right-16 h-10 w-10",
           "md:top-4 md:right-4 md:h-10 md:w-10",
           open
             ? "bg-white border-white text-black"
-            : "border-white/15 bg-black/70 backdrop-blur text-white/70 hover:text-white hover:border-white/30 hover:bg-white/10",
+            : "border-white/20 bg-black/75 backdrop-blur text-white/75 hover:text-white hover:border-white/35 hover:bg-white/12",
         ].join(" ")}
       >
-        {open ? <X size={15} /> : <MessageSquare size={15} />}
+        {open ? <X size={16} /> : <MessageSquare size={16} />}
         {!open && unread > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white tabular-nums">
+          <span
+            key={unread}
+            className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white tabular-nums leading-none mp3-pop"
+          >
             {unread > 9 ? "9+" : unread}
           </span>
         )}

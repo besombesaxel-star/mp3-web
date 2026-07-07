@@ -158,6 +158,10 @@ type PlayerCtx = {
   preloadedTrack: Track | null;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
+  setRepeat: (mode: RepeatMode) => void;
+  radioMode: boolean;
+  tuneInRadio: () => Promise<boolean>;
+  leaveRadio: () => void;
 
   // âœ… favoris
   favorites: Track[];
@@ -685,6 +689,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [loudnessNorm, setLoudnessNorm] = useState(true);
   const [preloadedTrack, setPreloadedTrack] = useState<Track | null>(null);
 
+  const [radioMode, setRadioModeState] = useState(false);
+  const radioModeRef = useRef(false);
+  radioModeRef.current = radioMode;
+  const radioPreviousRepeatRef = useRef<RepeatMode>("off");
+  const radioPendingSeekRef = useRef<{ src: string; offsetSeconds: number } | null>(null);
+  const radioSeekedForSrcRef = useRef("");
+
   // Browsers only let an AudioContext play sound after a direct user gesture.
   // Unlock on the very first click/keypress anywhere so favorite/achievement
   // sounds work even though they're triggered well after that gesture fires.
@@ -1058,6 +1069,111 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   async function startRadio() {
     return buildAndStartSmartQueue(track?.src ?? "");
   }
+
+  type RadioLiveTrackInfo = {
+    src: string;
+    title: string;
+    artist: string;
+    cover: string | null;
+    ownerDisplayName: string | null;
+    offsetSeconds: number;
+  };
+
+  async function fetchRadioLiveTrack(): Promise<RadioLiveTrackInfo | null> {
+    try {
+      const res = await fetch("/api/radio/live", { cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok || !json?.ok || !json.track?.src) return null;
+      return {
+        src: json.track.src,
+        title: json.track.title ?? "Radio en direct",
+        artist: json.track.artist ?? "",
+        cover: json.track.cover ?? null,
+        ownerDisplayName: json.track.ownerDisplayName ?? null,
+        offsetSeconds: typeof json.offsetSeconds === "number" ? json.offsetSeconds : 0,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function playRadioTrack(data: RadioLiveTrackInfo) {
+    radioPendingSeekRef.current = { src: data.src, offsetSeconds: data.offsetSeconds };
+    radioSeekedForSrcRef.current = "";
+    setQueueAndPlay(
+      [
+        {
+          title: data.title,
+          artist: data.artist || undefined,
+          src: data.src,
+          cover: data.cover || undefined,
+          ownerDisplayName: data.ownerDisplayName || undefined,
+        },
+      ],
+      0
+    );
+  }
+
+  async function applyRadioSync() {
+    if (!radioModeRef.current) return;
+    const data = await fetchRadioLiveTrack();
+    if (!data || !radioModeRef.current) return;
+
+    if (lastSrcRef.current !== data.src) {
+      playRadioTrack(data);
+      return;
+    }
+
+    const audio = audioRef.current;
+    if (audio && Number.isFinite(audio.duration) && audio.duration > 0) {
+      if (Math.abs(audio.currentTime - data.offsetSeconds) > 6) {
+        audio.currentTime = clamp(data.offsetSeconds, 0, audio.duration);
+        lastCtRef.current = audio.currentTime;
+      }
+    }
+  }
+
+  async function tuneInRadio(): Promise<boolean> {
+    const data = await fetchRadioLiveTrack();
+    if (!data) return false;
+
+    radioPreviousRepeatRef.current = repeat;
+    setRepeat("one");
+    setRadioModeState(true);
+    playRadioTrack(data);
+    return true;
+  }
+
+  function leaveRadio() {
+    setRadioModeState(false);
+    setRepeat(radioPreviousRepeatRef.current);
+  }
+
+  // Keeps the live radio in sync with the shared schedule: advances to the
+  // next scheduled track (or corrects drift) every few seconds, regardless
+  // of which page is currently mounted.
+  useEffect(() => {
+    if (!radioMode) return;
+    const id = setInterval(() => {
+      void applyRadioSync();
+    }, 15000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [radioMode]);
+
+  useEffect(() => {
+    const pending = radioPendingSeekRef.current;
+    if (!radioMode || !pending) return;
+    if (track?.src !== pending.src) return;
+    if (radioSeekedForSrcRef.current === pending.src) return;
+    if (duration <= 0) return;
+
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.currentTime = clamp(pending.offsetSeconds, 0, duration);
+    lastCtRef.current = audio.currentTime;
+    radioSeekedForSrcRef.current = pending.src;
+  }, [radioMode, track?.src, duration]);
 
   useEffect(() => {
     return () => {
@@ -2778,6 +2894,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     preloadedTrack,
     toggleShuffle,
     cycleRepeat,
+    setRepeat,
+    radioMode,
+    tuneInRadio,
+    leaveRadio,
 
     favorites,
     isFavorite,

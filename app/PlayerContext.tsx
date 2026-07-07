@@ -32,7 +32,7 @@ export type Track = {
 };
 
 type RepeatMode = "off" | "all" | "one";
-type ThemeMode = "midnight" | "sunset" | "ocean" | "day";
+type ThemeMode = "midnight" | "sunset" | "ocean" | "day" | "liquid-glass";
 type FontSizeMode = "sm" | "md" | "lg" | "xl";
 type EqPreset = "off" | "bass" | "vocal" | "night" | "custom";
 export type EqGains = [number, number, number, number, number];
@@ -206,7 +206,7 @@ const LS_PREFS = "mp3:prefs:v1";
 const MAX_RECENT_PLAYS = 600;
 const SOFT_CROSSFADE_MS = 620;
 const SOFT_CROSSFADE_LEAD = 0.48;
-const THEME_ORDER: ThemeMode[] = ["midnight", "sunset", "ocean", "day"];
+const THEME_ORDER: ThemeMode[] = ["midnight", "sunset", "ocean", "day", "liquid-glass"];
 const EQ_ORDER: EqPreset[] = ["off", "bass", "vocal", "night"];
 const EQ_BANDS = [90, 250, 1000, 3500, 9000];
 const DEFAULT_CUSTOM_EQ_GAINS: EqGains = [0, 0, 0, 0, 0];
@@ -424,7 +424,8 @@ function safePrefs(parsed: unknown): PlayerPrefs {
       parsed.theme === "midnight" ||
       parsed.theme === "sunset" ||
       parsed.theme === "ocean" ||
-      parsed.theme === "day"
+      parsed.theme === "day" ||
+      parsed.theme === "liquid-glass"
         ? parsed.theme
         : "midnight",
     fontSize:

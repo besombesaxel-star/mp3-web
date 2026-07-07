@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePlayer } from "./PlayerContext";
 
 type Rgb = [number, number, number];
-type ThemeKey = "midnight" | "sunset" | "ocean" | "day";
+type ThemeKey = "midnight" | "sunset" | "ocean" | "day" | "liquid-glass";
 
 type BackdropPalette = {
   base: Rgb;
@@ -42,6 +42,13 @@ const THEME_PALETTES: Record<ThemeKey, BackdropPalette> = {
     secondary: [236, 130, 176],
     tertiary: [79, 140, 230],
     imageOpacity: 0.08,
+  },
+  "liquid-glass": {
+    base: [8, 11, 20],
+    primary: [130, 120, 255],
+    secondary: [56, 200, 240],
+    tertiary: [236, 110, 200],
+    imageOpacity: 0.26,
   },
 };
 
@@ -168,7 +175,13 @@ function shiftHue(rgb: Rgb, shift: number, saturationBoost = 0.06, lightnessDelt
 }
 
 function getThemePalette(theme: string | undefined): BackdropPalette {
-  if (theme === "sunset" || theme === "ocean" || theme === "midnight" || theme === "day") {
+  if (
+    theme === "sunset" ||
+    theme === "ocean" ||
+    theme === "midnight" ||
+    theme === "day" ||
+    theme === "liquid-glass"
+  ) {
     return THEME_PALETTES[theme];
   }
 

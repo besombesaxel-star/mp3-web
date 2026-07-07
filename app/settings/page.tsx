@@ -280,6 +280,7 @@ export default function SettingsPage() {
             { value: "sunset", label: "Coucher de soleil" },
             { value: "ocean", label: "Ocean" },
             { value: "day", label: "Jour" },
+            { value: "liquid-glass", label: "Verre liquide" },
           ]}
         />
       </SettingsSection>

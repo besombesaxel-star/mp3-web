@@ -829,7 +829,7 @@ export default function GlobalChat() {
                 value={input}
                 onChange={handleInputChange}
                 onKeyDown={onKeyDown}
-                placeholder="Écrire un message… (@ pour mentionner)"
+                placeholder="Écrire un message…"
                 rows={1}
                 maxLength={500}
                 disabled={sending}

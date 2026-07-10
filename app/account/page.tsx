@@ -601,7 +601,6 @@ export default function AccountPage() {
                   {user?.id && (
                     <Link
                       href={getPublicProfileHref(user.id)}
-                      target="_blank"
                       className="h-9 px-3 rounded-full border border-white/10 bg-white/5 text-xs text-white/50 hover:bg-white/10 hover:text-white/90 transition flex items-center gap-1.5"
                     >
                       <ExternalLink size={12} />

@@ -441,7 +441,7 @@ export default function LibraryPage() {
     <div ref={pageRef} className="px-2 pt-6 sm:px-6 pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-white">Bibliotheque</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {tracks.length > 0 ? (
             <select
               value={sort}

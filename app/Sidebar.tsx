@@ -249,8 +249,6 @@ export default function Sidebar() {
                     priority={false}
                   />
                 </div>
-
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[240px] bg-gradient-to-t from-black via-black/70 to-transparent" />
               </>
             ) : null}
 

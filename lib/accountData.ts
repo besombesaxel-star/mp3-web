@@ -3,6 +3,8 @@ import {
   getSupabaseAdmin,
   isSupabaseConfigured,
 } from "@/lib/supabaseAdmin";
+import { isAchievementId } from "@/lib/cosmetics";
+import type { AchievementId } from "@/lib/achievements";
 
 export type ProfileLink = {
   id: string;
@@ -23,6 +25,7 @@ const EQ_PRESETS: EqPreset[] = ["off", "bass", "vocal", "night", "custom"];
 export type EqGains = [number, number, number, number, number];
 
 type AccountProfileData = {
+  avatarFrame: AchievementId | null;
   avatarUrl: string;
   customEqGains: EqGains | null;
   eqPreset: EqPreset | null;
@@ -40,6 +43,7 @@ type AccountProfileData = {
 };
 
 const EMPTY_PROFILE: AccountProfileData = {
+  avatarFrame: null,
   avatarUrl: "",
   customEqGains: null,
   eqPreset: null,
@@ -164,10 +168,15 @@ function normalizeThemeHue(value: unknown): number | null {
   return Math.round(n) % 360;
 }
 
+function normalizeAvatarFrame(value: unknown): AchievementId | null {
+  return isAchievementId(value) ? value : null;
+}
+
 function normalizeProfile(raw: unknown): AccountProfileData {
   if (!raw || typeof raw !== "object") return { ...EMPTY_PROFILE };
   const v = raw as Record<string, unknown>;
   return {
+    avatarFrame: normalizeAvatarFrame(v.avatarFrame),
     avatarUrl: typeof v.avatarUrl === "string" ? v.avatarUrl.trim() : "",
     customEqGains: normalizeCustomEqGains(v.customEqGains),
     eqPreset: normalizeEqPreset(v.eqPreset),
@@ -234,6 +243,7 @@ async function writeAccountProfile(userId: string, profile: AccountProfileData) 
   await ensureSupabaseAccountBucketReady(admin.client, admin.accountBucket);
 
   const payload = JSON.stringify({
+    avatarFrame: normalizeAvatarFrame(profile.avatarFrame),
     avatarUrl: typeof profile.avatarUrl === "string" ? profile.avatarUrl.trim() : "",
     customEqGains: normalizeCustomEqGains(profile.customEqGains),
     eqPreset: normalizeEqPreset(profile.eqPreset),
@@ -264,6 +274,7 @@ async function writeAccountProfile(userId: string, profile: AccountProfileData) 
 export async function saveAccountProfile(
   userId: string,
   patch: {
+    avatarFrame?: AchievementId | null;
     avatarUrl?: string;
     customEqGains?: EqGains | null;
     eqPreset?: EqPreset | null;
@@ -280,6 +291,7 @@ export async function saveAccountProfile(
 ) {
   const current = await readAccountProfile(userId);
   const next: AccountProfileData = {
+    avatarFrame: patch.avatarFrame === undefined ? current.avatarFrame : normalizeAvatarFrame(patch.avatarFrame),
     avatarUrl: patch.avatarUrl === undefined ? current.avatarUrl : patch.avatarUrl.trim(),
     customEqGains: patch.customEqGains === undefined ? current.customEqGains : normalizeCustomEqGains(patch.customEqGains),
     eqPreset: patch.eqPreset === undefined ? current.eqPreset : normalizeEqPreset(patch.eqPreset),

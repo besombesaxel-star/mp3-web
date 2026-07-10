@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Code, Heart, Link2, ListEnd, ListPlus, Trash2, X } from "lucide-react";
+import { Camera, Check, Code, Heart, Link2, ListEnd, ListPlus, MessageCircle, Trash2, X } from "lucide-react";
 import { usePlayer, type Track } from "./PlayerContext";
 import { vibrate } from "./haptics";
+import TrackCommentsModal from "./TrackCommentsModal";
+import Portal from "./Portal";
+import { generateTrackShareImage, shareOrDownloadImage } from "@/lib/shareCard";
 
 type Props = {
   track: Track | null;
@@ -15,7 +18,38 @@ export default function TrackContextMenu({ track, onClose, removeFromPlaylist }:
   const { addToQueueNext, addToQueueEnd, toggleFavorite, isFavorite, hapticsEnabled } = usePlayer();
   const [copied, setCopied] = useState(false);
   const [embedCopied, setEmbedCopied] = useState(false);
-  if (!track) return null;
+  const [commentsTrack, setCommentsTrack] = useState<Track | null>(null);
+  const [sharing, setSharing] = useState(false);
+
+  function openComments() {
+    if (!track) return;
+    const target = track;
+    if (hapticsEnabled) vibrate(12);
+    setCommentsTrack(target);
+    onClose();
+  }
+
+  async function shareImage() {
+    if (!track || sharing) return;
+    setSharing(true);
+    try {
+      const blob = await generateTrackShareImage(track);
+      await shareOrDownloadImage(blob, track);
+    } catch {
+      // ignore: generation/share failures are silent, non-critical UX
+    } finally {
+      setSharing(false);
+      onClose();
+    }
+  }
+
+  if (!track) {
+    return commentsTrack ? (
+      <Portal>
+        <TrackCommentsModal track={commentsTrack} open onClose={() => setCommentsTrack(null)} />
+      </Portal>
+    ) : null;
+  }
 
   const liked = isFavorite(track.src);
 
@@ -64,7 +98,7 @@ export default function TrackContextMenu({ track, onClose, removeFromPlaylist }:
   }
 
   return (
-    <>
+    <Portal>
       <div
         className="fixed inset-0 z-[120] bg-black/60 mp3-backdrop-in"
         onClick={onClose}
@@ -129,6 +163,25 @@ export default function TrackContextMenu({ track, onClose, removeFromPlaylist }:
         <button
           type="button"
           className="w-full flex items-center gap-3 px-2 py-3 rounded-xl hover:bg-white/5 transition text-left text-sm text-white/85"
+          onClick={openComments}
+        >
+          <MessageCircle size={18} className="opacity-80" />
+          Commentaires
+        </button>
+
+        <button
+          type="button"
+          className="w-full flex items-center gap-3 px-2 py-3 rounded-xl hover:bg-white/5 transition text-left text-sm text-white/85 disabled:opacity-50"
+          onClick={() => void shareImage()}
+          disabled={sharing}
+        >
+          <Camera size={18} className="opacity-80" />
+          {sharing ? "Generation..." : "Partager en image"}
+        </button>
+
+        <button
+          type="button"
+          className="w-full flex items-center gap-3 px-2 py-3 rounded-xl hover:bg-white/5 transition text-left text-sm text-white/85"
           onClick={copyLink}
         >
           {copied ? <Check size={18} className="text-green-400" /> : <Link2 size={18} className="opacity-80" />}
@@ -155,6 +208,6 @@ export default function TrackContextMenu({ track, onClose, removeFromPlaylist }:
           </button>
         ) : null}
       </div>
-    </>
+    </Portal>
   );
 }

@@ -4,8 +4,8 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowDown, ArrowUp, Camera, Check, ExternalLink, Heart,
-  KeyRound, Link2, LogOut, Music, Palette, Play, Plus, Repeat, Shield,
+  ArrowDown, ArrowUp, Camera, Check, ExternalLink, Flame, Heart,
+  KeyRound, Link2, Lock, LogOut, Music, Palette, Play, Plus, Repeat, Shield,
   Smartphone, Trash2, Upload, User, UserCheck, UserPlus, Users, X,
 } from "lucide-react";
 import { useAuth } from "@/app/AuthProvider";
@@ -18,6 +18,9 @@ import type { ProfileLink } from "@/lib/accountData";
 import AvatarCropper from "@/app/AvatarCropper";
 import SettingsContent from "@/app/SettingsContent";
 import { detectPlatform, PlatformIcon } from "@/app/PlatformIcon";
+import { computeStreak } from "@/lib/streak";
+import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
+import { COSMETICS, getCosmeticForAchievement } from "@/lib/cosmetics";
 
 type DeviceSession = {
   deviceId: string;
@@ -52,6 +55,7 @@ type AccountTrack = {
 };
 
 type AccountResponse = {
+  avatarFrame?: AchievementId | null;
   avatarUrl?: string;
   favoriteSrcs?: string[];
   favoriteTracks?: AccountTrack[];
@@ -147,7 +151,7 @@ export default function AccountPage() {
     primaryLabel, removeAccount, signIn, signOut, signUp, switchAccount,
     updateDisplayName, updatePassword, user,
   } = useAuth();
-  const { setQueueAndPlay } = usePlayer();
+  const { setQueueAndPlay, stats } = usePlayer();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState<"profile" | "settings">("profile");
@@ -177,6 +181,7 @@ export default function AccountPage() {
   const [links, setLinks] = useState<ProfileLink[]>([]);
   const [pinnedSrcs, setPinnedSrcs] = useState<Set<string>>(new Set());
   const [themeHue, setThemeHue] = useState<number | null>(null);
+  const [avatarFrame, setAvatarFrame] = useState<AchievementId | null>(null);
   const [followingCount, setFollowingCount] = useState(0);
   const [followersCount, setFollowersCount] = useState(0);
   const [newLinkLabel, setNewLinkLabel] = useState("");
@@ -215,6 +220,8 @@ export default function AccountPage() {
     return d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
   }, [user?.created_at]);
 
+  const streak = useMemo(() => computeStreak(stats.playsByDay), [stats.playsByDay]);
+
   const uploadsForPlayer = useMemo(
     () => uploads.map((t) => ({ artist: t.artist, cover: t.cover ?? undefined, src: t.src, title: t.title })),
     [uploads]
@@ -228,6 +235,14 @@ export default function AccountPage() {
   const initials = useMemo(() => (primaryLabel || user?.email || "").slice(0, 2).toUpperCase(), [primaryLabel, user?.email]);
   const gradient = useMemo(() => avatarGradient(primaryLabel || user?.email || ""), [primaryLabel, user?.email]);
   const fallbackHue = useMemo(() => hashStringToHue(user?.id ?? primaryLabel ?? "mp3"), [user?.id, primaryLabel]);
+  const unlockedAchievementIds = useMemo(
+    () => new Set(Object.keys(stats.achievements) as AchievementId[]),
+    [stats.achievements]
+  );
+  const equippedCosmetic = useMemo(
+    () => (avatarFrame && unlockedAchievementIds.has(avatarFrame) ? getCosmeticForAchievement(avatarFrame) : null),
+    [avatarFrame, unlockedAchievementIds]
+  );
   const activeHue = themeHue ?? fallbackHue;
 
   useEffect(() => { setProfileName(displayName); }, [displayName]);
@@ -250,6 +265,7 @@ export default function AccountPage() {
         setLinks(Array.isArray(json.links) ? json.links : []);
         setPinnedSrcs(new Set(Array.isArray(json.pinnedTrackSrcs) ? json.pinnedTrackSrcs : []));
         setThemeHue(json.themeHue ?? null);
+        setAvatarFrame(json.avatarFrame ?? null);
         setFollowingCount(Array.isArray(json.following) ? json.following.length : 0);
         setFollowersCount(typeof json.followersCount === "number" ? json.followersCount : 0);
         const uploadList = Array.isArray(json.uploads) ? json.uploads : [];
@@ -258,7 +274,7 @@ export default function AccountPage() {
       } catch {
         if (!cancelled) {
           setAvatarUrl(""); setFavoriteCount(0); setFavoriteTracks([]); setPublicBio(""); setIsPrivate(false);
-          setLinks([]); setPinnedSrcs(new Set()); setThemeHue(null);
+          setLinks([]); setPinnedSrcs(new Set()); setThemeHue(null); setAvatarFrame(null);
           setFollowingCount(0); setFollowersCount(0);
           setUploads([]); setTotalUploads(0);
         }
@@ -268,7 +284,7 @@ export default function AccountPage() {
     }
     if (!isAuthenticated || !accessToken) {
       setAvatarUrl(""); setFavoriteCount(0); setFavoriteTracks([]); setPublicBio(""); setIsPrivate(false);
-      setLinks([]); setPinnedSrcs(new Set()); setThemeHue(null);
+      setLinks([]); setPinnedSrcs(new Set()); setThemeHue(null); setAvatarFrame(null);
       setUploads([]); setTotalUploads(0); setProfileLoading(false);
       return;
     }
@@ -457,6 +473,7 @@ export default function AccountPage() {
           links,
           pinnedTrackSrcs: [...pinnedSrcs],
           themeHue,
+          avatarFrame,
         }),
       });
       if (!res.ok) throw new Error(`Erreur ${res.status}`);
@@ -559,7 +576,10 @@ export default function AccountPage() {
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={busy === "avatar"}
-                    className="group relative h-20 w-20 rounded-2xl overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                    className={[
+                      "group relative h-20 w-20 rounded-2xl overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40",
+                      equippedCosmetic ? `ring-2 ring-offset-2 ring-offset-[#15151C] ${equippedCosmetic.ringClassName}` : "",
+                    ].join(" ")}
                     title="Changer la photo"
                   >
                     {avatarUrl ? (
@@ -580,7 +600,18 @@ export default function AccountPage() {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="text-xl font-medium text-white/95 truncate">{primaryLabel || "Compte connecté"}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-xl font-medium text-white/95 truncate">{primaryLabel || "Compte connecté"}</p>
+                    {streak.current > 0 && (
+                      <span
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase border bg-orange-500/20 text-orange-300 border-orange-500/30"
+                        title={`Record : ${streak.longest} jour${streak.longest > 1 ? "s" : ""}`}
+                      >
+                        <Flame size={10} />
+                        {streak.current} jour{streak.current > 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-white/45 truncate mt-0.5">{user?.email ?? ""}</p>
                   {createdAtLabel && <p className="text-xs text-white/25 mt-1">Membre depuis le {createdAtLabel}</p>}
                 </div>
@@ -740,6 +771,48 @@ export default function AccountPage() {
                     }}
                     className="w-full h-2.5 rounded-full cursor-pointer appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-lg [&::-moz-range-thumb]:cursor-pointer"
                   />
+                </div>
+              </div>
+
+              {/* Recompenses */}
+              <div className="mb-6">
+                <p className="text-xs text-white/45 mb-3">
+                  Recompenses debloquees <span className="text-white/25">({unlockedAchievementIds.size}/{ACHIEVEMENTS.length})</span>
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {COSMETICS.map((cosmetic) => {
+                    const achievement = ACHIEVEMENTS.find((a) => a.id === cosmetic.achievementId);
+                    const unlocked = unlockedAchievementIds.has(cosmetic.achievementId);
+                    const equipped = avatarFrame === cosmetic.achievementId;
+                    return (
+                      <button
+                        key={cosmetic.achievementId}
+                        type="button"
+                        disabled={!unlocked}
+                        onClick={() => setAvatarFrame(equipped ? null : cosmetic.achievementId)}
+                        title={unlocked ? cosmetic.label : `Debloque avec: ${achievement?.title}`}
+                        className={[
+                          "flex items-center gap-2 rounded-2xl border px-3 py-2.5 text-left transition",
+                          !unlocked
+                            ? "border-white/5 bg-white/[0.02] opacity-40 cursor-not-allowed"
+                            : equipped
+                              ? "border-white/25 bg-white/10"
+                              : "border-white/10 bg-white/5 hover:bg-white/8",
+                        ].join(" ")}
+                      >
+                        <span className={["h-6 w-6 rounded-full shrink-0", unlocked ? cosmetic.swatchClassName : "bg-white/10"].join(" ")} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-xs text-white/85 truncate">{cosmetic.label}</span>
+                          <span className="block text-[10px] text-white/35 truncate">{achievement?.title}</span>
+                        </span>
+                        {equipped ? (
+                          <Check size={13} className="shrink-0 text-white/70" />
+                        ) : !unlocked ? (
+                          <Lock size={12} className="shrink-0 text-white/25" />
+                        ) : null}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

@@ -4,6 +4,7 @@ import { readAccountProfile, saveAccountProfile } from "@/lib/accountData";
 import { pushNotification } from "@/lib/notificationData";
 import { broadcastToUser } from "@/lib/realtimeBroadcast";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { pushActivityEvent } from "@/lib/activityFeed";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,6 +61,14 @@ export async function POST(req: Request, ctx: Ctx) {
 
   void pushNotification(targetId, notifPayload).catch(() => {});
   void broadcastToUser(targetId, "new_notification", { ...notifPayload, id: crypto.randomUUID(), read: false }).catch(() => {});
+  void pushActivityEvent({
+    type: "follow",
+    actorUserId: auth.user.id,
+    actorDisplayName: fromDisplayName,
+    actorAvatarUrl: fromAvatarUrl,
+    targetUserId: targetId,
+    createdAt: notifPayload.createdAt,
+  }).catch(() => {});
 
   return NextResponse.json({ ok: true, followersCount: newCount });
 }

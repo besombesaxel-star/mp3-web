@@ -4,10 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Check, Copy, ExternalLink, Crown, FlaskConical, Gem, ListMusic, Lock, MessageCircle, Music, Play, Shield, Shuffle, Sparkles, Star, UserCheck, UserPlus } from "lucide-react";
+import { Check, Copy, ExternalLink, Crown, Flame, FlaskConical, Gem, ListMusic, Lock, MessageCircle, Music, Play, Shield, Shuffle, Sparkles, Star, UserCheck, UserPlus } from "lucide-react";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
 import { BADGE_LABELS, type BadgeKey } from "@/lib/badges";
+import { getCosmeticForAchievement } from "@/lib/cosmetics";
 import { PlatformIcon } from "@/app/PlatformIcon";
 import { usePlayer } from "@/app/PlayerContext";
 import { useAuth } from "@/app/AuthProvider";
@@ -43,6 +44,7 @@ type ProfileLink = {
 };
 
 type PublicProfile = {
+  avatarFrame: AchievementId | null;
   avatarUrl: string;
   badges: BadgeKey[];
   bio: string;
@@ -58,6 +60,7 @@ type PublicProfile = {
   userId: string;
   uniqueArtistsCount: number;
   unlockedAchievements: AchievementId[];
+  currentStreak: number;
   isPrivate: boolean;
 };
 
@@ -162,6 +165,7 @@ export default function PublicUserProfilePage() {
 
   const themeHue = profile?.themeHue ?? null;
   const hue = themeHue ?? fallbackHue;
+  const equippedCosmetic = useMemo(() => getCosmeticForAchievement(profile?.avatarFrame ?? null), [profile?.avatarFrame]);
 
   const uploadsQueue = useMemo(
     () => (profile?.uploads ?? []).map((t) => ({
@@ -344,16 +348,26 @@ export default function PublicUserProfilePage() {
           {/* Avatar + identity */}
           <div className="flex flex-col items-center text-center pt-4 pb-2 mp3-fade-up">
             {profile.avatarUrl ? (
-              <div className="relative mb-4 h-24 w-24 rounded-full overflow-hidden ring-4"
-                style={{ boxShadow: `0 0 0 4px hsla(${hue}, 50%, 30%, 0.35), 0 12px 48px hsla(${hue}, 60%, 30%, 0.3)` }}>
+              <div
+                className={[
+                  "relative mb-4 h-24 w-24 rounded-full overflow-hidden ring-4",
+                  equippedCosmetic ? `ring-offset-4 ring-offset-[#0b0b0f] ${equippedCosmetic.ringClassName}` : "",
+                ].join(" ")}
+                style={equippedCosmetic ? undefined : { boxShadow: `0 0 0 4px hsla(${hue}, 50%, 30%, 0.35), 0 12px 48px hsla(${hue}, 60%, 30%, 0.3)` }}
+              >
                 <Image src={profile.avatarUrl} alt={profile.displayName} fill className="object-cover" sizes="96px" />
               </div>
             ) : (
-              <div className="mb-4 h-24 w-24 rounded-full flex items-center justify-center text-3xl font-semibold text-white"
+              <div
+                className={[
+                  "mb-4 h-24 w-24 rounded-full flex items-center justify-center text-3xl font-semibold text-white",
+                  equippedCosmetic ? `ring-4 ring-offset-4 ring-offset-[#0b0b0f] ${equippedCosmetic.ringClassName}` : "",
+                ].join(" ")}
                 style={{
                   background: `linear-gradient(135deg, hsla(${hue}, 72%, 58%, 0.95), hsla(${(hue + 50) % 360}, 76%, 50%, 0.88))`,
-                  boxShadow: `0 12px 40px hsla(${hue}, 60%, 38%, 0.3)`,
-                }}>
+                  boxShadow: equippedCosmetic ? undefined : `0 12px 40px hsla(${hue}, 60%, 38%, 0.3)`,
+                }}
+              >
                 {getInitials(profile.displayName, profile.initials)}
               </div>
             )}
@@ -374,6 +388,15 @@ export default function PublicUserProfilePage() {
                   </span>
                 );
               })}
+              {profile.currentStreak > 0 && (
+                <span
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase border bg-orange-500/20 text-orange-300 border-orange-500/30"
+                  title={`${profile.currentStreak} jour${profile.currentStreak > 1 ? "s" : ""} d'affilée`}
+                >
+                  <Flame size={10} />
+                  {profile.currentStreak}
+                </span>
+              )}
             </div>
 
             {formatJoinedAt(profile.joinedAt) && (

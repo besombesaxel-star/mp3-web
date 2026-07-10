@@ -10,7 +10,7 @@ import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 
 type AppNotification = {
   id: string;
-  type: "follow" | "upload" | "reaction" | "mention" | "queue_suggestion" | "message";
+  type: "follow" | "upload" | "reaction" | "mention" | "queue_suggestion" | "message" | "comment" | "playlist_invite";
   fromUserId: string;
   fromDisplayName: string;
   fromAvatarUrl: string;
@@ -18,6 +18,7 @@ type AppNotification = {
   trackSrc?: string;
   emoji?: string;
   excerpt?: string;
+  playlistName?: string;
   createdAt: number;
   read: boolean;
 };
@@ -29,7 +30,12 @@ function NotifRow({ notif, onClose }: { notif: AppNotification; onClose: () => v
     month: "short",
   });
 
-  const profileHref = notif.type === "message" ? `/messages/${notif.fromUserId}` : `/users/${notif.fromUserId}`;
+  const profileHref =
+    notif.type === "message"
+      ? `/messages/${notif.fromUserId}`
+      : notif.type === "playlist_invite"
+        ? "/playlists"
+        : `/users/${notif.fromUserId}`;
 
   return (
     <div className={`flex items-start gap-3 px-4 py-3 ${!notif.read ? "bg-white/5" : ""}`}>
@@ -83,6 +89,19 @@ function NotifRow({ notif, onClose }: { notif: AppNotification; onClose: () => v
               {notif.excerpt && (
                 <span className="block text-white/45 italic mt-0.5 truncate">« {notif.excerpt} »</span>
               )}
+            </>
+          ) : notif.type === "comment" ? (
+            <>
+              a commenté{" "}
+              <span className="font-medium text-white/90">{notif.trackTitle}</span>
+              {notif.excerpt && (
+                <span className="block text-white/45 italic mt-0.5 truncate">« {notif.excerpt} »</span>
+              )}
+            </>
+          ) : notif.type === "playlist_invite" ? (
+            <>
+              vous a invité sur la playlist{" "}
+              <span className="font-medium text-white/90">{notif.playlistName}</span>
             </>
           ) : (
             <>

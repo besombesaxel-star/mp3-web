@@ -3,6 +3,7 @@ import { finalizeUploadForApi } from "@/lib/libraryRepository";
 import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
 import { readAccountProfile } from "@/lib/accountData";
 import { notifyAllUsersOfUpload } from "@/lib/notificationData";
+import { pushActivityEvent } from "@/lib/activityFeed";
 
 export const runtime = "nodejs";
 
@@ -44,6 +45,16 @@ export async function POST(req: Request) {
           trackTitle: track.title,
           trackSrc: track.src,
           trackCover: track.cover ?? null,
+        });
+        await pushActivityEvent({
+          type: "upload",
+          actorUserId: uploaderId,
+          actorDisplayName: uploaderName,
+          actorAvatarUrl: profile.avatarUrl ?? "",
+          trackTitle: track.title,
+          trackSrc: track.src,
+          trackCover: track.cover ?? null,
+          createdAt: Date.now(),
         });
       } catch {}
     })();

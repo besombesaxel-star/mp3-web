@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readAccountProfile, saveAccountProfile, type AccountPlaylist, type EqGains, type EqPreset, type ProfileLink } from "@/lib/accountData";
 import { logActivity } from "@/lib/activityLog";
+import { isAchievementId } from "@/lib/cosmetics";
 
 const EQ_PRESETS: EqPreset[] = ["off", "bass", "vocal", "night", "custom"];
 import { listTracksForApi } from "@/lib/libraryRepository";
@@ -41,6 +42,7 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     ok: true,
+    avatarFrame: profile.avatarFrame ?? null,
     avatarUrl: profile.avatarUrl ?? "",
     customEqGains: profile.customEqGains ?? null,
     eqPreset: profile.eqPreset ?? null,
@@ -92,9 +94,11 @@ export async function PUT(req: Request) {
         : undefined;
   const themeHue = body?.themeHue === null ? null : typeof body?.themeHue === "number" ? body.themeHue : undefined;
   const isPrivate = typeof body?.isPrivate === "boolean" ? body.isPrivate : undefined;
+  const avatarFrame =
+    body?.avatarFrame === null ? null : isAchievementId(body?.avatarFrame) ? body.avatarFrame : undefined;
 
   if (
-    [favoriteSrcs, publicBio, avatarUrl, links, pinnedTrackSrcs, playlists, eqPreset, customEqGains, themeHue, isPrivate].every(
+    [favoriteSrcs, publicBio, avatarUrl, links, pinnedTrackSrcs, playlists, eqPreset, customEqGains, themeHue, isPrivate, avatarFrame].every(
       (v) => v === undefined
     )
   ) {
@@ -102,6 +106,7 @@ export async function PUT(req: Request) {
   }
 
   await saveAccountProfile(user.id, {
+    avatarFrame,
     avatarUrl,
     customEqGains,
     eqPreset,

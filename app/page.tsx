@@ -4,11 +4,13 @@ import Image from "next/image";
 import { History, PartyPopper } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AlbumCard from "./AlbumCard";
+import ActivityFeed from "./ActivityFeed";
 import { useAuth } from "./AuthProvider";
 import { Track, usePlayer } from "./PlayerContext";
 import { fetchTracksShared } from "./tracksCache";
 import { subscribeTracksUpdated } from "./tracksSync";
 import { COVER_SCROLL_TRANSFORM, useCoverScrollEffect } from "./useCoverScrollEffect";
+import { computeRecommendations } from "@/lib/recommendations";
 
 type ApiTrack = {
   title: string;
@@ -152,6 +154,11 @@ export default function Home() {
     }
     return map;
   }, [libraryTracks, favorites]);
+
+  const recommendedTracks = useMemo(() => {
+    const favoriteSrcs = new Set(favorites.map((f) => f.src));
+    return computeRecommendations(libraryTracks, favoriteSrcs, stats, 12);
+  }, [libraryTracks, favorites, stats]);
 
   const recentTracks = useMemo<Track[]>(() => libraryTracks.slice(0, 20), [libraryTracks]);
   const favoriteTracks = useMemo<Track[]>(() => favorites.slice(0, 20), [favorites]);
@@ -422,6 +429,30 @@ export default function Home() {
           })}
         </div>
       </section>
+
+      {recommendedTracks.length > 0 ? (
+        <section className="mb-12">
+          <div className="flex items-end justify-between mb-6 mp3-fade-up">
+            <h3 className="text-2xl font-light">Recommande pour toi</h3>
+            <span className="text-sm text-white/35">Selon tes favoris et ton historique</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+            {recommendedTracks.map((track, index) => (
+              <AlbumCard
+                key={track.src}
+                title={track.title}
+                subtitle={`${track.artist ?? ""} - MP3`}
+                track={track}
+                coverTransform={COVER_SCROLL_TRANSFORM}
+                animationDelay={`${Math.min(index, 9) * 40}ms`}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <ActivityFeed />
 
       <div className="flex items-end justify-between mb-6 mp3-fade-up">
         <h3 className="text-2xl font-light">Recemment ajoutes</h3>

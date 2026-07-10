@@ -4,6 +4,7 @@ import { getBadgesForUser, type BadgeKey } from "@/lib/badges";
 import { listTracksForApi } from "@/lib/libraryRepository";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getInitials, slugifyArtistName } from "@/lib/publicLinks";
+import { computeStreak } from "@/lib/streak";
 
 type SerializedPublicTrack = {
   artist: string;
@@ -18,6 +19,7 @@ type SerializedPublicTrack = {
 };
 
 export type PublicUserProfileData = {
+  avatarFrame: AchievementId | null;
   avatarUrl: string;
   badges: BadgeKey[];
   bio: string;
@@ -33,28 +35,38 @@ export type PublicUserProfileData = {
   userId: string;
   uniqueArtistsCount: number;
   unlockedAchievements: AchievementId[];
+  currentStreak: number;
   isPrivate: boolean;
 };
 
 const STATS_BUCKET = "account-data";
 
-async function readUnlockedAchievements(userId: string): Promise<AchievementId[]> {
+async function readAccountStats(userId: string): Promise<{ unlockedAchievements: AchievementId[]; currentStreak: number }> {
   const admin = getSupabaseAdmin();
-  if (!admin) return [];
+  if (!admin) return { unlockedAchievements: [], currentStreak: 0 };
 
   const { data, error } = await admin.client.storage
     .from(STATS_BUCKET)
     .download(`stats/${userId}.json`);
-  if (error || !data) return [];
+  if (error || !data) return { unlockedAchievements: [], currentStreak: 0 };
 
   try {
-    const parsed = JSON.parse(await data.text()) as { achievements?: Record<string, unknown> };
-    const achievements = parsed?.achievements;
-    if (!achievements || typeof achievements !== "object") return [];
+    const parsed = JSON.parse(await data.text()) as {
+      achievements?: Record<string, unknown>;
+      playsByDay?: Record<string, number>;
+    };
 
-    return ACHIEVEMENTS.filter((def) => Boolean(achievements[def.id])).map((def) => def.id);
+    const achievements = parsed?.achievements;
+    const unlockedAchievements = achievements && typeof achievements === "object"
+      ? ACHIEVEMENTS.filter((def) => Boolean(achievements[def.id])).map((def) => def.id)
+      : [];
+
+    const playsByDay = parsed?.playsByDay && typeof parsed.playsByDay === "object" ? parsed.playsByDay : {};
+    const currentStreak = computeStreak(playsByDay).current;
+
+    return { unlockedAchievements, currentStreak };
   } catch {
-    return [];
+    return { unlockedAchievements: [], currentStreak: 0 };
   }
 }
 
@@ -109,13 +121,14 @@ export async function getPublicUserProfileData(
   userId: string,
   viewerId?: string | null
 ): Promise<PublicUserProfileData | null> {
-  const [tracks, profile, userBasics, badges, unlockedAchievements] = await Promise.all([
+  const [tracks, profile, userBasics, badges, accountStats] = await Promise.all([
     listTracksForApi(),
     readAccountProfile(userId).catch(() => null),
     readPublicUserBasics(userId),
     getBadgesForUser(userId),
-    readUnlockedAchievements(userId).catch(() => []),
+    readAccountStats(userId).catch(() => ({ unlockedAchievements: [] as AchievementId[], currentStreak: 0 })),
   ]);
+  const { unlockedAchievements, currentStreak } = accountStats;
 
   const uploads = tracks
     .filter((track) => track.ownerId === userId)
@@ -143,6 +156,7 @@ export async function getPublicUserProfileData(
 
   if (isPrivate) {
     return {
+      avatarFrame: null,
       avatarUrl: profile?.avatarUrl ?? "",
       badges: [],
       bio: "",
@@ -158,11 +172,16 @@ export async function getPublicUserProfileData(
       userId,
       uniqueArtistsCount: 0,
       unlockedAchievements: [],
+      currentStreak: 0,
       isPrivate: true,
     };
   }
 
+  const rawAvatarFrame = profile?.avatarFrame ?? null;
+  const avatarFrame = rawAvatarFrame && unlockedAchievements.includes(rawAvatarFrame) ? rawAvatarFrame : null;
+
   return {
+    avatarFrame,
     avatarUrl: profile?.avatarUrl ?? "",
     badges,
     bio: profile?.publicBio ?? "",
@@ -178,6 +197,7 @@ export async function getPublicUserProfileData(
     userId,
     uniqueArtistsCount,
     unlockedAchievements,
+    currentStreak,
     isPrivate: false,
   };
 }

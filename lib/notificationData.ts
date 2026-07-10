@@ -3,7 +3,7 @@ import { sendPushToUser } from "@/lib/pushSubscriptions";
 
 export type AppNotification = {
   id: string;
-  type: "follow" | "upload" | "reaction" | "mention" | "queue_suggestion" | "message";
+  type: "follow" | "upload" | "reaction" | "mention" | "queue_suggestion" | "message" | "comment" | "playlist_invite";
   fromUserId: string;
   fromDisplayName: string;
   fromAvatarUrl: string;
@@ -12,6 +12,8 @@ export type AppNotification = {
   trackCover?: string;
   emoji?: string;
   excerpt?: string;
+  playlistId?: string;
+  playlistName?: string;
   createdAt: number;
   read: boolean;
 };
@@ -65,7 +67,11 @@ export async function pushNotification(
             ? `${notif.fromDisplayName} vous a suggere "${notif.trackTitle}"`
             : notif.type === "message"
               ? `${notif.fromDisplayName} vous a envoye un message`
-              : `${notif.fromDisplayName} a partage "${notif.trackTitle}"`;
+              : notif.type === "comment"
+                ? `${notif.fromDisplayName} a commente "${notif.trackTitle}"`
+                : notif.type === "playlist_invite"
+                  ? `${notif.fromDisplayName} vous a invite sur la playlist "${notif.playlistName}"`
+                  : `${notif.fromDisplayName} a partage "${notif.trackTitle}"`;
 
   void sendPushToUser(userId, {
     title: ".mp3",
@@ -75,7 +81,9 @@ export async function pushNotification(
         ? "/library"
         : notif.type === "message"
           ? `/messages/${notif.fromUserId}`
-          : `/users/${notif.fromUserId}`,
+          : notif.type === "playlist_invite"
+            ? "/playlists"
+            : `/users/${notif.fromUserId}`,
   });
 }
 

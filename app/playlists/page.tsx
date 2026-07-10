@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GripVertical, Music2 } from "lucide-react";
+import { GripVertical, Music2, Plus, Users } from "lucide-react";
 import { useAuth } from "../AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { usePlayer, Track } from "../PlayerContext";
@@ -13,6 +13,7 @@ import { toast } from "../Toast";
 import { useLongPress } from "../useLongPress";
 import TrackContextMenu from "../TrackContextMenu";
 import { formatDuration, useTracksTotalDuration } from "../trackDuration";
+import SharedPlaylistModal, { type SharedPlaylist } from "../SharedPlaylistModal";
 
 type TrackWithCover = Track & { cover?: string };
 
@@ -187,12 +188,18 @@ function badgeToneClass(tone: PlaylistBadge["tone"]) {
 }
 
 export default function PlaylistsPage() {
-  const { accessToken, isAuthenticated, loading } = useAuth();
+  const { accessToken, isAuthenticated, loading, user } = useAuth();
   const { setQueueAndPlay, markPlaylistCreated, stats, favorites } = usePlayer();
 
   const [library, setLibrary] = useState<TrackWithCover[]>([]);
   const [libLoading, setLibLoading] = useState(true);
   const [libError, setLibError] = useState("");
+
+  const [sharedPlaylists, setSharedPlaylists] = useState<SharedPlaylist[]>([]);
+  const [sharedLoading, setSharedLoading] = useState(false);
+  const [newSharedName, setNewSharedName] = useState("");
+  const [creatingShared, setCreatingShared] = useState(false);
+  const [openSharedId, setOpenSharedId] = useState<string | null>(null);
 
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [playlistsHydrated, setPlaylistsHydrated] = useState(false);
@@ -333,6 +340,64 @@ export default function PlaylistsPage() {
       cancelled = true;
     };
   }, [accessToken, isAuthenticated, loading]);
+
+  // load shared (collaborative) playlists
+  const loadSharedPlaylists = useCallback(async () => {
+    if (!accessToken) {
+      setSharedPlaylists([]);
+      return;
+    }
+    setSharedLoading(true);
+    try {
+      const res = await fetch("/api/playlists/shared", { cache: "no-store", headers: createAuthorizedHeaders(accessToken) });
+      const json = await res.json();
+      setSharedPlaylists(Array.isArray(json.playlists) ? json.playlists : []);
+    } catch {
+      setSharedPlaylists([]);
+    } finally {
+      setSharedLoading(false);
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
+    if (loading) return;
+    if (!isAuthenticated || !accessToken) {
+      setSharedPlaylists([]);
+      return;
+    }
+    void loadSharedPlaylists();
+  }, [accessToken, isAuthenticated, loading, loadSharedPlaylists]);
+
+  async function createSharedPlaylist() {
+    const name = newSharedName.trim();
+    if (!name || !accessToken || creatingShared) return;
+    setCreatingShared(true);
+    try {
+      const res = await fetch("/api/playlists/shared", {
+        method: "POST",
+        headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+        body: JSON.stringify({ name }),
+      });
+      const json = (await res.json()) as { ok?: boolean; playlist?: SharedPlaylist };
+      if (res.ok && json.ok && json.playlist) {
+        setSharedPlaylists((prev) => [json.playlist as SharedPlaylist, ...prev]);
+        setNewSharedName("");
+        setOpenSharedId(json.playlist.id);
+        markPlaylistCreated();
+      }
+    } catch {}
+    finally {
+      setCreatingShared(false);
+    }
+  }
+
+  function updateSharedPlaylistInList(playlist: SharedPlaylist) {
+    setSharedPlaylists((prev) => prev.map((p) => (p.id === playlist.id ? playlist : p)));
+  }
+
+  function removeSharedPlaylistFromList(id: string) {
+    setSharedPlaylists((prev) => prev.filter((p) => p.id !== id));
+  }
 
   // cache playlists locally for offline-first access
   useEffect(() => {
@@ -795,6 +860,74 @@ export default function PlaylistsPage() {
         </div>
       </section>
 
+      {isAuthenticated ? (
+        <section className="mb-6 rounded-3xl border border-white/10 bg-[#121218] p-4 mp3-fade-up" style={{ animationDelay: "60ms" }}>
+          <div className="flex items-end justify-between mb-3">
+            <div>
+              <p className="text-xs text-white/45 flex items-center gap-1.5">
+                <Users size={12} />
+                Playlists partagees
+              </p>
+              <p className="text-sm text-white/85">Plusieurs contributeurs, une seule playlist.</p>
+            </div>
+          </div>
+
+          <div className="flex gap-2 mb-4">
+            <input
+              value={newSharedName}
+              onChange={(e) => setNewSharedName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void createSharedPlaylist();
+              }}
+              placeholder="Nom de la playlist partagee..."
+              className="flex-1 rounded-2xl bg-[#111118] border border-white/5 px-3 py-2 text-base sm:text-sm text-white/90 outline-none placeholder:text-white/35"
+            />
+            <button
+              type="button"
+              onClick={() => void createSharedPlaylist()}
+              disabled={!newSharedName.trim() || creatingShared}
+              className="rounded-2xl bg-white text-black text-sm font-medium px-4 hover:opacity-90 transition disabled:opacity-50 flex items-center gap-1.5"
+            >
+              <Plus size={14} />
+              Creer
+            </button>
+          </div>
+
+          {sharedLoading ? (
+            <p className="text-xs text-white/30">Chargement...</p>
+          ) : sharedPlaylists.length === 0 ? (
+            <p className="text-xs text-white/30">Aucune playlist partagee pour l&apos;instant.</p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {sharedPlaylists.map((playlist, index) => {
+                const tracks = playlist.trackSrcs.map((src) => library.find((t) => t.src === src)).filter((t): t is TrackWithCover => Boolean(t));
+                const isOwner = playlist.ownerId === user?.id;
+                return (
+                  <button
+                    key={playlist.id}
+                    type="button"
+                    onClick={() => setOpenSharedId(playlist.id)}
+                    className="text-left rounded-2xl border border-white/10 bg-white/5 p-3 transition hover:-translate-y-0.5 hover:bg-white/8 mp3-fade-up"
+                    style={{ animationDelay: `${80 + index * 30}ms` }}
+                  >
+                    <div className="flex items-start gap-3">
+                      <PlaylistCover tracks={tracks} size={40} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-white/90 truncate">{playlist.name}</p>
+                        <p className="mt-1 text-xs text-white/45 truncate">
+                          {isOwner ? "Toi (proprietaire)" : `${playlist.collaboratorIds.length + 1} contributeurs`}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-xs text-white/35">{playlist.trackSrcs.length} morceau(x)</p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      ) : null}
+
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
         <section className="rounded-3xl bg-[#15151C] border border-white/5 p-4 mp3-fade-up" style={{ animationDelay: "120ms" }}>
           <p className="text-xs text-white/45 px-2 mb-3">Mes playlists</p>
@@ -1099,6 +1232,23 @@ export default function PlaylistsPage() {
             : undefined
         }
       />
+
+      {openSharedId ? (
+        (() => {
+          const openPlaylist = sharedPlaylists.find((p) => p.id === openSharedId);
+          if (!openPlaylist) return null;
+          return (
+            <SharedPlaylistModal
+              playlist={openPlaylist}
+              library={library}
+              onClose={() => setOpenSharedId(null)}
+              onUpdated={updateSharedPlaylistInList}
+              onDeleted={removeSharedPlaylistFromList}
+              onPlay={(tracks, index) => setQueueAndPlay(tracks, index)}
+            />
+          );
+        })()
+      ) : null}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { ensureSupabaseAccountBucketReady, getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
-export type BadgeKey = "admin" | "co-founder" | "early-member" | "premium" | "alpha";
+export type BadgeKey = "admin" | "co-founder" | "early-member" | "premium" | "alpha" | "owner";
 
 export const BADGE_LABELS: Record<BadgeKey, string> = {
   admin: "Admin",
@@ -8,13 +8,14 @@ export const BADGE_LABELS: Record<BadgeKey, string> = {
   "early-member": "Early Member",
   premium: "Premium",
   alpha: "Alpha",
+  owner: "Owner",
 };
 
 // Badges an admin can grant/revoke by hand via /admin/badges.
 // "early-member" is computed automatically from account creation order instead.
-export const MANUAL_BADGE_KEYS: BadgeKey[] = ["admin", "co-founder", "premium", "alpha"];
+export const MANUAL_BADGE_KEYS: BadgeKey[] = ["admin", "co-founder", "premium", "alpha", "owner"];
 
-const BADGE_KEYS: BadgeKey[] = ["admin", "co-founder", "early-member", "premium", "alpha"];
+const BADGE_KEYS: BadgeKey[] = ["admin", "co-founder", "early-member", "premium", "alpha", "owner"];
 const BADGES_PATH = "badges/assignments.json";
 const EARLY_MEMBER_COUNT = 10;
 

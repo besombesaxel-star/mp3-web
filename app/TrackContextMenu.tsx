@@ -1,16 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Code, Heart, Link2, ListEnd, ListPlus, X } from "lucide-react";
+import { Check, Code, Heart, Link2, ListEnd, ListPlus, Trash2, X } from "lucide-react";
 import { usePlayer, type Track } from "./PlayerContext";
 import { vibrate } from "./haptics";
 
 type Props = {
   track: Track | null;
   onClose: () => void;
+  removeFromPlaylist?: { playlistName: string; onRemove: () => void };
 };
 
-export default function TrackContextMenu({ track, onClose }: Props) {
+export default function TrackContextMenu({ track, onClose, removeFromPlaylist }: Props) {
   const { addToQueueNext, addToQueueEnd, toggleFavorite, isFavorite, hapticsEnabled } = usePlayer();
   const [copied, setCopied] = useState(false);
   const [embedCopied, setEmbedCopied] = useState(false);
@@ -142,6 +143,17 @@ export default function TrackContextMenu({ track, onClose }: Props) {
           {embedCopied ? <Check size={18} className="text-green-400" /> : <Code size={18} className="opacity-80" />}
           {embedCopied ? "Code copie" : "Copier le code d'integration"}
         </button>
+
+        {removeFromPlaylist ? (
+          <button
+            type="button"
+            className="w-full flex items-center gap-3 px-2 py-3 rounded-xl hover:bg-white/5 transition text-left text-sm text-red-300"
+            onClick={() => withHaptic(() => removeFromPlaylist.onRemove())}
+          >
+            <Trash2 size={18} className="opacity-80" />
+            {`Retirer de « ${removeFromPlaylist.playlistName} »`}
+          </button>
+        ) : null}
       </div>
     </>
   );

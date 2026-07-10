@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { GripVertical, Music2 } from "lucide-react";
 import { useAuth } from "../AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { usePlayer, Track } from "../PlayerContext";
@@ -11,49 +12,132 @@ import { subscribeTracksUpdated } from "../tracksSync";
 import { toast } from "../Toast";
 import { useLongPress } from "../useLongPress";
 import TrackContextMenu from "../TrackContextMenu";
+import { formatDuration, useTracksTotalDuration } from "../trackDuration";
 
 type TrackWithCover = Track & { cover?: string };
 
+function PlaylistCover({ tracks, size = 44 }: { tracks: TrackWithCover[]; size?: number }) {
+  const covers = useMemo(() => {
+    const seen = new Set<string>();
+    const list: string[] = [];
+    for (const track of tracks) {
+      if (!track.cover || seen.has(track.cover)) continue;
+      seen.add(track.cover);
+      list.push(track.cover);
+      if (list.length === 4) break;
+    }
+    return list;
+  }, [tracks]);
+
+  return (
+    <div
+      className="relative shrink-0 grid grid-cols-2 grid-rows-2 overflow-hidden rounded-xl border border-white/5 bg-[#1A1A22]"
+      style={{ width: size, height: size }}
+    >
+      {covers.length === 0 ? (
+        <div className="col-span-2 row-span-2 flex items-center justify-center text-white/15">
+          <Music2 size={Math.round(size * 0.42)} />
+        </div>
+      ) : (
+        covers.map((cover, i) => {
+          let spanClass = "";
+          if (covers.length === 1) spanClass = "col-span-2 row-span-2";
+          else if (covers.length === 2) spanClass = "row-span-2";
+          else if (covers.length === 3 && i === 0) spanClass = "col-span-2";
+
+          return (
+            <div key={cover} className={`relative ${spanClass}`}>
+              <Image src={cover} alt="" fill className="object-cover" sizes={`${size}px`} />
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
 function ActivePlaylistRow({
-  track, index = 0, onPlay, onOpenMenu,
+  track,
+  index = 0,
+  onPlay,
+  onOpenMenu,
+  reorderEnabled,
+  isDragging,
+  isDragOver,
+  onDragHandlePointerDown,
+  onDragPointerMove,
+  onDragPointerUp,
+  rowRef,
 }: {
   track: TrackWithCover;
   index?: number;
   onPlay: (src: string) => void;
   onOpenMenu: (t: Track) => void;
+  reorderEnabled: boolean;
+  isDragging: boolean;
+  isDragOver: boolean;
+  onDragHandlePointerDown: (e: React.PointerEvent, index: number) => void;
+  onDragPointerMove: (e: React.PointerEvent) => void;
+  onDragPointerUp: (e: React.PointerEvent) => void;
+  rowRef: (el: HTMLDivElement | null) => void;
 }) {
   const longPress = useLongPress({ onLongPress: () => onOpenMenu(track) });
 
   return (
-    <button
-      type="button"
-      onClick={() => {
-        if (longPress.didLongPress()) return;
-        onPlay(track.src);
-      }}
-      onTouchStart={longPress.onTouchStart}
-      onTouchMove={longPress.onTouchMove}
-      onTouchEnd={longPress.onTouchEnd}
-      onTouchCancel={longPress.onTouchCancel}
-      onContextMenu={longPress.onContextMenu}
-      className="group flex items-center justify-between gap-4 rounded-2xl px-2 py-3 hover:bg-white/5 transition text-left mp3-fade-up"
+    <div
+      ref={rowRef}
+      className={[
+        "group flex items-center gap-1 rounded-2xl transition mp3-fade-up",
+        isDragging ? "opacity-40" : "",
+        isDragOver ? "bg-white/10 ring-1 ring-white/20" : "",
+      ].join(" ")}
       style={{ animationDelay: `${Math.min(index, 14) * 25}ms` }}
-      title="Lire"
     >
-      <div className="min-w-0 flex items-center gap-4">
-        <div className="relative h-12 w-12 overflow-hidden rounded-xl border border-white/5 bg-[#1A1A22]">
-          {track.cover ? (
-            <Image src={track.cover} alt={track.title} fill className="object-cover" sizes="48px" />
-          ) : null}
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm text-white/90 truncate">{track.title}</p>
-          <p className="text-xs text-white/45 truncate">{track.artist ?? "-"}</p>
-        </div>
-      </div>
+      {reorderEnabled ? (
+        <button
+          type="button"
+          onPointerDown={(e) => onDragHandlePointerDown(e, index)}
+          onPointerMove={onDragPointerMove}
+          onPointerUp={onDragPointerUp}
+          onPointerCancel={onDragPointerUp}
+          className="shrink-0 h-10 w-8 flex items-center justify-center rounded-lg text-white/20 hover:text-white/60 hover:bg-white/5 cursor-grab active:cursor-grabbing"
+          style={{ touchAction: "none" }}
+          aria-label={`Réordonner ${track.title}`}
+          title="Glisser pour réordonner"
+        >
+          <GripVertical size={16} />
+        </button>
+      ) : null}
 
-      <span className="text-xs text-white/35 group-hover:text-white/70 transition">Play</span>
-    </button>
+      <button
+        type="button"
+        onClick={() => {
+          if (longPress.didLongPress()) return;
+          onPlay(track.src);
+        }}
+        onTouchStart={longPress.onTouchStart}
+        onTouchMove={longPress.onTouchMove}
+        onTouchEnd={longPress.onTouchEnd}
+        onTouchCancel={longPress.onTouchCancel}
+        onContextMenu={longPress.onContextMenu}
+        className="flex-1 min-w-0 flex items-center justify-between gap-4 rounded-2xl px-2 py-3 hover:bg-white/5 transition text-left"
+        title="Lire"
+      >
+        <div className="min-w-0 flex items-center gap-4">
+          <div className="relative h-12 w-12 overflow-hidden rounded-xl border border-white/5 bg-[#1A1A22]">
+            {track.cover ? (
+              <Image src={track.cover} alt={track.title} fill className="object-cover" sizes="48px" />
+            ) : null}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm text-white/90 truncate">{track.title}</p>
+            <p className="text-xs text-white/45 truncate">{track.artist ?? "-"}</p>
+          </div>
+        </div>
+
+        <span className="text-xs text-white/35 group-hover:text-white/70 transition">Play</span>
+      </button>
+    </div>
   );
 }
 
@@ -124,6 +208,10 @@ export default function PlaylistsPage() {
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const playlistsRemoteHydratedRef = useRef(false);
   const lastSyncedPlaylistsSignatureRef = useRef("");
+
+  const [dragFromIndex, setDragFromIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const activeRowRefs = useRef<Array<HTMLDivElement | null>>([]);
 
   const loadLibrary = useCallback(async () => {
     try {
@@ -325,6 +413,23 @@ export default function PlaylistsPage() {
     return base;
   }, [activeTracks, activeTracksSearch, activeSort]);
 
+  const reorderEnabled = activeSort === "default" && activeTracksSearch.trim() === "" && filteredActiveTracks.length > 1;
+
+  const playlistTracksById = useMemo(() => {
+    const map = new Map<string, TrackWithCover[]>();
+    for (const playlist of playlists) {
+      map.set(
+        playlist.id,
+        playlist.trackSrcs
+          .map((src) => libraryBySrc.get(src))
+          .filter((track): track is TrackWithCover => Boolean(track))
+      );
+    }
+    return map;
+  }, [playlists, libraryBySrc]);
+
+  const activeTotalDuration = useTracksTotalDuration(activeTracks.map((track) => track.src));
+
   const filteredLibrary = useMemo(() => {
     const value = search.trim().toLowerCase();
     if (!value) return library;
@@ -507,6 +612,62 @@ export default function PlaylistsPage() {
     if (!alreadyIn) toast(`Ajouté à « ${active.name} »`, "check");
   }
 
+  function removeTrackFromActive(src: string) {
+    if (!active) return;
+    setPlaylists((prev) =>
+      prev.map((playlist) =>
+        playlist.id === active.id
+          ? { ...playlist, trackSrcs: playlist.trackSrcs.filter((value) => value !== src) }
+          : playlist
+      )
+    );
+    toast(`Retiré de « ${active.name} »`, "check");
+  }
+
+  function reorderActiveTrack(fromIndex: number, toIndex: number) {
+    if (!active || fromIndex === toIndex) return;
+    setPlaylists((prev) =>
+      prev.map((playlist) => {
+        if (playlist.id !== active.id) return playlist;
+        const next = [...playlist.trackSrcs];
+        const [moved] = next.splice(fromIndex, 1);
+        next.splice(toIndex, 0, moved);
+        return { ...playlist, trackSrcs: next };
+      })
+    );
+  }
+
+  function handleDragHandlePointerDown(e: React.PointerEvent, index: number) {
+    if (!reorderEnabled) return;
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    setDragFromIndex(index);
+    setDragOverIndex(index);
+  }
+
+  function handleDragPointerMove(e: React.PointerEvent) {
+    if (dragFromIndex === null) return;
+    const y = e.clientY;
+    for (let i = 0; i < activeRowRefs.current.length; i += 1) {
+      const el = activeRowRefs.current[i];
+      if (!el) continue;
+      const rect = el.getBoundingClientRect();
+      if (y >= rect.top && y <= rect.bottom) {
+        setDragOverIndex((prev) => (prev === i ? prev : i));
+        break;
+      }
+    }
+  }
+
+  function handleDragPointerUp() {
+    if (dragFromIndex === null) return;
+    const from = dragFromIndex;
+    const to = dragOverIndex ?? dragFromIndex;
+    setDragFromIndex(null);
+    setDragOverIndex(null);
+    if (from !== to) reorderActiveTrack(from, to);
+  }
+
   function playActive(startIndex: number) {
     if (!activeTracks.length) return;
     setQueueAndPlay(activeTracks, startIndex);
@@ -585,24 +746,29 @@ export default function PlaylistsPage() {
               className="rounded-2xl border border-white/10 bg-white/5 p-3 transition hover:-translate-y-0.5 hover:bg-white/8 mp3-fade-up"
               style={{ animationDelay: `${80 + index * 30}ms` }}
             >
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm text-white/90">{playlist.name}</p>
-                {badges.length > 0 ? (
-                  <div className="flex flex-wrap items-center justify-end gap-1">
-                    {badges.map((badge) => (
-                      <span
-                        key={`${playlist.id}-${badge.label}`}
-                        className={`rounded-full border px-2 py-1 text-[10px] font-medium tracking-wide ${badgeToneClass(
-                          badge.tone
-                        )}`}
-                      >
-                        {badge.label}
-                      </span>
-                    ))}
+              <div className="flex items-start gap-3">
+                <PlaylistCover tracks={playlist.tracks} size={40} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm text-white/90 truncate">{playlist.name}</p>
+                    {badges.length > 0 ? (
+                      <div className="flex flex-wrap items-center justify-end gap-1 shrink-0">
+                        {badges.map((badge) => (
+                          <span
+                            key={`${playlist.id}-${badge.label}`}
+                            className={`rounded-full border px-2 py-1 text-[10px] font-medium tracking-wide ${badgeToneClass(
+                              badge.tone
+                            )}`}
+                          >
+                            {badge.label}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
+                  <p className="mt-1 text-xs text-white/45 truncate">{playlist.subtitle}</p>
+                </div>
               </div>
-              <p className="mt-1 text-xs text-white/45">{playlist.subtitle}</p>
               <p className="mt-2 text-xs text-white/35">{playlist.tracks.length} morceau(x)</p>
 
               <div className="mt-3 flex items-center gap-2">
@@ -667,13 +833,16 @@ export default function PlaylistsPage() {
                       type="button"
                       onClick={() => selectPlaylist(playlist.id)}
                       className={[
-                        "flex-1 text-left rounded-xl px-3 py-2",
+                        "flex-1 min-w-0 flex items-center gap-3 text-left rounded-xl px-2 py-2",
                         isActive ? "text-white" : "text-white/85 hover:bg-white/5",
                       ].join(" ")}
                       aria-current={isActive ? "true" : undefined}
                     >
-                      <p className="text-sm truncate">{playlist.name}</p>
-                      <p className="text-xs text-white/40 truncate">{playlist.trackSrcs.length} morceau(x)</p>
+                      <PlaylistCover tracks={playlistTracksById.get(playlist.id) ?? []} size={40} />
+                      <div className="min-w-0">
+                        <p className="text-sm truncate">{playlist.name}</p>
+                        <p className="text-xs text-white/40 truncate">{playlist.trackSrcs.length} morceau(x)</p>
+                      </div>
                     </button>
 
                     <button
@@ -698,10 +867,20 @@ export default function PlaylistsPage() {
           ) : (
             <>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5 px-2">
-                <div className="min-w-0">
-                  <p className="text-xs text-white/45">Playlist</p>
-                  <p className="text-xl text-white/90 font-light truncate">{active.name}</p>
-                  <p className="text-sm text-white/45 mt-1">{activeTracks.length} morceau(x)</p>
+                <div className="min-w-0 flex items-center gap-4">
+                  <PlaylistCover tracks={activeTracks} size={64} />
+                  <div className="min-w-0">
+                    <p className="text-xs text-white/45">Playlist</p>
+                    <p className="text-xl text-white/90 font-light truncate">{active.name}</p>
+                    <p className="text-sm text-white/45 mt-1">
+                      {activeTracks.length} morceau(x)
+                      {activeTotalDuration.loadedCount > 0
+                        ? ` · ${formatDuration(activeTotalDuration.totalSeconds)}${
+                            activeTotalDuration.loadedCount < activeTotalDuration.total ? "+" : ""
+                          }`
+                        : ""}
+                    </p>
+                  </div>
                 </div>
 
                 <button
@@ -786,13 +965,27 @@ export default function PlaylistsPage() {
                   </div>
                 ) : (
                   <div className="flex flex-col">
+                    {activeTracks.length > 1 && !reorderEnabled ? (
+                      <p className="px-2 pb-2 text-xs text-white/30">
+                        Passe en tri &quot;Ordre d&apos;ajout&quot; sans recherche pour réordonner par glisser-déposer.
+                      </p>
+                    ) : null}
                     {filteredActiveTracks.map((track, index) => (
                       <ActivePlaylistRow
-                        key={`${track.src}-${index}`}
+                        key={track.src}
                         track={track}
                         index={index}
                         onPlay={playActiveTrack}
                         onOpenMenu={setMenuTrack}
+                        reorderEnabled={reorderEnabled}
+                        isDragging={reorderEnabled && dragFromIndex === index}
+                        isDragOver={reorderEnabled && dragOverIndex === index && dragFromIndex !== null && dragFromIndex !== index}
+                        onDragHandlePointerDown={handleDragHandlePointerDown}
+                        onDragPointerMove={handleDragPointerMove}
+                        onDragPointerUp={handleDragPointerUp}
+                        rowRef={(el) => {
+                          activeRowRefs.current[index] = el;
+                        }}
                       />
                     ))}
                   </div>
@@ -897,7 +1090,15 @@ export default function PlaylistsPage() {
         </div>
       ) : null}
 
-      <TrackContextMenu track={menuTrack} onClose={() => setMenuTrack(null)} />
+      <TrackContextMenu
+        track={menuTrack}
+        onClose={() => setMenuTrack(null)}
+        removeFromPlaylist={
+          active && menuTrack
+            ? { playlistName: active.name, onRemove: () => removeTrackFromActive(menuTrack.src) }
+            : undefined
+        }
+      />
     </div>
   );
 }

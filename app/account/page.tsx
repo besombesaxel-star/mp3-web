@@ -17,6 +17,7 @@ import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import type { ProfileLink } from "@/lib/accountData";
 import AvatarCropper from "@/app/AvatarCropper";
 import SettingsContent from "@/app/SettingsContent";
+import { detectPlatform, PlatformIcon } from "@/app/PlatformIcon";
 
 type DeviceSession = {
   deviceId: string;
@@ -72,21 +73,6 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 function uid() {
   return Math.random().toString(36).slice(2, 10);
-}
-
-function detectPlatform(url: string): string | null {
-  const u = url.toLowerCase();
-  if (u.includes("instagram.com")) return "Instagram";
-  if (u.includes("twitter.com") || u.includes("x.com")) return "X";
-  if (u.includes("youtube.com") || u.includes("youtu.be")) return "YouTube";
-  if (u.includes("soundcloud.com")) return "SoundCloud";
-  if (u.includes("spotify.com")) return "Spotify";
-  if (u.includes("tiktok.com")) return "TikTok";
-  if (u.includes("github.com")) return "GitHub";
-  if (u.includes("twitch.tv")) return "Twitch";
-  if (u.includes("discord.gg") || u.includes("discord.com/invite")) return "Discord";
-  if (u.includes("bsky.app")) return "Bluesky";
-  return null;
 }
 
 function normalizeUrl(raw: string): string {
@@ -829,87 +815,6 @@ export default function AccountPage() {
               </div>
             </section>
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mp3-fade-up" style={{ animationDelay: "90ms" }}>
-              {[
-                { icon: <Upload size={13} className="text-white/30" />, label: "Uploads", value: totalUploads },
-                { icon: <Heart size={13} className="text-white/30" />, label: "Favoris", value: favoriteCount },
-                { icon: <Link2 size={13} className="text-white/30" />, label: "Liens", value: links.length },
-                { icon: <UserPlus size={13} className="text-white/30" />, label: "Abonnés", value: followersCount },
-                { icon: <UserCheck size={13} className="text-white/30" />, label: "Abonnements", value: followingCount },
-              ].map(({ icon, label, value }) => (
-                <div key={label} className="rounded-3xl border border-white/8 bg-white/[0.04] p-4">
-                  <div className="flex items-center gap-1.5 mb-2">{icon}<p className="text-xs text-white/40">{label}</p></div>
-                  <p className="text-2xl font-light text-white/90 tabular-nums">{profileLoading ? "—" : value}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Mes favoris */}
-            {(profileLoading || favoriteTracks.length > 0) && (
-              <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "130ms" }}>
-                <div className="flex items-center justify-between mb-5">
-                  <div className="flex items-center gap-2">
-                    <Heart size={14} className="text-white/30" />
-                    <h2 className="text-sm font-medium text-white/70">Mes favoris</h2>
-                    {favoriteCount > 0 && <span className="text-xs text-white/25">{favoriteCount}</span>}
-                  </div>
-                  {favoriteTracks.length > 0 && (
-                    <div className="flex items-center gap-3">
-                      <button type="button" onClick={() => setQueueAndPlay(favoritesForPlayer, 0)}
-                        className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/80 transition">
-                        <Play size={11} className="fill-current" />
-                        Tout écouter
-                      </button>
-                      <Link href="/favorites" className="text-xs text-white/35 hover:text-white/70 transition">Voir tout →</Link>
-                    </div>
-                  )}
-                </div>
-                {profileLoading ? (
-                  <div className="space-y-1">{[...Array(3)].map((_, i) => (
-                    <div key={i} className="flex items-center gap-3 px-3 py-2.5">
-                      <div className="h-9 w-9 shrink-0 rounded-xl bg-white/5 animate-pulse" />
-                      <div className="flex-1 space-y-1.5">
-                        <div className="h-3 w-2/3 rounded-full bg-white/5 animate-pulse" />
-                        <div className="h-2.5 w-1/3 rounded-full bg-white/4 animate-pulse" />
-                      </div>
-                    </div>
-                  ))}</div>
-                ) : (
-                  <div className="space-y-0.5">
-                    {favoriteTracks.slice(0, 6).map((item, index) => (
-                      <div key={item.src}
-                        className="group flex items-center gap-3 rounded-2xl px-3 py-2.5 hover:bg-white/5 transition cursor-pointer"
-                        onClick={() => setQueueAndPlay(favoritesForPlayer, index)}
-                      >
-                        <div className="relative h-9 w-9 shrink-0 rounded-xl overflow-hidden bg-white/5">
-                          {item.cover ? (
-                            <Image src={item.cover} alt={item.title} fill className="object-cover" sizes="36px" />
-                          ) : (
-                            <div className="h-full w-full flex items-center justify-center"><Heart size={11} className="text-white/20" /></div>
-                          )}
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition">
-                            <Play size={11} className="fill-white text-white ml-0.5" />
-                          </div>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm text-white/85 truncate">{item.title}</p>
-                          <p className="text-xs text-white/40 truncate">{item.artist}</p>
-                        </div>
-                      </div>
-                    ))}
-                    {favoriteCount > 6 && (
-                      <div className="pt-2 text-center">
-                        <Link href="/favorites" className="text-xs text-white/30 hover:text-white/60 transition">
-                          +{favoriteCount - 6} autres · Voir tout
-                        </Link>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </section>
-            )}
-
             {/* Mes uploads */}
             <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "170ms" }}>
               <div className="flex items-center justify-between mb-5">
@@ -1232,7 +1137,7 @@ export default function AccountPage() {
                     const platform = detectPlatform(link.url);
                     return (
                     <div key={link.id} className="group flex items-center gap-2 rounded-2xl border border-white/8 bg-white/3 px-3 py-2.5">
-                      <Link2 size={13} className="text-white/25 shrink-0" />
+                      <PlatformIcon url={link.url} size={13} className="text-white/25 shrink-0" />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <p className="text-sm text-white/85 truncate">{link.label}</p>
@@ -1272,6 +1177,83 @@ export default function AccountPage() {
                 </div>
               </div>
             </section>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-3 mp3-fade-up" style={{ animationDelay: "170ms" }}>
+              {[
+                { icon: <Upload size={13} className="text-white/30" />, label: "Uploads", value: totalUploads },
+                { icon: <Heart size={13} className="text-white/30" />, label: "Favoris", value: favoriteCount },
+                { icon: <Link2 size={13} className="text-white/30" />, label: "Liens", value: links.length },
+                { icon: <UserPlus size={13} className="text-white/30" />, label: "Abonnés", value: followersCount },
+                { icon: <UserCheck size={13} className="text-white/30" />, label: "Abonnements", value: followingCount },
+              ].map(({ icon, label, value }) => (
+                <div key={label} className="rounded-3xl border border-white/8 bg-white/[0.04] p-4">
+                  <div className="flex items-center gap-1.5 mb-2">{icon}<p className="text-xs text-white/40">{label}</p></div>
+                  <p className="text-2xl font-light text-white/90 tabular-nums">{profileLoading ? "—" : value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Mes favoris */}
+            {(profileLoading || favoriteTracks.length > 0) && (
+              <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "210ms" }}>
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2">
+                    <Heart size={14} className="text-white/30" />
+                    <h2 className="text-sm font-medium text-white/70">Mes favoris</h2>
+                    {favoriteCount > 0 && <span className="text-xs text-white/25">{favoriteCount}</span>}
+                  </div>
+                  {favoriteTracks.length > 0 && (
+                    <button type="button" onClick={() => setQueueAndPlay(favoritesForPlayer, 0)}
+                      className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/80 transition">
+                      <Play size={11} className="fill-current" />
+                    </button>
+                  )}
+                </div>
+                {profileLoading ? (
+                  <div className="space-y-1">{[...Array(3)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 px-3 py-2.5">
+                      <div className="h-9 w-9 shrink-0 rounded-xl bg-white/5 animate-pulse" />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-3 w-2/3 rounded-full bg-white/5 animate-pulse" />
+                        <div className="h-2.5 w-1/3 rounded-full bg-white/4 animate-pulse" />
+                      </div>
+                    </div>
+                  ))}</div>
+                ) : (
+                  <div className="space-y-0.5">
+                    {favoriteTracks.slice(0, 6).map((item, index) => (
+                      <div key={item.src}
+                        className="group flex items-center gap-3 rounded-2xl px-3 py-2.5 hover:bg-white/5 transition cursor-pointer"
+                        onClick={() => setQueueAndPlay(favoritesForPlayer, index)}
+                      >
+                        <div className="relative h-9 w-9 shrink-0 rounded-xl overflow-hidden bg-white/5">
+                          {item.cover ? (
+                            <Image src={item.cover} alt={item.title} fill className="object-cover" sizes="36px" />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center"><Heart size={11} className="text-white/20" /></div>
+                          )}
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition">
+                            <Play size={11} className="fill-white text-white ml-0.5" />
+                          </div>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm text-white/85 truncate">{item.title}</p>
+                          <p className="text-xs text-white/40 truncate">{item.artist}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {favoriteCount > 6 && (
+                  <div className="pt-2 text-center">
+                    <Link href="/favorites" className="text-xs text-white/30 hover:text-white/60 transition">
+                      +{favoriteCount - 6} autres · Voir tout
+                    </Link>
+                  </div>
+                )}
+              </section>
+            )}
 
               </div>
             </div>

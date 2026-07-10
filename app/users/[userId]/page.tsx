@@ -8,6 +8,7 @@ import { Check, Copy, ExternalLink, Crown, FlaskConical, Gem, ListMusic, Lock, M
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
 import { BADGE_LABELS, type BadgeKey } from "@/lib/badges";
+import { PlatformIcon } from "@/app/PlatformIcon";
 import { usePlayer } from "@/app/PlayerContext";
 import { useAuth } from "@/app/AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
@@ -546,7 +547,10 @@ export default function PublicUserProfilePage() {
                   className="group flex items-center justify-between w-full rounded-2xl border border-white/10 bg-white/6 px-5 py-3.5 text-sm font-medium text-white/85 hover:bg-white/10 hover:border-white/15 transition"
                   style={{ boxShadow: `0 1px 0 0 hsla(${hue}, 50%, 50%, 0.08)` }}
                 >
-                  <span className="truncate">{link.label}</span>
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <PlatformIcon url={link.url} size={15} className="shrink-0 text-white/50 group-hover:text-white/75 transition" />
+                    <span className="truncate">{link.label}</span>
+                  </span>
                   <ExternalLink size={13} className="shrink-0 ml-3 text-white/30 group-hover:text-white/60 transition" />
                 </a>
               ))}

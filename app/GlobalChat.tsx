@@ -3,12 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { MessageSquare, Send, Trash2, X } from "lucide-react";
+import { MessageCircle, MessageSquare, Send, Trash2, X } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { usePlayer } from "./PlayerContext";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
-import { getPublicProfileHref } from "@/lib/publicLinks";
+import { getInitials, getPublicProfileHref } from "@/lib/publicLinks";
 import { isAdminUser } from "@/lib/adminAccess";
 import { playPopSound } from "./sound";
 import { vibrate } from "./haptics";
@@ -25,6 +25,23 @@ function formatTime(iso: string) {
     return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
   return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
+
+function formatRelative(timestamp: number) {
+  const diff = Date.now() - timestamp;
+  if (diff < 60_000) return "à l'instant";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} h`;
+  return new Date(timestamp).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+}
+
+type ConversationPreview = {
+  userId: string;
+  displayName: string;
+  avatarUrl: string;
+  lastMessage: string;
+  lastFromMe: boolean;
+  updatedAt: number;
+};
 
 function initials(name: string) {
   return (
@@ -108,8 +125,12 @@ export default function GlobalChat() {
   const myId = user?.id ?? "";
 
   const [open, setOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"global" | "private">("global");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [conversations, setConversations] = useState<ConversationPreview[]>([]);
+  const [conversationsLoading, setConversationsLoading] = useState(false);
+  const [conversationsLoaded, setConversationsLoaded] = useState(false);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
@@ -290,6 +311,31 @@ export default function GlobalChat() {
     return () => { cancelled = true; };
   }, [open]);
 
+  // Load private conversations when the "Messages" tab is opened
+  useEffect(() => {
+    if (!open || activeTab !== "private" || !isAuthenticated || !accessToken) return;
+    let cancelled = false;
+    async function load() {
+      setConversationsLoading(true);
+      try {
+        const res = await fetch("/api/messages", { cache: "no-store", headers: createAuthorizedHeaders(accessToken!) });
+        const json = (await res.json()) as { ok?: boolean; conversations?: ConversationPreview[] };
+        if (!cancelled && json.ok && Array.isArray(json.conversations)) {
+          setConversations(json.conversations);
+        }
+      } catch {
+        /* silent */
+      } finally {
+        if (!cancelled) {
+          setConversationsLoading(false);
+          setConversationsLoaded(true);
+        }
+      }
+    }
+    void load();
+    return () => { cancelled = true; };
+  }, [open, activeTab, isAuthenticated, accessToken]);
+
   // Scroll to bottom
   useEffect(() => {
     if (!open) return;
@@ -462,7 +508,7 @@ export default function GlobalChat() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="Chat général"
+        aria-label="Chat et messages"
         className={[
           "fixed z-[55] flex items-center justify-center rounded-full border transition-all active:scale-90 shadow-lg shadow-black/30",
           "top-1 right-16 h-10 w-10",
@@ -517,13 +563,38 @@ export default function GlobalChat() {
           className="flex flex-col gap-2 border-b border-white/8 px-5 pt-3 pb-4 shrink-0"
         >
           <div className="mx-auto h-1.5 w-10 rounded-full bg-white/15 md:hidden" aria-hidden="true" />
-          <div className="flex items-center gap-3">
-            <div className="h-2 w-2 rounded-full bg-green-400 animate-pulse" />
-            <h2 className="flex-1 text-sm font-medium text-white/85">Chat général</h2>
+          <div className="flex items-center gap-2">
+            <div className="flex flex-1 items-center gap-1 rounded-full bg-white/6 p-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab("global")}
+                className={[
+                  "flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition",
+                  activeTab === "global" ? "bg-white text-black" : "text-white/50 hover:text-white/80",
+                ].join(" ")}
+              >
+                <span
+                  className={["h-1.5 w-1.5 rounded-full", activeTab === "global" ? "bg-green-500" : "bg-green-400 animate-pulse"].join(" ")}
+                  aria-hidden="true"
+                />
+                Chat général
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("private")}
+                className={[
+                  "flex-1 flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition",
+                  activeTab === "private" ? "bg-white text-black" : "text-white/50 hover:text-white/80",
+                ].join(" ")}
+              >
+                <MessageCircle size={13} />
+                Messages
+              </button>
+            </div>
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="h-8 w-8 rounded-full text-white/40 hover:text-white hover:bg-white/8 transition flex items-center justify-center"
+              className="h-8 w-8 shrink-0 rounded-full text-white/40 hover:text-white hover:bg-white/8 transition flex items-center justify-center"
             >
               <X size={15} />
             </button>
@@ -531,7 +602,10 @@ export default function GlobalChat() {
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+        <div
+          ref={scrollRef}
+          className={["flex-1 overflow-y-auto px-4 py-4 space-y-1", activeTab === "global" ? "" : "hidden"].join(" ")}
+        >
           {loadingHistory ? (
             <div className="space-y-3 pt-4">
               {[...Array(4)].map((_, i) => (
@@ -653,8 +727,78 @@ export default function GlobalChat() {
           <div ref={bottomRef} className="h-1" />
         </div>
 
+        {/* Private conversations */}
+        <div className={["flex-1 overflow-y-auto px-4 py-4", activeTab === "private" ? "" : "hidden"].join(" ")}>
+          {!isAuthenticated ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-center py-16">
+              <MessageCircle size={32} className="text-white/12" />
+              <p className="text-sm text-white/35">
+                <a href="/account" className="underline underline-offset-2 hover:text-white/60 transition">
+                  Connecte-toi
+                </a>{" "}
+                pour voir tes messages.
+              </p>
+            </div>
+          ) : conversationsLoading && !conversationsLoaded ? (
+            <div className="space-y-3 pt-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex gap-2.5 animate-pulse">
+                  <div className="h-9 w-9 shrink-0 rounded-full bg-white/8" />
+                  <div className="space-y-1.5 flex-1">
+                    <div className="h-2.5 w-24 rounded-full bg-white/8" />
+                    <div className="h-2.5 rounded-full bg-white/6 w-3/4" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : conversations.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-center py-16">
+              <MessageCircle size={32} className="text-white/12" />
+              <p className="text-sm text-white/35">Aucune conversation pour le moment.</p>
+              <p className="text-xs text-white/20">
+                Rends-toi sur le profil de quelqu&apos;un pour lui envoyer un message.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {conversations.map((conv, i) => (
+                <Link
+                  key={conv.userId}
+                  href={`/messages/${conv.userId}`}
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-3 rounded-2xl px-2 py-2.5 hover:bg-white/5 transition mp3-fade-up"
+                  style={{ animationDelay: `${Math.min(i, 12) * 30}ms` }}
+                >
+                  <div className="relative h-9 w-9 shrink-0 rounded-full overflow-hidden bg-white/8 flex items-center justify-center text-[10px] font-semibold text-white/60">
+                    {conv.avatarUrl ? (
+                      <Image src={conv.avatarUrl} alt={conv.displayName} fill className="object-cover" />
+                    ) : (
+                      getInitials(conv.displayName)
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-white/90 truncate">{conv.displayName}</p>
+                    <p className="text-xs text-white/40 truncate">
+                      {conv.lastFromMe ? "Toi : " : ""}
+                      {conv.lastMessage}
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-white/30 shrink-0">{formatRelative(conv.updatedAt)}</span>
+                </Link>
+              ))}
+              <Link
+                href="/messages"
+                onClick={() => setOpen(false)}
+                className="block mt-2 text-center text-xs text-white/35 hover:text-white/60 transition py-2"
+              >
+                Voir tous les messages
+              </Link>
+            </div>
+          )}
+        </div>
+
         {/* Input */}
-        <div className="border-t border-white/8 px-4 py-3 shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className={["border-t border-white/8 px-4 py-3 shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))]", activeTab === "global" ? "" : "hidden"].join(" ")}>
           {!isAuthenticated ? (
             <div className="rounded-2xl border border-white/8 bg-white/4 px-4 py-3 text-center">
               <p className="text-xs text-white/45">

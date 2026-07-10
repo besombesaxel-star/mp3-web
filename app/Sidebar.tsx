@@ -244,7 +244,7 @@ export default function Sidebar() {
                     alt=""
                     aria-hidden="true"
                     fill
-                    className="object-fill"
+                    className="object-cover"
                     priority={false}
                   />
                 </div>

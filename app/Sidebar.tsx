@@ -200,7 +200,7 @@ export default function Sidebar() {
         </div>
 
         <nav
-          className="relative z-10 flex flex-1 min-h-0 flex-col gap-2 overflow-y-auto"
+          className="relative z-10 flex flex-1 min-h-0 flex-col gap-2 overflow-y-auto scrollbar-none"
           aria-label="Navigation principale"
         >
           {nav.map(({ href, label, Icon }, i) => {

@@ -757,81 +757,6 @@ export default function AccountPage() {
                 </div>
               </div>
 
-              {/* Links */}
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs text-white/45">Liens publics</p>
-                  <button
-                    type="button"
-                    onClick={() => setAddingLink((v) => !v)}
-                    className="flex items-center gap-1 text-xs text-white/40 hover:text-white/80 transition"
-                  >
-                    <Plus size={12} />
-                    Ajouter
-                  </button>
-                </div>
-
-                {addingLink && (
-                  <div className="mb-3 rounded-2xl border border-white/10 bg-white/3 p-4 space-y-3 mp3-fade-up">
-                    <InputField id="link-label" label="Titre du lien" value={newLinkLabel} onChange={setNewLinkLabel} placeholder="ex. Mon Instagram" />
-                    <InputField id="link-url" label="URL" value={newLinkUrl} onChange={setNewLinkUrl} placeholder="ex. instagram.com/moi" />
-                    <div className="flex gap-2 pt-1">
-                      <button type="button" onClick={addLink}
-                        disabled={!newLinkLabel.trim() || !newLinkUrl.trim()}
-                        className="h-8 px-4 rounded-full bg-white text-black text-xs font-medium hover:opacity-90 transition disabled:opacity-40">
-                        Ajouter
-                      </button>
-                      <button type="button" onClick={() => { setAddingLink(false); setNewLinkLabel(""); setNewLinkUrl(""); }}
-                        className="h-8 px-3 rounded-full border border-white/10 text-xs text-white/50 hover:text-white transition">
-                        Annuler
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {links.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-center">
-                    <Link2 size={18} className="mx-auto mb-2 text-white/15" />
-                    <p className="text-xs text-white/30">Aucun lien pour l&apos;instant.</p>
-                    <p className="text-xs text-white/20 mt-0.5">Ajoute des liens vers tes réseaux, ton site…</p>
-                  </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    {links.map((link, idx) => {
-                      const platform = detectPlatform(link.url);
-                      return (
-                      <div key={link.id} className="group flex items-center gap-2 rounded-2xl border border-white/8 bg-white/3 px-3 py-2.5">
-                        <Link2 size={13} className="text-white/25 shrink-0" />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm text-white/85 truncate">{link.label}</p>
-                            {platform && (
-                              <span className="text-[10px] text-white/30 bg-white/8 px-1.5 py-0.5 rounded-full shrink-0">{platform}</span>
-                            )}
-                          </div>
-                          <p className="text-xs text-white/35 truncate">{link.url}</p>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button type="button" onClick={() => moveLink(link.id, -1)} disabled={idx === 0}
-                            className="h-6 w-6 rounded-lg flex items-center justify-center text-white/25 hover:text-white/70 disabled:opacity-20 transition">
-                            <ArrowUp size={11} />
-                          </button>
-                          <button type="button" onClick={() => moveLink(link.id, 1)} disabled={idx === links.length - 1}
-                            className="h-6 w-6 rounded-lg flex items-center justify-center text-white/25 hover:text-white/70 disabled:opacity-20 transition">
-                            <ArrowDown size={11} />
-                          </button>
-                          <button type="button" onClick={() => removeLink(link.id)}
-                            className="h-6 w-6 rounded-lg flex items-center justify-center text-white/25 hover:text-red-400 transition">
-                            <Trash2 size={11} />
-                          </button>
-                        </div>
-                      </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
               {/* Pinned tracks */}
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-3">
@@ -1258,6 +1183,94 @@ export default function AccountPage() {
                   </div>
                 </div>
               </form>
+            </section>
+
+            {/* Liens publics */}
+            <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "130ms" }}>
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                  <Link2 size={14} className="text-white/30" />
+                  <h2 className="text-sm font-medium text-white/70">Liens publics</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAddingLink((v) => !v)}
+                  className="flex items-center gap-1 text-xs text-white/40 hover:text-white/80 transition"
+                >
+                  <Plus size={12} />
+                  Ajouter
+                </button>
+              </div>
+
+              {addingLink && (
+                <div className="mb-3 rounded-2xl border border-white/10 bg-white/3 p-4 space-y-3 mp3-fade-up">
+                  <InputField id="link-label" label="Titre du lien" value={newLinkLabel} onChange={setNewLinkLabel} placeholder="ex. Mon Instagram" />
+                  <InputField id="link-url" label="URL" value={newLinkUrl} onChange={setNewLinkUrl} placeholder="ex. instagram.com/moi" />
+                  <div className="flex gap-2 pt-1">
+                    <button type="button" onClick={addLink}
+                      disabled={!newLinkLabel.trim() || !newLinkUrl.trim()}
+                      className="h-8 px-4 rounded-full bg-white text-black text-xs font-medium hover:opacity-90 transition disabled:opacity-40">
+                      Ajouter
+                    </button>
+                    <button type="button" onClick={() => { setAddingLink(false); setNewLinkLabel(""); setNewLinkUrl(""); }}
+                      className="h-8 px-3 rounded-full border border-white/10 text-xs text-white/50 hover:text-white transition">
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {links.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/10 px-4 py-5 text-center">
+                  <Link2 size={18} className="mx-auto mb-2 text-white/15" />
+                  <p className="text-xs text-white/30">Aucun lien pour l&apos;instant.</p>
+                  <p className="text-xs text-white/20 mt-0.5">Ajoute des liens vers tes réseaux, ton site…</p>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {links.map((link, idx) => {
+                    const platform = detectPlatform(link.url);
+                    return (
+                    <div key={link.id} className="group flex items-center gap-2 rounded-2xl border border-white/8 bg-white/3 px-3 py-2.5">
+                      <Link2 size={13} className="text-white/25 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-white/85 truncate">{link.label}</p>
+                          {platform && (
+                            <span className="text-[10px] text-white/30 bg-white/8 px-1.5 py-0.5 rounded-full shrink-0">{platform}</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-white/35 truncate">{link.url}</p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button type="button" onClick={() => moveLink(link.id, -1)} disabled={idx === 0}
+                          className="h-6 w-6 rounded-lg flex items-center justify-center text-white/25 hover:text-white/70 disabled:opacity-20 transition">
+                          <ArrowUp size={11} />
+                        </button>
+                        <button type="button" onClick={() => moveLink(link.id, 1)} disabled={idx === links.length - 1}
+                          className="h-6 w-6 rounded-lg flex items-center justify-center text-white/25 hover:text-white/70 disabled:opacity-20 transition">
+                          <ArrowDown size={11} />
+                        </button>
+                        <button type="button" onClick={() => removeLink(link.id)}
+                          className="h-6 w-6 rounded-lg flex items-center justify-center text-white/25 hover:text-red-400 transition">
+                          <Trash2 size={11} />
+                        </button>
+                      </div>
+                    </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <div className="mt-4 flex items-center justify-between pt-2 border-t border-white/6">
+                <SectionMsg msg={linksMsg} />
+                <div className="ml-auto">
+                  <button type="button" onClick={saveLinks} disabled={busy === "links"}
+                    className="h-9 px-5 rounded-full bg-white text-black text-sm font-medium hover:opacity-90 transition disabled:opacity-50">
+                    {busy === "links" ? "Sauvegarde..." : "Sauvegarder"}
+                  </button>
+                </div>
+              </div>
             </section>
 
               </div>

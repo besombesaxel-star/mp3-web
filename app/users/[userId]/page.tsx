@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Check, Copy, ExternalLink, Crown, ListMusic, Lock, MessageCircle, Music, Play, Shield, Shuffle, Sparkles, UserCheck, UserPlus } from "lucide-react";
+import { Check, Copy, ExternalLink, Crown, Gem, ListMusic, Lock, MessageCircle, Music, Play, Shield, Shuffle, Sparkles, UserCheck, UserPlus } from "lucide-react";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
 import { BADGE_LABELS, type BadgeKey } from "@/lib/badges";
@@ -17,6 +17,7 @@ const BADGE_STYLES: Record<BadgeKey, { icon: typeof Shield; className: string }>
   admin: { icon: Shield, className: "bg-red-500/20 text-red-300 border-red-500/30" },
   "co-founder": { icon: Crown, className: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
   "early-member": { icon: Sparkles, className: "bg-sky-500/20 text-sky-300 border-sky-500/30" },
+  premium: { icon: Gem, className: "bg-violet-500/20 text-violet-300 border-violet-500/30" },
 };
 
 const REACTION_EMOJIS = ["🔥", "❤️", "😍", "🎧", "👏"];

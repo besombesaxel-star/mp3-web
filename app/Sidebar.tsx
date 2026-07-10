@@ -15,7 +15,6 @@ import {
   Radio,
   Repeat,
   Search as SearchIcon,
-  Settings,
   TrendingUp,
   Upload,
   UserRound,
@@ -96,8 +95,6 @@ const nav = [
   { href: "/radio", label: "Radio en direct", Icon: Radio },
   { href: "/stats", label: "Stats", Icon: BarChart3 },
   { href: "/top", label: "Top global", Icon: TrendingUp },
-  { href: "/account", label: "Compte", Icon: UserRound },
-  { href: "/settings", label: "Parametres", Icon: Settings },
 ];
 
 function isActivePath(pathname: string | null, href: string) {

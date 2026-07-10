@@ -16,6 +16,7 @@ import { getDeviceId } from "@/lib/deviceId";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import type { ProfileLink } from "@/lib/accountData";
 import AvatarCropper from "@/app/AvatarCropper";
+import SettingsContent from "@/app/SettingsContent";
 
 type DeviceSession = {
   deviceId: string;
@@ -163,6 +164,7 @@ export default function AccountPage() {
   const { setQueueAndPlay } = usePlayer();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [activeTab, setActiveTab] = useState<"profile" | "settings">("profile");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -528,12 +530,30 @@ export default function AccountPage() {
   return (
     <div className="pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
       <div className="mx-auto max-w-2xl">
-        <div className="mb-8 mp3-fade-up">
+        <div className="mb-6 mp3-fade-up">
           <h1 className="text-3xl font-light text-white/95">Compte</h1>
           <p className="mt-2 text-sm text-white/40">Personnalise ton profil public.</p>
         </div>
 
-        {!isConfigured ? (
+        <div className="mb-8 flex items-center gap-1 rounded-2xl bg-white/5 p-1 mp3-fade-up">
+          {(["profile", "settings"] as const).map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={[
+                "flex-1 h-9 rounded-xl text-sm font-medium transition",
+                activeTab === tab ? "bg-white text-black" : "text-white/60 hover:text-white",
+              ].join(" ")}
+            >
+              {tab === "profile" ? "Profil" : "Parametres"}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "settings" ? (
+          <SettingsContent />
+        ) : !isConfigured ? (
           <div className="rounded-3xl border border-amber-300/20 bg-amber-300/10 p-5 text-sm text-amber-100 mp3-fade-up">
             Supabase Auth n&apos;est pas configuré.
           </div>

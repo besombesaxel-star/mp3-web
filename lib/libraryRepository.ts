@@ -8,6 +8,7 @@ import {
   finalizeSupabaseTrackUpload,
   isSupabaseTrackSrc,
   listSupabaseTracks,
+  saveSupabaseTrackCover,
   saveSupabaseTrackMeta,
   uploadSupabaseTrack,
 } from "@/lib/supabaseLibrary";
@@ -127,6 +128,18 @@ export async function saveTrackMetaForApi(
   }
 
   return "not_found";
+}
+
+export async function saveTrackCoverForApi(
+  src: string,
+  cover: File,
+  actorUserId?: string | null
+): Promise<LibraryMutationResult> {
+  if (isSupabaseTrackSrc(src) || isSupabaseConfigured()) {
+    return saveSupabaseTrackCover(src, cover, actorUserId);
+  }
+
+  return "unsupported";
 }
 
 export async function deleteTrackForApi(src: string, actorUserId?: string | null): Promise<LibraryMutationResult> {

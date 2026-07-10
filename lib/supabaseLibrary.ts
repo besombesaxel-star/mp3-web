@@ -542,6 +542,61 @@ export async function saveSupabaseTrackMeta(
   return "ok";
 }
 
+export async function saveSupabaseTrackCover(
+  src: string,
+  cover: File,
+  actorUserId?: string | null
+): Promise<LibraryMutationResult> {
+  if (!isSupabaseConfigured()) return "unsupported";
+
+  const admin = getSupabaseAdmin();
+  if (!admin) return "unsupported";
+
+  const catalog = await readSupabaseCatalog();
+  const target = findCatalogTrackBySrc(catalog, src);
+  if (!target) return "not_found";
+  if (!isTrackOwnedByUser(target, actorUserId)) return "forbidden";
+
+  await ensureSupabaseBucketReady(admin.client, admin.bucket);
+
+  const previousCoverPath = resolveCoverPath(target, admin.bucket);
+  const base = safeBaseName(target.fileName ? stripAudioExtension(target.fileName) : target.title || "track");
+  const coverId = crypto.randomUUID().slice(0, 8);
+  const coverPath = `cover/${base}-${coverId}${getCoverExtension(cover.name || "")}`;
+  const coverBuffer = Buffer.from(await cover.arrayBuffer());
+
+  const { error: coverUploadError } = await admin.client.storage.from(admin.bucket).upload(coverPath, coverBuffer, {
+    contentType: cover.type || "image/jpeg",
+    cacheControl: "31536000",
+    upsert: false,
+  });
+
+  if (coverUploadError) {
+    throw coverUploadError;
+  }
+
+  const coverPublicUrl = getPublicUrl(admin.client.storage.from(admin.bucket).getPublicUrl(coverPath).data);
+
+  catalog.tracks = catalog.tracks.map((track) => {
+    if (track.src !== src) return track;
+    return {
+      ...track,
+      cover: coverPublicUrl,
+      coverPath,
+      updatedAt: Date.now(),
+    };
+  });
+
+  catalog.tracks = dedupeCatalogTracks(catalog.tracks);
+  await writeSupabaseCatalog(catalog);
+
+  if (previousCoverPath && previousCoverPath !== coverPath) {
+    await admin.client.storage.from(admin.bucket).remove([previousCoverPath]).catch(() => {});
+  }
+
+  return "ok";
+}
+
 export async function deleteSupabaseTrack(
   src: string,
   actorUserId?: string | null

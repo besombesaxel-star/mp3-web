@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { LayoutGrid, List as ListIcon, Pencil } from "lucide-react";
+import { Image as ImageIcon, LayoutGrid, List as ListIcon, Pencil } from "lucide-react";
 import AlbumCard from "../AlbumCard";
 import { useAuth } from "../AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
@@ -154,6 +154,8 @@ export default function LibraryPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editArtist, setEditArtist] = useState("");
   const [editCredits, setEditCredits] = useState("");
+  const [editCoverFile, setEditCoverFile] = useState<File | null>(null);
+  const [editCoverPreview, setEditCoverPreview] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -325,11 +327,26 @@ export default function LibraryPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [editing, saving]);
 
+  useEffect(() => {
+    if (!editCoverFile) {
+      setEditCoverPreview("");
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(editCoverFile);
+    setEditCoverPreview(objectUrl);
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [editCoverFile]);
+
   function openEdit(track: ApiTrack) {
     setEditing(track);
     setEditTitle(track.title);
     setEditArtist(track.artist);
     setEditCredits(track.credits ?? "");
+    setEditCoverFile(null);
+    setEditCoverPreview("");
   }
 
   function closeEdit(force = false) {
@@ -338,6 +355,8 @@ export default function LibraryPage() {
     setEditTitle("");
     setEditArtist("");
     setEditCredits("");
+    setEditCoverFile(null);
+    setEditCoverPreview("");
   }
 
   async function saveEdit() {
@@ -379,6 +398,29 @@ export default function LibraryPage() {
 
       if (!res.ok || !json.ok) {
         throw new Error(json.error ?? `Sauvegarde impossible (HTTP ${res.status})`);
+      }
+
+      if (editCoverFile) {
+        const coverForm = new FormData();
+        coverForm.append("src", editing.src);
+        coverForm.append("cover", editCoverFile);
+
+        const coverRes = await fetch("/api/tracks/cover", {
+          method: "POST",
+          headers: createAuthorizedHeaders(accessToken),
+          body: coverForm,
+        });
+
+        let coverJson: MetaSaveResponse = {};
+        try {
+          coverJson = (await coverRes.json()) as MetaSaveResponse;
+        } catch {
+          coverJson = {};
+        }
+
+        if (!coverRes.ok || !coverJson.ok) {
+          throw new Error(coverJson.error ?? `Sauvegarde de la cover impossible (HTTP ${coverRes.status})`);
+        }
       }
 
       closeEdit(true);
@@ -615,6 +657,44 @@ export default function LibraryPage() {
             </div>
 
             <div className="mt-5 space-y-3">
+              <div>
+                <span className="block text-xs text-white/45 mb-2">Cover</span>
+                <div className="flex items-center gap-3">
+                  <div className="h-16 w-16 shrink-0 rounded-xl overflow-hidden border border-white/10 bg-[#111118]">
+                    {editCoverPreview || editing.cover ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={editCoverPreview || editing.cover || ""}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center text-white/25">
+                        <ImageIcon size={18} />
+                      </div>
+                    )}
+                  </div>
+                  <label
+                    htmlFor="edit-cover"
+                    className={[
+                      "h-9 px-3 rounded-full border border-white/10 bg-white/5 text-xs text-white/70 transition flex items-center gap-1.5",
+                      editing.isOwnedByViewer ? "cursor-pointer hover:bg-white/10 hover:text-white/90" : "opacity-50 cursor-not-allowed",
+                    ].join(" ")}
+                  >
+                    <ImageIcon size={12} />
+                    Changer la cover
+                  </label>
+                  <input
+                    id="edit-cover"
+                    type="file"
+                    accept="image/*,.jpg,.jpeg,.png,.webp"
+                    onChange={(e) => setEditCoverFile(e.target.files?.[0] ?? null)}
+                    disabled={!editing.isOwnedByViewer || saving || deleting}
+                    className="sr-only"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label htmlFor="edit-title" className="block text-xs text-white/45 mb-2">
                   Titre

@@ -197,7 +197,7 @@ export default function NotificationBell() {
   return (
     <div
       ref={panelRef}
-      className="fixed top-1 right-32 z-[55] md:top-4 md:right-20"
+      className="fixed top-0 right-[116px] z-[55] md:top-3 md:right-[68px]"
     >
       <button
         onClick={() => setOpen((o) => !o)}

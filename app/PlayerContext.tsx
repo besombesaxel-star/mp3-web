@@ -32,7 +32,6 @@ export type Track = {
 };
 
 type RepeatMode = "off" | "all" | "one";
-type ThemeMode = "midnight" | "sunset" | "ocean" | "day" | "liquid-glass";
 type FontSizeMode = "sm" | "md" | "lg" | "xl";
 type EqPreset = "off" | "bass" | "vocal" | "night" | "custom";
 export type EqGains = [number, number, number, number, number];
@@ -101,9 +100,6 @@ type PlayerCtx = {
   focusMode: boolean;
   setFocusMode: (value: boolean) => void;
   toggleFocusMode: () => void;
-  theme: ThemeMode;
-  setTheme: (value: ThemeMode) => void;
-  cycleTheme: () => void;
   fontSize: FontSizeMode;
   setFontSize: (value: FontSizeMode) => void;
   highContrast: boolean;
@@ -206,7 +202,6 @@ const LS_PREFS = "mp3:prefs:v1";
 const MAX_RECENT_PLAYS = 600;
 const SOFT_CROSSFADE_MS = 620;
 const SOFT_CROSSFADE_LEAD = 0.48;
-const THEME_ORDER: ThemeMode[] = ["midnight", "sunset", "ocean", "day", "liquid-glass"];
 const EQ_ORDER: EqPreset[] = ["off", "bass", "vocal", "night"];
 const EQ_BANDS = [90, 250, 1000, 3500, 9000];
 const DEFAULT_CUSTOM_EQ_GAINS: EqGains = [0, 0, 0, 0, 0];
@@ -235,7 +230,6 @@ type PlayerPrefs = {
   uiSounds: boolean;
   hapticsEnabled: boolean;
   loudnessNorm: boolean;
-  theme: ThemeMode;
   fontSize: FontSizeMode;
   highContrast: boolean;
   eqPreset: EqPreset;
@@ -403,7 +397,6 @@ function safePrefs(parsed: unknown): PlayerPrefs {
       uiSounds: false,
       hapticsEnabled: true,
       loudnessNorm: true,
-      theme: "midnight",
       fontSize: "md",
       highContrast: false,
       eqPreset: "off",
@@ -420,14 +413,6 @@ function safePrefs(parsed: unknown): PlayerPrefs {
     uiSounds: typeof parsed.uiSounds === "boolean" ? parsed.uiSounds : false,
     hapticsEnabled: typeof parsed.hapticsEnabled === "boolean" ? parsed.hapticsEnabled : true,
     loudnessNorm: typeof parsed.loudnessNorm === "boolean" ? parsed.loudnessNorm : true,
-    theme:
-      parsed.theme === "midnight" ||
-      parsed.theme === "sunset" ||
-      parsed.theme === "ocean" ||
-      parsed.theme === "day" ||
-      parsed.theme === "liquid-glass"
-        ? parsed.theme
-        : "midnight",
     fontSize:
       parsed.fontSize === "sm" || parsed.fontSize === "md" || parsed.fontSize === "lg" || parsed.fontSize === "xl"
         ? parsed.fontSize
@@ -668,7 +653,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [volume, _setVolume] = useState(1);
   const [muted, _setMuted] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
-  const [theme, setTheme] = useState<ThemeMode>("midnight");
   const [fontSize, setFontSize] = useState<FontSizeMode>("md");
   const [highContrast, setHighContrast] = useState(false);
   const [eqPreset, setEqPreset] = useState<EqPreset>("off");
@@ -1463,12 +1447,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    document.body.dataset.mp3Theme = theme;
-    document.documentElement.dataset.mp3Theme = theme;
-  }, [theme]);
-
-  useEffect(() => {
-    if (typeof document === "undefined") return;
     document.documentElement.dataset.mp3FontSize = fontSize;
   }, [fontSize]);
 
@@ -1841,7 +1819,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setUiSounds(prefs.uiSounds);
       setHapticsEnabled(prefs.hapticsEnabled);
       setLoudnessNorm(prefs.loudnessNorm);
-      setTheme(prefs.theme);
       setFontSize(prefs.fontSize);
       setHighContrast(prefs.highContrast);
       setEqPreset(prefs.eqPreset);
@@ -2049,7 +2026,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       uiSounds,
       hapticsEnabled,
       loudnessNorm,
-      theme,
       fontSize,
       highContrast,
       eqPreset,
@@ -2065,7 +2041,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     uiSounds,
     hapticsEnabled,
     loudnessNorm,
-    theme,
     fontSize,
     highContrast,
     eqPreset,
@@ -2587,14 +2562,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setHighContrast((value) => !value);
   }
 
-  function cycleTheme() {
-    setTheme((value) => {
-      const index = THEME_ORDER.indexOf(value);
-      if (index < 0) return THEME_ORDER[0];
-      return THEME_ORDER[(index + 1) % THEME_ORDER.length];
-    });
-  }
-
   function cycleEqPreset() {
     setEqPreset((value) => {
       const index = EQ_ORDER.indexOf(value);
@@ -2816,9 +2783,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     focusMode,
     setFocusMode,
     toggleFocusMode,
-    theme,
-    setTheme,
-    cycleTheme,
     fontSize,
     setFontSize,
     highContrast,

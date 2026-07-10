@@ -139,7 +139,6 @@ export default function SettingsPage() {
     loudnessNorm, toggleLoudnessNorm,
     uiSounds, toggleUiSounds,
     hapticsEnabled, toggleHaptics,
-    theme, setTheme,
     fontSize, setFontSize,
     highContrast, toggleHighContrast,
     eqPreset, setEqPreset,
@@ -268,21 +267,6 @@ export default function SettingsPage() {
         {eqPreset === "custom" ? (
           <EqGainsEditor gains={customEqGains} onChange={setCustomEqGains} />
         ) : null}
-      </SettingsSection>
-
-      <SettingsSection title="Ambiance" delay={120}>
-        <SegmentedRow
-          label="Theme"
-          value={theme}
-          onChange={setTheme}
-          options={[
-            { value: "midnight", label: "Minuit" },
-            { value: "sunset", label: "Coucher de soleil" },
-            { value: "ocean", label: "Ocean" },
-            { value: "day", label: "Jour" },
-            { value: "liquid-glass", label: "Verre liquide" },
-          ]}
-        />
       </SettingsSection>
 
       <SettingsSection title="Accessibilite" delay={150}>

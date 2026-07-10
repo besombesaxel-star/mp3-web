@@ -165,7 +165,7 @@ export default function Sidebar() {
         {!compact ? (
           <div className="pointer-events-none absolute -top-24 -right-0 opacity-[0.4]">
             <Image
-              src="/images/birds.jpg"
+              src="/images/birds.png"
               alt=""
               aria-hidden="true"
               width={220}
@@ -213,13 +213,13 @@ export default function Sidebar() {
                   `mp3-d-${i}`,
                   compact ? "justify-center gap-0 px-0" : "gap-3",
                   active
-                    ? "bg-white/10 text-white"
+                    ? "bg-[var(--mp3-accent-soft)] text-white"
                     : "text-white/60 hover:text-white hover:bg-white/5 hover:translate-x-0.5",
                 ].join(" ")}
                 title={label}
               >
                 <span className="w-6 flex items-center justify-center transition-transform duration-150 group-hover:scale-110" aria-hidden="true">
-                  <Icon size={18} className={active ? "text-white" : "opacity-80"} />
+                  <Icon size={18} className={active ? "text-[var(--mp3-accent-strong)]" : "opacity-80"} />
                 </span>
 
                 {!compact ? <span className="flex-1 transition-transform duration-150">{label}</span> : null}
@@ -240,7 +240,7 @@ export default function Sidebar() {
               <>
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 opacity-60 flex justify-center">
                   <Image
-                    src="/images/blossom.jpg"
+                    src="/images/blossom.png"
                     alt=""
                     aria-hidden="true"
                     width={240}
@@ -375,12 +375,12 @@ export default function Sidebar() {
                     className={[
                       "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition",
                       active
-                        ? "bg-white/10 text-white"
+                        ? "bg-[var(--mp3-accent-soft)] text-white"
                         : "text-white/70 hover:text-white hover:bg-white/5",
                     ].join(" ")}
                   >
                     <span className="w-6 flex items-center justify-center" aria-hidden="true">
-                      <Icon size={18} className={active ? "text-white" : "opacity-85"} />
+                      <Icon size={18} className={active ? "text-[var(--mp3-accent-strong)]" : "opacity-85"} />
                     </span>
                     <span className="flex-1">{label}</span>
                     {href === "/favorites" && favorites.length > 0 ? (

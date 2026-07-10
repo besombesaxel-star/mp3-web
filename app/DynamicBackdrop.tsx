@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { usePlayer } from "./PlayerContext";
 
 type Rgb = [number, number, number];
-type ThemeKey = "midnight" | "sunset" | "ocean" | "day" | "liquid-glass";
 
 type BackdropPalette = {
   base: Rgb;
@@ -14,42 +13,13 @@ type BackdropPalette = {
   imageOpacity: number;
 };
 
-const THEME_PALETTES: Record<ThemeKey, BackdropPalette> = {
-  midnight: {
-    base: [11, 11, 15],
-    primary: [98, 92, 255],
-    secondary: [59, 130, 246],
-    tertiary: [22, 163, 74],
-    imageOpacity: 0.18,
-  },
-  sunset: {
-    base: [27, 16, 14],
-    primary: [249, 115, 22],
-    secondary: [244, 114, 182],
-    tertiary: [245, 158, 11],
-    imageOpacity: 0.22,
-  },
-  ocean: {
-    base: [9, 19, 27],
-    primary: [14, 165, 233],
-    secondary: [45, 212, 191],
-    tertiary: [56, 189, 248],
-    imageOpacity: 0.2,
-  },
-  day: {
-    base: [246, 246, 249],
-    primary: [124, 111, 240],
-    secondary: [236, 130, 176],
-    tertiary: [79, 140, 230],
-    imageOpacity: 0.08,
-  },
-  "liquid-glass": {
-    base: [8, 11, 20],
-    primary: [130, 120, 255],
-    secondary: [56, 200, 240],
-    tertiary: [236, 110, 200],
-    imageOpacity: 0.26,
-  },
+/** Identite "Steel" : rampe bleu acier, sombre et epuree. */
+const BASE_PALETTE: BackdropPalette = {
+  base: [5, 7, 11],
+  primary: [111, 139, 179],
+  secondary: [67, 87, 128],
+  tertiary: [150, 172, 209],
+  imageOpacity: 0.2,
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -172,20 +142,6 @@ function shiftHue(rgb: Rgb, shift: number, saturationBoost = 0.06, lightnessDelt
     clamp(s + saturationBoost, 0.24, 0.96),
     clamp(l + lightnessDelta, 0.18, 0.76)
   );
-}
-
-function getThemePalette(theme: string | undefined): BackdropPalette {
-  if (
-    theme === "sunset" ||
-    theme === "ocean" ||
-    theme === "midnight" ||
-    theme === "day" ||
-    theme === "liquid-glass"
-  ) {
-    return THEME_PALETTES[theme];
-  }
-
-  return THEME_PALETTES.midnight;
 }
 
 function derivePaletteFromAccent(accent: string | undefined | null, themePalette: BackdropPalette) {
@@ -328,14 +284,14 @@ async function extractPaletteFromCover(
 }
 
 export default function DynamicBackdrop() {
-  const { theme, track } = usePlayer();
+  const { track } = usePlayer();
   const [paletteCache] = useState(() => new Map<string, BackdropPalette>());
-  const themePalette = useMemo(() => getThemePalette(theme), [theme]);
+  const themePalette = BASE_PALETTE;
   const accent = track?.accent;
   const accentPalette = useMemo(() => derivePaletteFromAccent(accent, themePalette), [accent, themePalette]);
   const [resolvedPalette, setResolvedPalette] = useState<{ key: string; palette: BackdropPalette } | null>(null);
   const cover = track?.cover?.trim() ?? "";
-  const cacheKey = cover ? `${theme}|${accent ?? ""}|${cover}` : "";
+  const cacheKey = cover ? `${accent ?? ""}|${cover}` : "";
   const cachedPalette = cacheKey ? paletteCache.get(cacheKey) ?? null : null;
   const palette = useMemo(() => {
     if (!cacheKey) {
@@ -426,23 +382,15 @@ export default function DynamicBackdrop() {
 
   const imageOpacity = track?.cover ? palette.imageOpacity : 0;
 
-  const vignetteStyle = useMemo(() => {
-    if (theme === "day") {
-      return {
-        background: [
-          `linear-gradient(180deg, ${rgbToCss([255, 255, 255], 0.4)} 0%, transparent 18%)`,
-          `linear-gradient(180deg, ${rgbToCss([255, 255, 255], 0.02)} 0%, ${rgbToCss([15, 15, 23], 0.07)} 100%)`,
-        ].join(", "),
-      };
-    }
-
-    return {
+  const vignetteStyle = useMemo(
+    () => ({
       background: [
         `linear-gradient(180deg, ${rgbToCss([255, 255, 255], 0.02)} 0%, transparent 18%)`,
         `linear-gradient(180deg, ${rgbToCss([6, 7, 10], 0.06)} 0%, ${rgbToCss([4, 5, 8], 0.56)} 100%)`,
       ].join(", "),
-    };
-  }, [theme]);
+    }),
+    []
+  );
 
   return (
     <>

@@ -1,16 +1,31 @@
 @import "tailwindcss";
 
+/* ---------------------------------------------------------------------
+   Identite visuelle : "Steel" - sombre, epure, premium.
+   Un seul theme, base sur une rampe bleu acier (voir accent tokens).
+   --------------------------------------------------------------------- */
 :root {
-  --background: #0b0b0f;
-  --foreground: #f5f5f7;
-  --mp3-bg-base: #0b0b0f;
-  --mp3-glow-a: rgba(120, 115, 255, 0.14);
-  --mp3-glow-b: rgba(79, 70, 229, 0.11);
-  --mp3-surface-1: #15151c;
-  --mp3-surface-2: #121218;
-  --mp3-surface-3: #111118;
-  --mp3-surface-4: #1a1a22;
-  --mp3-surface-5: #0d0d12;
+  --background: #05070b;
+  --foreground: #eef1f8;
+  --mp3-bg-base: #05070b;
+  --mp3-glow-a: rgba(111, 139, 179, 0.16);
+  --mp3-glow-b: rgba(43, 58, 92, 0.24);
+  --mp3-surface-1: #12151f;
+  --mp3-surface-2: #0e111a;
+  --mp3-surface-3: #0b0e15;
+  --mp3-surface-4: #171b28;
+  --mp3-surface-5: #080a10;
+
+  --mp3-accent: #6f8bb3;
+  --mp3-accent-strong: #96acd1;
+  --mp3-accent-soft: rgba(111, 139, 179, 0.16);
+  --mp3-accent-contrast: #05070b;
+  --mp3-border: rgba(160, 178, 210, 0.12);
+
+  --scrollbar-track: rgba(140, 160, 200, 0.07);
+  --scrollbar-thumb: rgba(140, 160, 200, 0.3);
+  --scrollbar-thumb-hover: rgba(165, 185, 225, 0.42);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -28,241 +43,40 @@ body {
     var(--mp3-bg-base);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  transition: background 280ms ease, color 280ms ease;
 }
 
-body[data-mp3-theme="midnight"] {
-  --background: #0b0b0f;
-  --foreground: #f5f5f7;
-  --mp3-bg-base: #0b0b0f;
-  --mp3-glow-a: rgba(120, 115, 255, 0.14);
-  --mp3-glow-b: rgba(79, 70, 229, 0.11);
-  --mp3-surface-1: #15151c;
-  --mp3-surface-2: #121218;
-  --mp3-surface-3: #111118;
-  --mp3-surface-4: #1a1a22;
-  --mp3-surface-5: #0d0d12;
-}
+/* ---------------------------------------------------------------------
+   Remap des couleurs codees en dur (classes Tailwind arbitraires) vers
+   les tokens de surface, pour que tous les ecrans heritent de la meme
+   identite sans reecrire chaque composant.
+   --------------------------------------------------------------------- */
+[class*="bg-[#15151C]"] { background-color: var(--mp3-surface-1) !important; }
+[class*="bg-[#121218]"] { background-color: var(--mp3-surface-2) !important; }
+[class*="bg-[#111118]"] { background-color: var(--mp3-surface-3) !important; }
+[class*="bg-[#1A1A22]"] { background-color: var(--mp3-surface-4) !important; }
+[class*="bg-[#0D0D12]"] { background-color: var(--mp3-surface-5) !important; }
 
-body[data-mp3-theme="sunset"] {
-  --background: #1b100e;
-  --foreground: #fff5eb;
-  --mp3-bg-base: #1b100e;
-  --mp3-glow-a: rgba(251, 146, 60, 0.2);
-  --mp3-glow-b: rgba(244, 114, 182, 0.14);
-  --mp3-surface-1: #2a1915;
-  --mp3-surface-2: #221410;
-  --mp3-surface-3: #1d120f;
-  --mp3-surface-4: #33201b;
-  --mp3-surface-5: #251612;
-}
-
-body[data-mp3-theme="ocean"] {
-  --background: #09131b;
-  --foreground: #eaf7ff;
-  --mp3-bg-base: #09131b;
-  --mp3-glow-a: rgba(14, 165, 233, 0.2);
-  --mp3-glow-b: rgba(45, 212, 191, 0.15);
-  --mp3-surface-1: #10222f;
-  --mp3-surface-2: #0e1d29;
-  --mp3-surface-3: #0b1a24;
-  --mp3-surface-4: #173140;
-  --mp3-surface-5: #0b1a24;
-}
-
-body[data-mp3-theme="day"] {
-  --background: #f6f6f9;
-  --foreground: #14141b;
-  --mp3-bg-base: #f6f6f9;
-  --mp3-glow-a: rgba(120, 115, 255, 0.1);
-  --mp3-glow-b: rgba(79, 70, 229, 0.07);
-  --mp3-surface-1: #ffffff;
-  --mp3-surface-2: #f0f0f4;
-  --mp3-surface-3: #eceef2;
-  --mp3-surface-4: #ffffff;
-  --mp3-surface-5: #eef0f4;
-}
-
-body[data-mp3-theme="liquid-glass"] {
-  --background: #080b14;
-  --foreground: #f3f6ff;
-  --mp3-bg-base: #080b14;
-  --mp3-glow-a: rgba(130, 120, 255, 0.24);
-  --mp3-glow-b: rgba(56, 200, 240, 0.18);
-  --mp3-surface-1: rgba(255, 255, 255, 0.07);
-  --mp3-surface-2: rgba(255, 255, 255, 0.05);
-  --mp3-surface-3: rgba(255, 255, 255, 0.04);
-  --mp3-surface-4: rgba(255, 255, 255, 0.09);
-  --mp3-surface-5: rgba(255, 255, 255, 0.035);
-}
-
-body[data-mp3-theme] [class*="bg-[#15151C]"] {
-  background-color: var(--mp3-surface-1) !important;
-}
-
-body[data-mp3-theme] [class*="bg-[#121218]"] {
-  background-color: var(--mp3-surface-2) !important;
-}
-
-body[data-mp3-theme] [class*="bg-[#111118]"] {
-  background-color: var(--mp3-surface-3) !important;
-}
-
-body[data-mp3-theme] [class*="bg-[#1A1A22]"] {
-  background-color: var(--mp3-surface-4) !important;
-}
-
-body[data-mp3-theme] [class*="bg-[#0D0D12]"] {
+[class*="bg-[#000000]"],
+[class*="bg-[#050506]"],
+[class*="bg-[#080809]"],
+[class*="bg-zinc-900"] {
   background-color: var(--mp3-surface-5) !important;
 }
 
-:root {
-  --scrollbar-track: rgba(255, 255, 255, 0.06);
-  --scrollbar-thumb: rgba(255, 255, 255, 0.24);
-  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.34);
-}
-
-body[data-mp3-theme="sunset"] {
-  --scrollbar-track: rgba(255, 232, 214, 0.08);
-  --scrollbar-thumb: rgba(255, 210, 175, 0.28);
-  --scrollbar-thumb-hover: rgba(255, 220, 190, 0.4);
-}
-
-body[data-mp3-theme="ocean"] {
-  --scrollbar-track: rgba(210, 240, 255, 0.08);
-  --scrollbar-thumb: rgba(166, 226, 255, 0.28);
-  --scrollbar-thumb-hover: rgba(191, 236, 255, 0.42);
-}
-
-body[data-mp3-theme="day"] {
-  --scrollbar-track: rgba(20, 20, 30, 0.06);
-  --scrollbar-thumb: rgba(20, 20, 30, 0.22);
-  --scrollbar-thumb-hover: rgba(20, 20, 30, 0.32);
-}
-
-body[data-mp3-theme="liquid-glass"] {
-  --scrollbar-track: rgba(255, 255, 255, 0.05);
-  --scrollbar-thumb: rgba(180, 190, 255, 0.32);
-  --scrollbar-thumb-hover: rgba(200, 210, 255, 0.46);
-}
-
 /* ---------------------------------------------------------------------
-   Day (light) theme: the rest of the app is built with literal white/
-   black Tailwind utility classes (text-white/70, bg-white/5, ...) rather
-   than semantic variables, so we remap those exact utility classes here
-   instead of touching every component file.
+   Panneaux premium : legere lumiere de bord + ombre douce pour donner
+   du relief aux cartes, sans effet verre/flou.
    --------------------------------------------------------------------- */
-
-body[data-mp3-theme="day"] [class*="text-white/10"] { color: rgba(15, 15, 23, 0.35) !important; }
-body[data-mp3-theme="day"] [class*="text-white/12"] { color: rgba(15, 15, 23, 0.38) !important; }
-body[data-mp3-theme="day"] [class*="text-white/15"] { color: rgba(15, 15, 23, 0.4) !important; }
-body[data-mp3-theme="day"] [class*="text-white/20"] { color: rgba(15, 15, 23, 0.45) !important; }
-body[data-mp3-theme="day"] [class*="text-white/25"] { color: rgba(15, 15, 23, 0.5) !important; }
-body[data-mp3-theme="day"] [class*="text-white/30"] { color: rgba(15, 15, 23, 0.55) !important; }
-body[data-mp3-theme="day"] [class*="text-white/35"] { color: rgba(15, 15, 23, 0.58) !important; }
-body[data-mp3-theme="day"] [class*="text-white/40"] { color: rgba(15, 15, 23, 0.62) !important; }
-body[data-mp3-theme="day"] [class*="text-white/45"] { color: rgba(15, 15, 23, 0.65) !important; }
-body[data-mp3-theme="day"] [class*="text-white/50"] { color: rgba(15, 15, 23, 0.68) !important; }
-body[data-mp3-theme="day"] [class*="text-white/55"] { color: rgba(15, 15, 23, 0.72) !important; }
-body[data-mp3-theme="day"] [class*="text-white/60"] { color: rgba(15, 15, 23, 0.75) !important; }
-body[data-mp3-theme="day"] [class*="text-white/65"] { color: rgba(15, 15, 23, 0.78) !important; }
-body[data-mp3-theme="day"] [class*="text-white/70"] { color: rgba(15, 15, 23, 0.82) !important; }
-body[data-mp3-theme="day"] [class*="text-white/75"] { color: rgba(15, 15, 23, 0.85) !important; }
-body[data-mp3-theme="day"] [class*="text-white/80"] { color: rgba(15, 15, 23, 0.88) !important; }
-body[data-mp3-theme="day"] [class*="text-white/85"] { color: rgba(15, 15, 23, 0.9) !important; }
-body[data-mp3-theme="day"] [class*="text-white/88"] { color: rgba(15, 15, 23, 0.92) !important; }
-body[data-mp3-theme="day"] [class*="text-white/90"] { color: rgba(15, 15, 23, 0.94) !important; }
-body[data-mp3-theme="day"] [class*="text-white/92"] { color: rgba(15, 15, 23, 0.95) !important; }
-body[data-mp3-theme="day"] [class*="text-white/94"] { color: rgba(15, 15, 23, 0.96) !important; }
-body[data-mp3-theme="day"] [class*="text-white/95"] { color: rgba(15, 15, 23, 0.97) !important; }
-
-body[data-mp3-theme="day"] [class*="border-white/5"] { border-color: rgba(15, 15, 23, 0.1) !important; }
-body[data-mp3-theme="day"] [class*="border-white/6"] { border-color: rgba(15, 15, 23, 0.12) !important; }
-body[data-mp3-theme="day"] [class*="border-white/8"] { border-color: rgba(15, 15, 23, 0.14) !important; }
-body[data-mp3-theme="day"] [class*="border-white/10"] { border-color: rgba(15, 15, 23, 0.16) !important; }
-body[data-mp3-theme="day"] [class*="border-white/12"] { border-color: rgba(15, 15, 23, 0.18) !important; }
-body[data-mp3-theme="day"] [class*="border-white/15"] { border-color: rgba(15, 15, 23, 0.2) !important; }
-body[data-mp3-theme="day"] [class*="border-white/20"] { border-color: rgba(15, 15, 23, 0.24) !important; }
-body[data-mp3-theme="day"] [class*="border-white/25"] { border-color: rgba(15, 15, 23, 0.28) !important; }
-body[data-mp3-theme="day"] [class*="border-white/30"] { border-color: rgba(15, 15, 23, 0.32) !important; }
-body[data-mp3-theme="day"] [class*="border-white/40"] { border-color: rgba(15, 15, 23, 0.4) !important; }
-
-body[data-mp3-theme="day"] [class*="bg-white/3"] { background-color: rgba(15, 15, 23, 0.03) !important; }
-body[data-mp3-theme="day"] [class*="bg-white/4"] { background-color: rgba(15, 15, 23, 0.04) !important; }
-body[data-mp3-theme="day"] [class*="bg-white/40"] { background-color: rgba(15, 15, 23, 0.09) !important; }
-body[data-mp3-theme="day"] [class*="bg-white/5"] { background-color: rgba(15, 15, 23, 0.05) !important; }
-body[data-mp3-theme="day"] [class*="bg-white/6"] { background-color: rgba(15, 15, 23, 0.06) !important; }
-body[data-mp3-theme="day"] [class*="bg-white/60"] { background-color: rgba(15, 15, 23, 0.14) !important; }
-body[data-mp3-theme="day"] [class*="bg-white/8"] { background-color: rgba(15, 15, 23, 0.07) !important; }
-body[data-mp3-theme="day"] [class*="bg-white/80"] { background-color: rgba(15, 15, 23, 0.2) !important; }
-body[data-mp3-theme="day"] [class*="bg-white/10"] { background-color: rgba(15, 15, 23, 0.08) !important; }
-body[data-mp3-theme="day"] [class*="bg-white/12"] { background-color: rgba(15, 15, 23, 0.09) !important; }
-body[data-mp3-theme="day"] [class*="bg-white/15"] { background-color: rgba(15, 15, 23, 0.1) !important; }
-body[data-mp3-theme="day"] [class*="bg-white/20"] { background-color: rgba(15, 15, 23, 0.12) !important; }
-body[data-mp3-theme="day"] [class*="bg-white/25"] { background-color: rgba(15, 15, 23, 0.14) !important; }
-body[data-mp3-theme="day"] [class*="bg-white/[0.02]"] { background-color: rgba(15, 15, 23, 0.02) !important; }
-body[data-mp3-theme="day"] [class*="bg-white/[0.03]"] { background-color: rgba(15, 15, 23, 0.03) !important; }
-body[data-mp3-theme="day"] [class*="bg-white/[0.04]"] { background-color: rgba(15, 15, 23, 0.04) !important; }
-body[data-mp3-theme="day"] [class*="bg-white/[0.06]"] { background-color: rgba(15, 15, 23, 0.06) !important; }
-
-/* primary "inverted" buttons/chips (bg-white + text-black) flip so they stay visible on a light page */
-body[data-mp3-theme="day"] [class~="bg-white"] { background-color: #14141b !important; }
-body[data-mp3-theme="day"] [class~="border-white"] { border-color: #14141b !important; }
-body[data-mp3-theme="day"] [class~="text-black"] { color: #ffffff !important; }
-
-/* light-toned status text (readable on dark, unreadable on white) gets darkened */
-body[data-mp3-theme="day"] [class*="text-amber-100"] { color: #92400e !important; }
-body[data-mp3-theme="day"] [class*="text-amber-300"] { color: #b45309 !important; }
-body[data-mp3-theme="day"] [class*="text-emerald-100"] { color: #065f46 !important; }
-body[data-mp3-theme="day"] [class*="text-emerald-400"] { color: #047857 !important; }
-body[data-mp3-theme="day"] [class*="text-green-400"] { color: #15803d !important; }
-body[data-mp3-theme="day"] [class*="text-red-100"] { color: #991b1b !important; }
-body[data-mp3-theme="day"] [class*="text-red-200"] { color: #991b1b !important; }
-body[data-mp3-theme="day"] [class*="text-red-300"] { color: #b91c1c !important; }
-body[data-mp3-theme="day"] [class*="text-red-400"] { color: #b91c1c !important; }
-body[data-mp3-theme="day"] [class*="text-sky-100"] { color: #075985 !important; }
-body[data-mp3-theme="day"] [class*="text-sky-300"] { color: #0369a1 !important; }
-
-/* ---------------------------------------------------------------------
-   Liquid glass theme: turns card-like panels ("rounded-2xl"/"rounded-3xl"
-   elements that also carry a border) into frosted, translucent glass -
-   blurred backdrop showing through, a soft inner rim light along the top
-   edge, and a gentle ambient shadow for depth. Targeted by combining two
-   existing utility classes rather than every individual component file,
-   so it naturally skips pills/toggles/buttons (rounded-full) and
-   hover-only utility backgrounds (which never carry a border class).
-   --------------------------------------------------------------------- */
-body[data-mp3-theme="liquid-glass"] [class*="rounded-3xl"][class*="border"] {
-  backdrop-filter: blur(26px) saturate(1.6);
+[class*="rounded-3xl"][class*="border"] {
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.14),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
-    0 12px 40px -10px rgba(0, 0, 0, 0.5);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
+    0 20px 50px -22px rgba(0, 0, 0, 0.65);
 }
 
-body[data-mp3-theme="liquid-glass"] [class*="rounded-2xl"][class*="border"] {
-  backdrop-filter: blur(20px) saturate(1.5);
+[class*="rounded-2xl"][class*="border"] {
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 8px 28px -8px rgba(0, 0, 0, 0.42);
-}
-
-/* Structural chrome: sidebar, drawers, floating panels. These already
-   use solid/near-opaque backgrounds, so unlike the card rules above we
-   also swap the fill itself for a translucent tint. */
-body[data-mp3-theme="liquid-glass"] [class*="bg-[#000000]"],
-body[data-mp3-theme="liquid-glass"] [class*="bg-[#050506]"],
-body[data-mp3-theme="liquid-glass"] [class*="bg-[#080809]"],
-body[data-mp3-theme="liquid-glass"] [class*="bg-zinc-900"] {
-  background-color: rgba(10, 13, 24, 0.6) !important;
-  backdrop-filter: blur(30px) saturate(1.6);
-}
-
-body[data-mp3-theme="liquid-glass"] [class*="bg-black/9"],
-body[data-mp3-theme="liquid-glass"] [class*="bg-black/8"],
-body[data-mp3-theme="liquid-glass"] [class*="bg-black/7"] {
-  backdrop-filter: blur(24px) saturate(1.6);
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
+    0 14px 34px -16px rgba(0, 0, 0, 0.55);
 }
 
 * {
@@ -301,13 +115,18 @@ body[data-mp3-theme="liquid-glass"] [class*="bg-black/7"] {
   display: none;
 }
 
+::selection {
+  background: var(--mp3-accent-soft);
+  color: var(--foreground);
+}
+
 @keyframes lyricsActivePop {
   from { transform: translateY(10px); }
   to   { transform: translateY(0); }
 }
 
 :focus-visible {
-  outline: 2px solid #ffffff;
+  outline: 2px solid var(--mp3-accent-strong);
   outline-offset: 2px;
 }
 
@@ -319,7 +138,7 @@ body[data-mp3-theme="liquid-glass"] [class*="bg-black/7"] {
   transform: translateY(-200%);
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.25);
-  background: #111118;
+  background: var(--mp3-surface-1);
   color: #ffffff;
   padding: 0.5rem 0.9rem;
   font-size: 0.875rem;
@@ -718,4 +537,3 @@ html[data-mp3-contrast="high"] [class*="border-white/12"],
 html[data-mp3-contrast="high"] [class*="border-white/15"] {
   border-color: color-mix(in srgb, var(--foreground) 35%, transparent) !important;
 }
-

@@ -95,7 +95,7 @@ function NotifRow({ notif, onClose }: { notif: AppNotification; onClose: () => v
       </div>
 
       {!notif.read && (
-        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0 mt-1.5" />
+        <span className="w-1.5 h-1.5 rounded-full bg-[var(--mp3-accent-strong)] shrink-0 mt-1.5" />
       )}
     </div>
   );

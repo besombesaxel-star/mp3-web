@@ -163,7 +163,7 @@ export default function Sidebar() {
         ].join(" ")}
       >
         {!compact ? (
-          <div className="pointer-events-none absolute -top-24 -right-0 opacity-[0.4]">
+          <div className="pointer-events-none absolute -top-8 -right-0 opacity-[0.4]">
             <Image
               src="/images/birds.png"
               alt=""

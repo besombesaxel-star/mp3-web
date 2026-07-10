@@ -178,7 +178,7 @@ export default function Sidebar() {
 
         <div
           className={[
-            "relative z-10 flex items-center",
+            "relative z-10 flex shrink-0 items-center",
             compact ? "mb-8 justify-center" : "mb-10 justify-between",
           ].join(" ")}
         >
@@ -199,7 +199,10 @@ export default function Sidebar() {
           ) : null}
         </div>
 
-        <nav className="relative z-10 flex flex-col gap-2" aria-label="Navigation principale">
+        <nav
+          className="relative z-10 flex flex-1 min-h-0 flex-col gap-2 overflow-y-auto"
+          aria-label="Navigation principale"
+        >
           {nav.map(({ href, label, Icon }, i) => {
             const active = isActivePath(stablePathname, href);
 
@@ -234,7 +237,7 @@ export default function Sidebar() {
           })}
         </nav>
 
-        <div className="relative mt-auto pt-6">
+        <div className="relative shrink-0 pt-6">
           <div className={["relative", compact ? "h-[166px]" : "h-[312px]"].join(" ")}>
             {!compact ? (
               <>
@@ -244,7 +247,7 @@ export default function Sidebar() {
                     alt=""
                     aria-hidden="true"
                     fill
-                    className="object-cover"
+                    className="object-cover object-top"
                     priority={false}
                   />
                 </div>

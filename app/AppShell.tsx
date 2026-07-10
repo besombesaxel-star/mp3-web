@@ -46,8 +46,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <MobileTabBar />
       <MiniPlayer />
       <PlayerOverlay />
-      <GlobalChat />
-      <NotificationBell />
+      <div className="fixed top-0 right-16 z-[55] flex items-center gap-[8px] md:top-3 md:right-4">
+        <NotificationBell />
+        <GlobalChat />
+      </div>
     </>
   );
 }

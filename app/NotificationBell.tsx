@@ -195,10 +195,7 @@ export default function NotificationBell() {
   if (!isAuthenticated) return null;
 
   return (
-    <div
-      ref={panelRef}
-      className="fixed top-0 right-[116px] z-[55] md:top-3 md:right-[68px]"
-    >
+    <div ref={panelRef} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Notifications"

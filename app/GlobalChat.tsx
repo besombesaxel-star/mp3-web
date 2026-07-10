@@ -510,9 +510,7 @@ export default function GlobalChat() {
         onClick={() => setOpen((v) => !v)}
         aria-label="Chat et messages"
         className={[
-          "fixed z-[55] flex items-center justify-center rounded-full border transition-all active:scale-90 shadow-lg shadow-black/30",
-          "top-0 right-16 h-10 w-10",
-          "md:top-3 md:right-4 md:h-10 md:w-10",
+          "flex items-center justify-center rounded-full border transition-all active:scale-90 shadow-lg shadow-black/30 h-10 w-10",
           open
             ? "bg-white border-white text-black"
             : "border-white/20 bg-black/75 backdrop-blur text-white/75 hover:text-white hover:border-white/35 hover:bg-white/12",

@@ -238,7 +238,7 @@ export default function Sidebar() {
           <div className={["relative", compact ? "h-[166px]" : "h-[312px]"].join(" ")}>
             {!compact ? (
               <>
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 opacity-60 flex justify-center">
+                <div className="pointer-events-none absolute inset-x-0 top-0 z-0 opacity-60 flex justify-center">
                   <Image
                     src="/images/blossom.png"
                     alt=""

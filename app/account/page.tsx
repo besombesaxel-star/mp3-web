@@ -527,15 +527,17 @@ export default function AccountPage() {
   }
 
   // ─────────────────────────────────────────────────────────
+  const wideProfileLayout = activeTab === "profile" && isConfigured && !loading && isAuthenticated;
+
   return (
     <div className="pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
-      <div className="mx-auto max-w-2xl">
+      <div className={["mx-auto max-w-2xl", wideProfileLayout ? "lg:max-w-6xl" : ""].join(" ")}>
         <div className="mb-6 mp3-fade-up">
           <h1 className="text-3xl font-light text-white/95">Compte</h1>
           <p className="mt-2 text-sm text-white/40">Personnalise ton profil public.</p>
         </div>
 
-        <div className="mb-8 flex items-center gap-1 rounded-2xl bg-white/5 p-1 mp3-fade-up">
+        <div className="mb-8 flex items-center gap-1 rounded-2xl bg-white/5 p-1 mp3-fade-up lg:max-w-2xl">
           {(["profile", "settings"] as const).map((tab) => (
             <button
               key={tab}
@@ -618,177 +620,11 @@ export default function AccountPage() {
               </div>
             </section>
 
-            {/* Comptes */}
-            <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "10ms" }}>
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-2">
-                  <Users size={14} className="text-white/30" />
-                  <h2 className="text-sm font-medium text-white/70">Comptes</h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => { setAddAccountOpen((v) => !v); setAddMsg(null); }}
-                  className="flex items-center gap-1 text-xs text-white/40 hover:text-white/80 transition"
-                >
-                  <Plus size={12} />
-                  Ajouter un compte
-                </button>
-              </div>
-
-              <p className="text-xs text-white/30 mb-3">
-                Bascule entre plusieurs comptes sans te déconnecter completement.
-              </p>
-
-              {switchMsg && <SectionMsg msg={switchMsg} />}
-
-              {otherAccounts.length === 0 ? (
-                <p className="text-xs text-white/25 mb-1">Aucun autre compte enregistré pour l&apos;instant.</p>
-              ) : (
-                <div className="space-y-2">
-                  {otherAccounts.map((acc) => {
-                    const label = acc.displayName || acc.email || "Compte";
-                    return (
-                      <div key={acc.userId} className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/3 px-4 py-2.5">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className={`h-8 w-8 shrink-0 rounded-full bg-gradient-to-br ${avatarGradient(label)} flex items-center justify-center text-xs font-semibold text-white`}>
-                            {label.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm text-white/80 truncate">{label}</p>
-                            {acc.email && acc.email !== label && <p className="text-xs text-white/30 truncate">{acc.email}</p>}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => void handleSwitchAccount(acc.userId)}
-                            disabled={switchBusyId === acc.userId}
-                            className="h-8 px-3 rounded-lg bg-white/8 text-white/60 text-xs hover:bg-white/12 transition disabled:opacity-50 flex items-center gap-1.5"
-                          >
-                            <Repeat size={11} />
-                            {switchBusyId === acc.userId ? "..." : "Basculer"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => removeAccount(acc.userId)}
-                            title="Oublier ce compte"
-                            className="h-8 w-8 rounded-lg flex items-center justify-center text-white/25 hover:text-red-400 hover:bg-white/8 transition"
-                          >
-                            <X size={13} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {addAccountOpen && (
-                <form onSubmit={handleAddAccount} className="mt-3 rounded-2xl border border-white/10 bg-white/3 p-4 space-y-3 mp3-fade-up">
-                  <InputField id="add-account-email" label="Email" type="email" value={addEmail} onChange={setAddEmail} placeholder="autre@email.com" required />
-                  <InputField id="add-account-password" label="Mot de passe" type="password" value={addPassword} onChange={setAddPassword} placeholder="Mot de passe" required />
-                  {addMsg && <SectionMsg msg={addMsg} />}
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      type="submit"
-                      disabled={addBusy || !addEmail.trim() || !addPassword}
-                      className="h-8 px-4 rounded-full bg-white text-black text-xs font-medium hover:opacity-90 transition disabled:opacity-40"
-                    >
-                      {addBusy ? "Connexion..." : "Se connecter"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setAddAccountOpen(false); setAddEmail(""); setAddPassword(""); setAddMsg(null); }}
-                      className="h-8 px-3 rounded-full border border-white/10 text-xs text-white/50 hover:text-white transition"
-                    >
-                      Annuler
-                    </button>
-                  </div>
-                </form>
-              )}
-            </section>
-
-            {/* Sessions actives */}
-            <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "20ms" }}>
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-2">
-                  <Smartphone size={14} className="text-white/30" />
-                  <h2 className="text-sm font-medium text-white/70">Sessions actives</h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void signOutOtherDevices()}
-                  disabled={signOutOthersBusy}
-                  className="text-xs text-white/40 hover:text-white/70 transition disabled:opacity-50"
-                >
-                  {signOutOthersBusy ? "..." : "Deconnecter les autres appareils"}
-                </button>
-              </div>
-
-              {signOutOthersMsg && <p className="text-xs text-white/45 mb-3">{signOutOthersMsg}</p>}
-
-              {sessionsLoading ? (
-                <p className="text-xs text-white/30">Chargement...</p>
-              ) : sessions.length === 0 ? (
-                <p className="text-xs text-white/30">Aucun appareil enregistre pour le moment.</p>
-              ) : (
-                <div className="space-y-2">
-                  {sessions.map((s) => (
-                    <div key={s.deviceId} className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/3 px-4 py-2.5">
-                      <div className="min-w-0">
-                        <p className="text-sm text-white/80 truncate">
-                          {s.deviceLabel}
-                          {s.deviceId === currentDeviceId && (
-                            <span className="ml-2 text-[10px] uppercase tracking-wide text-emerald-300/80">Cet appareil</span>
-                          )}
-                        </p>
-                        <p className="text-xs text-white/30 mt-0.5">
-                          Actif {new Date(s.lastActiveAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                        </p>
-                      </div>
-                      {s.deviceId !== currentDeviceId && (
-                        <button
-                          type="button"
-                          onClick={() => void forgetSession(s.deviceId)}
-                          disabled={forgettingId === s.deviceId}
-                          className="shrink-0 h-8 px-3 rounded-lg bg-white/8 text-white/60 text-xs hover:bg-white/12 transition disabled:opacity-50"
-                        >
-                          {forgettingId === s.deviceId ? "..." : "Oublier"}
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={() => setActivityOpen((v) => !v)}
-                className="mt-4 text-xs text-white/35 hover:text-white/60 transition"
-              >
-                {activityOpen ? "Masquer le journal d'activite" : "Voir le journal d'activite"}
-              </button>
-
-              {activityOpen && (
-                <div className="mt-3 space-y-1.5 mp3-fade-up">
-                  {activityEvents.length === 0 ? (
-                    <p className="text-xs text-white/25">Aucune activite enregistree.</p>
-                  ) : (
-                    activityEvents.slice(0, 15).map((event) => (
-                      <div key={event.id} className="flex items-center justify-between gap-3 text-xs">
-                        <span className="text-white/55">{ACTIVITY_LABELS[event.type] ?? event.type}</span>
-                        <span className="text-white/25 shrink-0">
-                          {new Date(event.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                        </span>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-            </section>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+              <div className="space-y-4">
 
             {/* Identité */}
-            <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "50ms" }}>
+            <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "10ms" }}>
               <div className="flex items-center gap-2 mb-5">
                 <User size={14} className="text-white/30" />
                 <h2 className="text-sm font-medium text-white/70">Identité</h2>
@@ -831,7 +667,7 @@ export default function AccountPage() {
             </section>
 
             {/* Personnalisation */}
-            <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "90ms" }}>
+            <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "50ms" }}>
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
                   <Palette size={14} className="text-white/30" />
@@ -1069,7 +905,7 @@ export default function AccountPage() {
             </section>
 
             {/* Stats */}
-            <div className="grid grid-cols-5 gap-3 mp3-fade-up" style={{ animationDelay: "130ms" }}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mp3-fade-up" style={{ animationDelay: "90ms" }}>
               {[
                 { icon: <Upload size={13} className="text-white/30" />, label: "Uploads", value: totalUploads },
                 { icon: <Heart size={13} className="text-white/30" />, label: "Favoris", value: favoriteCount },
@@ -1086,7 +922,7 @@ export default function AccountPage() {
 
             {/* Mes favoris */}
             {(profileLoading || favoriteTracks.length > 0) && (
-              <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "160ms" }}>
+              <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "130ms" }}>
                 <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2">
                     <Heart size={14} className="text-white/30" />
@@ -1150,7 +986,7 @@ export default function AccountPage() {
             )}
 
             {/* Mes uploads */}
-            <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "200ms" }}>
+            <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "170ms" }}>
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
                   <Upload size={14} className="text-white/30" />
@@ -1226,8 +1062,181 @@ export default function AccountPage() {
               )}
             </section>
 
+              </div>
+
+              <div className="space-y-4">
+
+            {/* Comptes */}
+            <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "10ms" }}>
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                  <Users size={14} className="text-white/30" />
+                  <h2 className="text-sm font-medium text-white/70">Comptes</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setAddAccountOpen((v) => !v); setAddMsg(null); }}
+                  className="flex items-center gap-1 text-xs text-white/40 hover:text-white/80 transition"
+                >
+                  <Plus size={12} />
+                  Ajouter un compte
+                </button>
+              </div>
+
+              <p className="text-xs text-white/30 mb-3">
+                Bascule entre plusieurs comptes sans te déconnecter completement.
+              </p>
+
+              {switchMsg && <SectionMsg msg={switchMsg} />}
+
+              {otherAccounts.length === 0 ? (
+                <p className="text-xs text-white/25 mb-1">Aucun autre compte enregistré pour l&apos;instant.</p>
+              ) : (
+                <div className="space-y-2">
+                  {otherAccounts.map((acc) => {
+                    const label = acc.displayName || acc.email || "Compte";
+                    return (
+                      <div key={acc.userId} className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/3 px-4 py-2.5">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`h-8 w-8 shrink-0 rounded-full bg-gradient-to-br ${avatarGradient(label)} flex items-center justify-center text-xs font-semibold text-white`}>
+                            {label.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm text-white/80 truncate">{label}</p>
+                            {acc.email && acc.email !== label && <p className="text-xs text-white/30 truncate">{acc.email}</p>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => void handleSwitchAccount(acc.userId)}
+                            disabled={switchBusyId === acc.userId}
+                            className="h-8 px-3 rounded-lg bg-white/8 text-white/60 text-xs hover:bg-white/12 transition disabled:opacity-50 flex items-center gap-1.5"
+                          >
+                            <Repeat size={11} />
+                            {switchBusyId === acc.userId ? "..." : "Basculer"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeAccount(acc.userId)}
+                            title="Oublier ce compte"
+                            className="h-8 w-8 rounded-lg flex items-center justify-center text-white/25 hover:text-red-400 hover:bg-white/8 transition"
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {addAccountOpen && (
+                <form onSubmit={handleAddAccount} className="mt-3 rounded-2xl border border-white/10 bg-white/3 p-4 space-y-3 mp3-fade-up">
+                  <InputField id="add-account-email" label="Email" type="email" value={addEmail} onChange={setAddEmail} placeholder="autre@email.com" required />
+                  <InputField id="add-account-password" label="Mot de passe" type="password" value={addPassword} onChange={setAddPassword} placeholder="Mot de passe" required />
+                  {addMsg && <SectionMsg msg={addMsg} />}
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="submit"
+                      disabled={addBusy || !addEmail.trim() || !addPassword}
+                      className="h-8 px-4 rounded-full bg-white text-black text-xs font-medium hover:opacity-90 transition disabled:opacity-40"
+                    >
+                      {addBusy ? "Connexion..." : "Se connecter"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setAddAccountOpen(false); setAddEmail(""); setAddPassword(""); setAddMsg(null); }}
+                      className="h-8 px-3 rounded-full border border-white/10 text-xs text-white/50 hover:text-white transition"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </form>
+              )}
+            </section>
+
+            {/* Sessions actives */}
+            <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "50ms" }}>
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                  <Smartphone size={14} className="text-white/30" />
+                  <h2 className="text-sm font-medium text-white/70">Sessions actives</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void signOutOtherDevices()}
+                  disabled={signOutOthersBusy}
+                  className="text-xs text-white/40 hover:text-white/70 transition disabled:opacity-50"
+                >
+                  {signOutOthersBusy ? "..." : "Deconnecter les autres appareils"}
+                </button>
+              </div>
+
+              {signOutOthersMsg && <p className="text-xs text-white/45 mb-3">{signOutOthersMsg}</p>}
+
+              {sessionsLoading ? (
+                <p className="text-xs text-white/30">Chargement...</p>
+              ) : sessions.length === 0 ? (
+                <p className="text-xs text-white/30">Aucun appareil enregistre pour le moment.</p>
+              ) : (
+                <div className="space-y-2">
+                  {sessions.map((s) => (
+                    <div key={s.deviceId} className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/3 px-4 py-2.5">
+                      <div className="min-w-0">
+                        <p className="text-sm text-white/80 truncate">
+                          {s.deviceLabel}
+                          {s.deviceId === currentDeviceId && (
+                            <span className="ml-2 text-[10px] uppercase tracking-wide text-emerald-300/80">Cet appareil</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-white/30 mt-0.5">
+                          Actif {new Date(s.lastActiveAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
+                      {s.deviceId !== currentDeviceId && (
+                        <button
+                          type="button"
+                          onClick={() => void forgetSession(s.deviceId)}
+                          disabled={forgettingId === s.deviceId}
+                          className="shrink-0 h-8 px-3 rounded-lg bg-white/8 text-white/60 text-xs hover:bg-white/12 transition disabled:opacity-50"
+                        >
+                          {forgettingId === s.deviceId ? "..." : "Oublier"}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setActivityOpen((v) => !v)}
+                className="mt-4 text-xs text-white/35 hover:text-white/60 transition"
+              >
+                {activityOpen ? "Masquer le journal d'activite" : "Voir le journal d'activite"}
+              </button>
+
+              {activityOpen && (
+                <div className="mt-3 space-y-1.5 mp3-fade-up">
+                  {activityEvents.length === 0 ? (
+                    <p className="text-xs text-white/25">Aucune activite enregistree.</p>
+                  ) : (
+                    activityEvents.slice(0, 15).map((event) => (
+                      <div key={event.id} className="flex items-center justify-between gap-3 text-xs">
+                        <span className="text-white/55">{ACTIVITY_LABELS[event.type] ?? event.type}</span>
+                        <span className="text-white/25 shrink-0">
+                          {new Date(event.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </section>
+
             {/* Sécurité */}
-            <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "240ms" }}>
+            <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "90ms" }}>
               <div className="flex items-center gap-2 mb-5">
                 <Shield size={14} className="text-white/30" />
                 <h2 className="text-sm font-medium text-white/70">Sécurité</h2>
@@ -1250,6 +1259,9 @@ export default function AccountPage() {
                 </div>
               </form>
             </section>
+
+              </div>
+            </div>
           </div>
 
         ) : (

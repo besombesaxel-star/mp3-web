@@ -1088,6 +1088,17 @@ export default function MiniPlayer() {
                 Suivant : {preloadedTrack.title}
               </p>
             )}
+
+            <div className="pointer-events-none hidden md:block w-[40px] h-[40px] opacity-50 shrink-0" aria-hidden="true">
+              <Image
+                src="/images/Butterfly.png"
+                alt=""
+                width={40}
+                height={40}
+                className="w-full h-full object-contain"
+                priority={false}
+              />
+            </div>
           </div>
         </div>
       </div>

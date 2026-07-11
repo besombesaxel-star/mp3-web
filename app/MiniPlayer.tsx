@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import {
   Bell,
   GripVertical,
@@ -1025,6 +1026,17 @@ export default function MiniPlayer() {
           </div>
 
           <div className="flex items-center justify-end gap-2">
+            <div className="pointer-events-none hidden md:block w-[90px] h-[30px] opacity-50" aria-hidden="true">
+              <Image
+                src="/images/kanji.png"
+                alt=""
+                width={90}
+                height={30}
+                className="w-full h-full object-contain"
+                priority={false}
+              />
+            </div>
+
             <div className="hidden md:flex items-center gap-2">
               <button
                 className="h-9 w-9 rounded-full hover:bg-white/5 transition"

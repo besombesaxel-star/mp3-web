@@ -58,7 +58,7 @@ export default function CustomCursor() {
       <div
         ref={glowRef}
         aria-hidden="true"
-        className="pointer-events-none fixed left-0 top-0 z-[500] rounded-full transition-opacity duration-150 ease-out"
+        className="pointer-events-none fixed left-0 top-0 z-[10000] rounded-full transition-opacity duration-150 ease-out"
         style={{
           width: GLOW_SIZE,
           height: GLOW_SIZE,
@@ -73,7 +73,7 @@ export default function CustomCursor() {
       <div
         ref={ringRef}
         aria-hidden="true"
-        className="pointer-events-none fixed left-0 top-0 z-[501] transition-opacity duration-150 ease-out"
+        className="pointer-events-none fixed left-0 top-0 z-[10001] transition-opacity duration-150 ease-out"
         style={{
           width: RING_SIZE,
           height: RING_SIZE,

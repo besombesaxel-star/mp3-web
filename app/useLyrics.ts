@@ -113,7 +113,10 @@ export function useLyrics(track: Track | null, durationSeconds?: number): Lyrics
           lines,
           plain,
           loading: false,
-          hasLyrics: lines.length > 0 || Boolean(plain),
+          // lrclib entries without a synced (LRC) version can't scroll/highlight in sync
+          // with playback, so treat "plain lyrics only" as not found rather than showing
+          // a static, non-following text block.
+          hasLyrics: lines.length > 0,
           isCustom: false,
         };
         lyricsCache.set(key, value);

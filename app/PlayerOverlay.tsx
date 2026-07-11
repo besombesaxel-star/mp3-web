@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePlayer } from "./PlayerContext";
-import { useAuth } from "./AuthProvider";
 import AudioBars from "./AudioBars";
 import { useFocusTrap } from "./useFocusTrap";
 import { vibrate } from "./haptics";
@@ -24,10 +23,8 @@ import {
   Volume1,
   Volume2,
   Mic,
-  Pencil,
 } from "lucide-react";
-import { useLyrics, setCustomLyricsCache } from "./useLyrics";
-import TrackLyricsEditorModal from "./TrackLyricsEditorModal";
+import { useLyrics } from "./useLyrics";
 
 function withAlpha(color: string, alpha: number) {
   if (!color) return `rgba(255,255,255,${alpha})`;
@@ -188,7 +185,6 @@ export default function PlayerOverlay() {
     focusMode,
     hapticsEnabled,
   } = usePlayer();
-  const { user } = useAuth();
 
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const hideHudTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -217,11 +213,9 @@ export default function PlayerOverlay() {
   const lastCoverTapRef = useRef(0);
 
   const [showLyrics, setShowLyrics] = useState(false);
-  const [editingLyrics, setEditingLyrics] = useState(false);
   const lyrics = useLyrics(track, duration);
   const lyricsContainerRef = useRef<HTMLDivElement | null>(null);
   const activeLyricRef = useRef<HTMLDivElement | null>(null);
-  const isLyricsOwner = Boolean(track?.ownerId && user?.id && track.ownerId === user.id);
 
   const currentLineIdx = useMemo(() => {
     if (!lyrics.lines.length || !currentTime) return -1;
@@ -241,6 +235,18 @@ export default function PlayerOverlay() {
     const targetTop = el.offsetTop - container.clientHeight / 2 + el.clientHeight / 2;
     container.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
   }, [currentLineIdx, showLyrics]);
+
+  // Unsynced (plain-text) lyrics have no per-line timestamps, so lrclib gives us
+  // no cue to highlight/scroll to - approximate it by following playback progress.
+  useEffect(() => {
+    if (!showLyrics || lyrics.lines.length > 0 || !lyrics.plain || !duration) return;
+    const container = lyricsContainerRef.current;
+    if (!container) return;
+    const maxScroll = container.scrollHeight - container.clientHeight;
+    if (maxScroll <= 0) return;
+    const ratio = Math.min(1, Math.max(0, currentTime / duration));
+    container.scrollTo({ top: maxScroll * ratio, behavior: "auto" });
+  }, [currentTime, showLyrics, lyrics.lines.length, lyrics.plain, duration]);
 
   function onCoverTap() {
     const now = Date.now();
@@ -498,17 +504,6 @@ export default function PlayerOverlay() {
             >
               <Mic size={18} className="mx-auto opacity-90 text-white/85" />
             </button>
-
-            {isLyricsOwner && (
-              <button
-                onClick={() => setEditingLyrics(true)}
-                className="h-11 w-11 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98]"
-                title={lyrics.isCustom ? "Modifier les paroles" : "Ajouter des paroles"}
-                type="button"
-              >
-                <Pencil size={16} className="mx-auto opacity-90 text-white/85" />
-              </button>
-            )}
 
             <button
               onClick={() => {
@@ -956,7 +951,7 @@ export default function PlayerOverlay() {
                       <div style={{ height: "40vh" }} />
                     </>
                   ) : lyrics.plain ? (
-                    <div style={{ paddingTop: "25vh" }}>
+                    <div style={{ paddingTop: "25vh", paddingBottom: "50vh" }}>
                       <p className="text-xl text-white/50 leading-relaxed whitespace-pre-wrap">{lyrics.plain}</p>
                     </div>
                   ) : null}
@@ -1177,15 +1172,6 @@ export default function PlayerOverlay() {
           </div>
         </div>
       </div>
-
-      <TrackLyricsEditorModal
-        track={track}
-        open={editingLyrics}
-        onClose={() => setEditingLyrics(false)}
-        onSaved={(text) => {
-          if (track) setCustomLyricsCache(track.src, text);
-        }}
-      />
     </>
   );
 }

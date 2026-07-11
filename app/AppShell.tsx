@@ -47,7 +47,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <MobileTabBar />
       <MiniPlayer />
       <PlayerOverlay />
-      <div className="pointer-events-none fixed -top-8 right-0 z-[1] w-[520px] h-[431px] opacity-40" aria-hidden="true">
+      <div className="pointer-events-none fixed -top-20 right-0 z-[1] w-[520px] h-[431px] opacity-40" aria-hidden="true">
         <Image
           src="/images/flowers.png"
           alt=""

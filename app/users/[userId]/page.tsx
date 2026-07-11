@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Check, Copy, ExternalLink, Crown, Flame, FlaskConical, Gem, ListMusic, Lock, MessageCircle, Music, Play, Shield, Shuffle, Sparkles, Star, UserCheck, UserPlus } from "lucide-react";
+import { Check, ExternalLink, Crown, Flame, FlaskConical, Gem, ListMusic, MessageCircle, Music, Play, Shield, Shuffle, Sparkles, Star, UserCheck, UserPlus } from "lucide-react";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
 import { BADGE_LABELS, type BadgeKey } from "@/lib/badges";
@@ -13,7 +13,7 @@ import { PlatformIcon } from "@/app/PlatformIcon";
 import { usePlayer } from "@/app/PlayerContext";
 import { useAuth } from "@/app/AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
-import { getArtistHref, getInitials, hashStringToHue } from "@/lib/publicLinks";
+import { getInitials, hashStringToHue } from "@/lib/publicLinks";
 
 const BADGE_STYLES: Record<BadgeKey, { icon: typeof Shield; className: string }> = {
   admin: { icon: Shield, className: "bg-red-500/20 text-red-300 border-red-500/30" },
@@ -70,8 +70,6 @@ type PublicProfileResponse = {
   profile?: PublicProfile;
 };
 
-type PlayerTrack = { artist: string; cover?: string; src: string; title: string };
-
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
@@ -88,55 +86,6 @@ function formatJoinedAt(value: string | null) {
   return date.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 }
 
-function TrackRow({
-  track, index, queue, onPlay, onCopy, copied,
-}: {
-  track: PublicTrack;
-  index: number;
-  queue: PlayerTrack[];
-  onPlay: (queue: PlayerTrack[], index: number) => void;
-  onCopy: (src: string) => void;
-  copied: boolean;
-}) {
-  return (
-    <div
-      className="group flex items-center gap-3 rounded-2xl px-3 py-3 sm:py-2.5 hover:bg-white/5 transition cursor-pointer"
-      onClick={() => onPlay(queue, index)}
-    >
-      <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-xl bg-white/5">
-        {track.cover ? (
-          <Image src={track.cover} alt={track.title} fill className="object-cover" sizes="36px" />
-        ) : (
-          <div className="h-full w-full flex items-center justify-center">
-            <Music size={11} className="text-white/20" />
-          </div>
-        )}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 group-hover:opacity-100 transition">
-          <Play size={11} className="fill-white text-white ml-0.5" />
-        </div>
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm text-white/85 truncate">{track.title}</p>
-        <Link
-          href={getArtistHref(track.artist)}
-          className="text-xs text-white/35 hover:text-white/65 transition truncate block max-w-full"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {track.artist}
-        </Link>
-      </div>
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); onCopy(track.src); }}
-        title="Copier le lien"
-        className="shrink-0 opacity-0 group-hover:opacity-100 h-7 w-7 flex items-center justify-center rounded-full hover:bg-white/10 transition text-white/40 hover:text-white/80"
-      >
-        {copied ? <span className="text-[9px] text-green-400">✓</span> : <Copy size={11} />}
-      </button>
-    </div>
-  );
-}
-
 export default function PublicUserProfilePage() {
   const params = useParams<{ userId: string }>();
   const { setQueueAndPlay, track: myTrack, suggestTrackToUser } = usePlayer();
@@ -150,7 +99,6 @@ export default function PublicUserProfilePage() {
   const [followersCount, setFollowersCount] = useState(0);
   const [followBusy, setFollowBusy] = useState(false);
   const [nowPlaying, setNowPlaying] = useState<{ title: string; artist?: string | null; cover?: string | null } | null>(null);
-  const [copiedSrc, setCopiedSrc] = useState<string | null>(null);
   const [reactionSent, setReactionSent] = useState<string | null>(null);
   const [reactionBusy, setReactionBusy] = useState(false);
   const [suggestSent, setSuggestSent] = useState(false);
@@ -300,14 +248,6 @@ export default function PublicUserProfilePage() {
       }
     } catch { /* silent */ }
     finally { setFollowBusy(false); }
-  }
-
-  function copyTrackLink(src: string) {
-    const url = src.startsWith("http") ? src : `${window.location.origin}${src}`;
-    navigator.clipboard.writeText(url).then(() => {
-      setCopiedSrc(src);
-      setTimeout(() => setCopiedSrc(null), 2000);
-    }).catch(() => {});
   }
 
   const bgGradient = themeHue !== null
@@ -613,43 +553,6 @@ export default function PublicUserProfilePage() {
             </section>
           )}
 
-          {/* All uploads */}
-          <section className="rounded-3xl border border-white/8 bg-white/[0.03] p-5 mp3-fade-up" style={{ animationDelay: "130ms" }}>
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-xs uppercase tracking-[0.22em] text-white/25">
-                Sons partagés
-              </p>
-              <span className="text-xs text-white/20 tabular-nums">
-                {profile.uploadsCount}
-              </span>
-            </div>
-
-            {profile.isPrivate ? (
-              <div className="rounded-2xl border border-white/8 bg-white/3 px-4 py-8 text-center">
-                <Lock size={22} className="mx-auto mb-2 text-white/15" />
-                <p className="text-sm text-white/35">Ce profil est privé.</p>
-              </div>
-            ) : profile.uploads.length === 0 ? (
-              <div className="rounded-2xl border border-white/8 bg-white/3 px-4 py-8 text-center">
-                <Music size={22} className="mx-auto mb-2 text-white/15" />
-                <p className="text-sm text-white/35">Aucun son partagé pour le moment.</p>
-              </div>
-            ) : (
-              <div className="space-y-0.5">
-                {profile.uploads.map((track, index) => (
-                  <TrackRow
-                    key={track.src}
-                    track={track}
-                    index={index}
-                    queue={uploadsQueue}
-                    onPlay={setQueueAndPlay}
-                    onCopy={copyTrackLink}
-                    copied={copiedSrc === track.src}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
         </div>
       ) : null}
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 import MobileTabBar from "./MobileTabBar";
@@ -46,9 +47,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <MobileTabBar />
       <MiniPlayer />
       <PlayerOverlay />
-      <div className="fixed top-0 right-16 z-[55] flex items-center gap-[8px] md:top-3 md:right-4">
-        <NotificationBell />
-        <GlobalChat />
+      <div className="fixed top-0 right-16 z-[55] md:top-3 md:right-4">
+        <div className="pointer-events-none absolute -top-10 -right-14 opacity-40" aria-hidden="true">
+          <Image
+            src="/images/flowers.png"
+            alt=""
+            width={210}
+            height={174}
+            className="object-contain"
+            priority={false}
+          />
+        </div>
+        <div className="relative flex items-center gap-[8px]">
+          <NotificationBell />
+          <GlobalChat />
+        </div>
       </div>
     </>
   );

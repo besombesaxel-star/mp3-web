@@ -52,8 +52,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <Image
             src="/images/flowers.png"
             alt=""
-            width={280}
-            height={232}
+            width={520}
+            height={431}
             className="object-contain"
             priority={false}
           />

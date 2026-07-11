@@ -64,7 +64,8 @@ export default function CustomCursor() {
           height: GLOW_SIZE,
           opacity: overText ? 0 : 1,
           transform: "translate3d(-9999px, -9999px, 0)",
-          background: "radial-gradient(circle, rgba(150,172,209,0.14) 0%, rgba(150,172,209,0.05) 45%, transparent 75%)",
+          background:
+            "radial-gradient(circle, color-mix(in srgb, var(--mp3-accent-strong) 14%, transparent) 0%, color-mix(in srgb, var(--mp3-accent-strong) 5%, transparent) 45%, transparent 75%)",
           mixBlendMode: "screen",
           willChange: "transform",
         }}
@@ -86,7 +87,7 @@ export default function CustomCursor() {
             "h-full w-full rounded-full border transition-transform duration-200 ease-out",
             hovering ? "scale-[1.75]" : "scale-100",
           ].join(" ")}
-          style={{ borderColor: "rgba(150,172,209,0.7)", borderWidth: 1.5 }}
+          style={{ borderColor: "color-mix(in srgb, var(--mp3-accent-strong) 70%, transparent)", borderWidth: 1.5 }}
         />
       </div>
     </>

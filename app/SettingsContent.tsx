@@ -1,11 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Check } from "lucide-react";
 import { useAuth } from "@/app/AuthProvider";
-import { usePlayer, type EqGains } from "@/app/PlayerContext";
+import { usePlayer, type ColorTheme, type EqGains } from "@/app/PlayerContext";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 
 const EQ_BAND_LABELS = ["90 Hz", "250 Hz", "1 kHz", "3.5 kHz", "9 kHz"];
+
+const COLOR_THEME_OPTIONS: { value: ColorTheme; label: string; swatch: string }[] = [
+  { value: "steel", label: "Acier", swatch: "#96acd1" },
+  { value: "emerald", label: "Emeraude", swatch: "#6fc79f" },
+  { value: "amber", label: "Ambre", swatch: "#e0b370" },
+  { value: "rose", label: "Rose", swatch: "#e096b0" },
+  { value: "violet", label: "Violet", swatch: "#ac96e0" },
+];
 
 function EqGainsEditor({ gains, onChange }: { gains: EqGains; onChange: (gains: EqGains) => void }) {
   function updateBand(index: number, value: number) {
@@ -97,6 +106,38 @@ function ToggleRow({
   );
 }
 
+function ThemeSwatchRow({
+  value, onChange,
+}: {
+  value: ColorTheme; onChange: (value: ColorTheme) => void;
+}) {
+  return (
+    <div>
+      <p className="text-sm text-white/85 mb-2">Couleur du theme</p>
+      <div className="flex items-center gap-2.5 flex-wrap">
+        {COLOR_THEME_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            title={opt.label}
+            aria-pressed={value === opt.value}
+            className={[
+              "relative h-9 w-9 rounded-full transition ring-offset-2 ring-offset-[#0b0b0f]",
+              value === opt.value ? "ring-2 ring-white/80 scale-110" : "hover:scale-105 opacity-70 hover:opacity-100",
+            ].join(" ")}
+            style={{ background: opt.swatch }}
+          >
+            {value === opt.value && (
+              <Check size={14} className="absolute inset-0 m-auto text-black drop-shadow" />
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SegmentedRow<T extends string>({
   label, options, value, onChange,
 }: {
@@ -141,6 +182,7 @@ export default function SettingsContent() {
     hapticsEnabled, toggleHaptics,
     fontSize, setFontSize,
     highContrast, toggleHighContrast,
+    colorTheme, setColorTheme,
     eqPreset, setEqPreset,
     customEqGains, setCustomEqGains,
   } = usePlayer();
@@ -265,6 +307,10 @@ export default function SettingsContent() {
         {eqPreset === "custom" ? (
           <EqGainsEditor gains={customEqGains} onChange={setCustomEqGains} />
         ) : null}
+      </SettingsSection>
+
+      <SettingsSection title="Apparence" delay={120}>
+        <ThemeSwatchRow value={colorTheme} onChange={setColorTheme} />
       </SettingsSection>
 
       <SettingsSection title="Accessibilite" delay={150}>

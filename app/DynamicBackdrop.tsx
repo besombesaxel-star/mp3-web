@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { usePlayer, type ColorTheme } from "./PlayerContext";
 
 type Rgb = [number, number, number];
 
@@ -11,12 +12,16 @@ type BackdropPalette = {
   tertiary: Rgb;
 };
 
-/** Identite "Steel" : rampe bleu acier, sombre et epuree - fixe, jamais teintee par la cover en cours. */
-const BASE_PALETTE: BackdropPalette = {
-  base: [5, 7, 11],
-  primary: [111, 139, 179],
-  secondary: [67, 87, 128],
-  tertiary: [150, 172, 209],
+/**
+ * Une palette fixe par theme de couleur (choisi dans Parametres) - jamais
+ * teintee par la cover/accent du son en cours.
+ */
+const PALETTES: Record<ColorTheme, BackdropPalette> = {
+  steel: { base: [5, 7, 11], primary: [111, 139, 179], secondary: [67, 87, 128], tertiary: [150, 172, 209] },
+  emerald: { base: [5, 10, 8], primary: [79, 156, 122], secondary: [45, 102, 84], tertiary: [111, 199, 159] },
+  amber: { base: [11, 8, 5], primary: [201, 151, 79], secondary: [140, 98, 45], tertiary: [224, 179, 112] },
+  rose: { base: [11, 6, 8], primary: [201, 111, 139], secondary: [140, 63, 89], tertiary: [224, 150, 176] },
+  violet: { base: [8, 6, 11], primary: [143, 111, 201], secondary: [90, 63, 140], tertiary: [172, 150, 224] },
 };
 
 function clampByte(value: number) {
@@ -38,7 +43,8 @@ function mixRgb(a: Rgb, b: Rgb, weight = 0.5): Rgb {
 }
 
 export default function DynamicBackdrop() {
-  const palette = BASE_PALETTE;
+  const { colorTheme } = usePlayer();
+  const palette = PALETTES[colorTheme];
 
   const backgroundStyle = useMemo(
     () => ({

@@ -30,6 +30,62 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* ---------------------------------------------------------------------
+   Themes de couleur : la teinte "Steel" ci-dessus est celle par defaut
+   (html sans attribut ou data-mp3-theme="steel"). Choix dans Parametres.
+   --------------------------------------------------------------------- */
+html[data-mp3-theme="emerald"] {
+  --background: #050a08;
+  --mp3-bg-base: #050a08;
+  --mp3-glow-a: rgba(79, 156, 122, 0.16);
+  --mp3-glow-b: rgba(45, 102, 84, 0.24);
+  --mp3-accent: #4f9c7a;
+  --mp3-accent-strong: #6fc79f;
+  --mp3-accent-soft: rgba(79, 156, 122, 0.16);
+  --mp3-border: rgba(111, 199, 159, 0.12);
+  --scrollbar-thumb: rgba(111, 199, 159, 0.3);
+  --scrollbar-thumb-hover: rgba(111, 199, 159, 0.42);
+}
+
+html[data-mp3-theme="amber"] {
+  --background: #0b0805;
+  --mp3-bg-base: #0b0805;
+  --mp3-glow-a: rgba(201, 151, 79, 0.16);
+  --mp3-glow-b: rgba(140, 98, 45, 0.24);
+  --mp3-accent: #c9974f;
+  --mp3-accent-strong: #e0b370;
+  --mp3-accent-soft: rgba(201, 151, 79, 0.16);
+  --mp3-border: rgba(224, 179, 112, 0.12);
+  --scrollbar-thumb: rgba(224, 179, 112, 0.3);
+  --scrollbar-thumb-hover: rgba(224, 179, 112, 0.42);
+}
+
+html[data-mp3-theme="rose"] {
+  --background: #0b0608;
+  --mp3-bg-base: #0b0608;
+  --mp3-glow-a: rgba(201, 111, 139, 0.16);
+  --mp3-glow-b: rgba(140, 63, 89, 0.24);
+  --mp3-accent: #c96f8b;
+  --mp3-accent-strong: #e096b0;
+  --mp3-accent-soft: rgba(201, 111, 139, 0.16);
+  --mp3-border: rgba(224, 150, 176, 0.12);
+  --scrollbar-thumb: rgba(224, 150, 176, 0.3);
+  --scrollbar-thumb-hover: rgba(224, 150, 176, 0.42);
+}
+
+html[data-mp3-theme="violet"] {
+  --background: #08060b;
+  --mp3-bg-base: #08060b;
+  --mp3-glow-a: rgba(143, 111, 201, 0.16);
+  --mp3-glow-b: rgba(90, 63, 140, 0.24);
+  --mp3-accent: #8f6fc9;
+  --mp3-accent-strong: #ac96e0;
+  --mp3-accent-soft: rgba(143, 111, 201, 0.16);
+  --mp3-border: rgba(172, 150, 224, 0.12);
+  --scrollbar-thumb: rgba(172, 150, 224, 0.3);
+  --scrollbar-thumb-hover: rgba(172, 150, 224, 0.42);
+}
+
 html.mp3-custom-cursor,
 html.mp3-custom-cursor * {
   cursor: none !important;

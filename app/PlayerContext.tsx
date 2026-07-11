@@ -34,6 +34,7 @@ export type Track = {
 
 type RepeatMode = "off" | "all" | "one";
 type FontSizeMode = "sm" | "md" | "lg" | "xl";
+export type ColorTheme = "steel" | "emerald" | "amber" | "rose" | "violet";
 type EqPreset = "off" | "bass" | "vocal" | "night" | "custom";
 export type EqGains = [number, number, number, number, number];
 
@@ -114,6 +115,8 @@ type PlayerCtx = {
   setFontSize: (value: FontSizeMode) => void;
   highContrast: boolean;
   toggleHighContrast: () => void;
+  colorTheme: ColorTheme;
+  setColorTheme: (value: ColorTheme) => void;
   eqPreset: EqPreset;
   setEqPreset: (value: EqPreset) => void;
   cycleEqPreset: () => void;
@@ -244,6 +247,7 @@ type PlayerPrefs = {
   loudnessNorm: boolean;
   fontSize: FontSizeMode;
   highContrast: boolean;
+  colorTheme: ColorTheme;
   eqPreset: EqPreset;
   customEqGains: EqGains;
 };
@@ -411,6 +415,7 @@ function safePrefs(parsed: unknown): PlayerPrefs {
       loudnessNorm: true,
       fontSize: "md",
       highContrast: false,
+      colorTheme: "steel",
       eqPreset: "off",
       customEqGains: [...DEFAULT_CUSTOM_EQ_GAINS],
     };
@@ -430,6 +435,14 @@ function safePrefs(parsed: unknown): PlayerPrefs {
         ? parsed.fontSize
         : "md",
     highContrast: typeof parsed.highContrast === "boolean" ? parsed.highContrast : false,
+    colorTheme:
+      parsed.colorTheme === "steel" ||
+      parsed.colorTheme === "emerald" ||
+      parsed.colorTheme === "amber" ||
+      parsed.colorTheme === "rose" ||
+      parsed.colorTheme === "violet"
+        ? parsed.colorTheme
+        : "steel",
     eqPreset:
       parsed.eqPreset === "off" ||
       parsed.eqPreset === "bass" ||
@@ -696,6 +709,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [focusMode, setFocusMode] = useState(false);
   const [fontSize, setFontSize] = useState<FontSizeMode>("md");
   const [highContrast, setHighContrast] = useState(false);
+  const [colorTheme, setColorTheme] = useState<ColorTheme>("steel");
   const [eqPreset, setEqPreset] = useState<EqPreset>("off");
   const [customEqGains, setCustomEqGains] = useState<EqGains>(DEFAULT_CUSTOM_EQ_GAINS);
   const customEqGainsRef = useRef(customEqGains);
@@ -1504,6 +1518,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.dataset.mp3Contrast = highContrast ? "high" : "normal";
   }, [highContrast]);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.documentElement.dataset.mp3Theme = colorTheme;
+  }, [colorTheme]);
+
   // preload next track for smoother transitions
   useEffect(() => {
     const preloadAudio = preloadAudioRef.current;
@@ -1870,6 +1889,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setLoudnessNorm(prefs.loudnessNorm);
       setFontSize(prefs.fontSize);
       setHighContrast(prefs.highContrast);
+      setColorTheme(prefs.colorTheme);
       setEqPreset(prefs.eqPreset);
       setCustomEqGains(prefs.customEqGains);
     } catch {}
@@ -2132,6 +2152,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       loudnessNorm,
       fontSize,
       highContrast,
+      colorTheme,
       eqPreset,
       customEqGains,
     };
@@ -2147,6 +2168,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     loudnessNorm,
     fontSize,
     highContrast,
+    colorTheme,
     eqPreset,
     customEqGains,
   ]);
@@ -2891,6 +2913,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setFontSize,
     highContrast,
     toggleHighContrast,
+    colorTheme,
+    setColorTheme,
     eqPreset,
     setEqPreset,
     cycleEqPreset,

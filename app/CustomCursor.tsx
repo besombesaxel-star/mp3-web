@@ -84,7 +84,7 @@ export default function CustomCursor() {
         <div
           className={[
             "h-full w-full rounded-full border transition-transform duration-200 ease-out",
-            hovering ? "scale-[2.75]" : "scale-100",
+            hovering ? "scale-[1.75]" : "scale-100",
           ].join(" ")}
           style={{ borderColor: "rgba(150,172,209,0.7)", borderWidth: 1.5 }}
         />

@@ -30,6 +30,17 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html.mp3-custom-cursor,
+html.mp3-custom-cursor * {
+  cursor: none !important;
+}
+
+html.mp3-custom-cursor input,
+html.mp3-custom-cursor textarea,
+html.mp3-custom-cursor [contenteditable="true"] {
+  cursor: text !important;
+}
+
 html,
 body {
   min-height: 100%;

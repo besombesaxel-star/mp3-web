@@ -15,6 +15,7 @@ import PwaInstaller from "./PwaInstaller";
 import GlobalChat from "./GlobalChat";
 import NotificationBell from "./NotificationBell";
 import LauncherHeartbeat from "./LauncherHeartbeat";
+import CursorGlow from "./CursorGlow";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -31,6 +32,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <DynamicBackdrop />
+      <CursorGlow />
       <OfflineBanner />
 
       <div className="relative z-10 flex h-screen">

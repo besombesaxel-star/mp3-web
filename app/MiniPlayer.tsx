@@ -800,13 +800,13 @@ export default function MiniPlayer() {
 
         <div className="hidden h-[72px] px-6 sm:grid grid-cols-[1fr_auto_1fr] items-center gap-4">
           <div className="min-w-0 flex items-center gap-4">
-            <div className="pointer-events-none hidden md:block -ml-5 mr-1 w-[9px] h-[68px] opacity-50 shrink-0" aria-hidden="true">
+            <div className="pointer-events-none hidden md:block -ml-5 mr-1 w-[27px] h-[68px] opacity-50 shrink-0" aria-hidden="true">
               <Image
                 src="/images/ornement-strip.png"
                 alt=""
-                width={9}
+                width={27}
                 height={68}
-                className="w-[9px] h-[68px] max-w-none object-contain"
+                className="w-[27px] h-[68px] max-w-none object-contain"
                 priority={false}
               />
             </div>

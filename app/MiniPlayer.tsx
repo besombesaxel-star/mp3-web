@@ -1089,13 +1089,13 @@ export default function MiniPlayer() {
               </p>
             )}
 
-            <div className="pointer-events-none hidden md:block w-[40px] h-[40px] opacity-50 shrink-0" aria-hidden="true">
+            <div className="pointer-events-none relative hidden md:block w-[40px] h-[40px] shrink-0" aria-hidden="true">
               <Image
                 src="/images/Butterfly.png"
                 alt=""
-                width={40}
-                height={40}
-                className="w-full h-full object-contain"
+                width={64}
+                height={64}
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-50 object-contain"
                 priority={false}
               />
             </div>

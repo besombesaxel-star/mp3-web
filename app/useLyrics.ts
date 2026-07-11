@@ -10,6 +10,7 @@ export type LyricsState = {
   plain: string | null;
   loading: boolean;
   hasLyrics: boolean;
+  isCustom: boolean;
 };
 
 function parseLrc(lrc: string): LrcLine[] {
@@ -26,8 +27,10 @@ function parseLrc(lrc: string): LrcLine[] {
 }
 
 const lyricsCache = new Map<string, LyricsState>();
+const customLyricsCache = new Map<string, string | null>();
 
-const EMPTY_LYRICS_STATE: LyricsState = { lines: [], plain: null, loading: false, hasLyrics: false };
+const EMPTY_LYRICS_STATE: LyricsState = { lines: [], plain: null, loading: false, hasLyrics: false, isCustom: false };
+const LOADING_LYRICS_STATE: LyricsState = { lines: [], plain: null, loading: true, hasLyrics: false, isCustom: false };
 
 function cacheKeyFor(track: Track | null, durationSeconds?: number): string | null {
   if (!track?.title || !durationSeconds || !Number.isFinite(durationSeconds) || durationSeconds <= 0) return null;
@@ -35,11 +38,53 @@ function cacheKeyFor(track: Track | null, durationSeconds?: number): string | nu
 }
 
 type FetchedResult = { key: string; value: LyricsState };
+type CustomFetchedResult = { src: string; value: string | null };
 
+/** Lets an editor UI push a fresh save/delete into the shared cache without waiting for a refetch. */
+export function setCustomLyricsCache(src: string, text: string | null) {
+  customLyricsCache.set(src, text);
+}
+
+/** Custom lyrics entered by a track's owner always take priority over lrclib.net. */
 export function useLyrics(track: Track | null, durationSeconds?: number): LyricsState {
   const [fetched, setFetched] = useState<FetchedResult | null>(null);
+  const [customFetched, setCustomFetched] = useState<CustomFetchedResult | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const key = cacheKeyFor(track, durationSeconds);
+
+  const customSrc = track?.src ?? null;
+  const customCached = customSrc ? customLyricsCache.get(customSrc) : undefined;
+  const resolvedCustom: string | null | undefined = !customSrc
+    ? null
+    : customCached !== undefined
+      ? customCached
+      : customFetched?.src === customSrc
+        ? customFetched.value
+        : undefined;
+
+  useEffect(() => {
+    if (!customSrc || customLyricsCache.has(customSrc)) return;
+    let cancelled = false;
+
+    fetch(`/api/tracks/lyrics?src=${encodeURIComponent(customSrc)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { lyrics?: { text?: string } | null } | null) => {
+        if (cancelled) return;
+        const value = data?.lyrics?.text || null;
+        customLyricsCache.set(customSrc, value);
+        setCustomFetched({ src: customSrc, value });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        customLyricsCache.set(customSrc, null);
+        setCustomFetched({ src: customSrc, value: null });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [customSrc]);
+
+  const key = resolvedCustom === null ? cacheKeyFor(track, durationSeconds) : null;
   const cached = key ? lyricsCache.get(key) : undefined;
 
   useEffect(() => {
@@ -69,13 +114,14 @@ export function useLyrics(track: Track | null, durationSeconds?: number): Lyrics
           plain,
           loading: false,
           hasLyrics: lines.length > 0 || Boolean(plain),
+          isCustom: false,
         };
         lyricsCache.set(key, value);
         setFetched({ key, value });
       })
       .catch((e: unknown) => {
         if ((e as Error)?.name === "AbortError") return;
-        const value: LyricsState = { lines: [], plain: null, loading: false, hasLyrics: false };
+        const value: LyricsState = { lines: [], plain: null, loading: false, hasLyrics: false, isCustom: false };
         lyricsCache.set(key, value);
         setFetched({ key, value });
       });
@@ -84,9 +130,14 @@ export function useLyrics(track: Track | null, durationSeconds?: number): Lyrics
   }, [key, track?.title, track?.artist, durationSeconds]);
 
   if (!track?.title) return EMPTY_LYRICS_STATE;
-  if (!key) return { lines: [], plain: null, loading: true, hasLyrics: false };
+  if (resolvedCustom === undefined) return LOADING_LYRICS_STATE;
+  if (resolvedCustom !== null) {
+    return { lines: [], plain: resolvedCustom, loading: false, hasLyrics: true, isCustom: true };
+  }
+
+  if (!key) return LOADING_LYRICS_STATE;
   if (cached) return cached;
   if (fetched?.key === key) return fetched.value;
 
-  return { lines: [], plain: null, loading: true, hasLyrics: false };
+  return LOADING_LYRICS_STATE;
 }

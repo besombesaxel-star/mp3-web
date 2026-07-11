@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Camera, Check, Code, Heart, Link2, ListEnd, ListPlus, MessageCircle, Trash2, X } from "lucide-react";
+import { Camera, Check, Code, Heart, Link2, ListEnd, ListPlus, Mic, MessageCircle, Trash2, X } from "lucide-react";
 import { usePlayer, type Track } from "./PlayerContext";
+import { useAuth } from "./AuthProvider";
 import { vibrate } from "./haptics";
 import TrackCommentsModal from "./TrackCommentsModal";
+import TrackLyricsEditorModal from "./TrackLyricsEditorModal";
+import { setCustomLyricsCache } from "./useLyrics";
 import Portal from "./Portal";
 import { generateTrackShareImage, shareOrDownloadImage } from "@/lib/shareCard";
 
@@ -16,9 +19,11 @@ type Props = {
 
 export default function TrackContextMenu({ track, onClose, removeFromPlaylist }: Props) {
   const { addToQueueNext, addToQueueEnd, toggleFavorite, isFavorite, hapticsEnabled } = usePlayer();
+  const { user } = useAuth();
   const [copied, setCopied] = useState(false);
   const [embedCopied, setEmbedCopied] = useState(false);
   const [commentsTrack, setCommentsTrack] = useState<Track | null>(null);
+  const [lyricsTrack, setLyricsTrack] = useState<Track | null>(null);
   const [sharing, setSharing] = useState(false);
 
   function openComments() {
@@ -26,6 +31,14 @@ export default function TrackContextMenu({ track, onClose, removeFromPlaylist }:
     const target = track;
     if (hapticsEnabled) vibrate(12);
     setCommentsTrack(target);
+    onClose();
+  }
+
+  function openLyricsEditor() {
+    if (!track) return;
+    const target = track;
+    if (hapticsEnabled) vibrate(12);
+    setLyricsTrack(target);
     onClose();
   }
 
@@ -44,14 +57,25 @@ export default function TrackContextMenu({ track, onClose, removeFromPlaylist }:
   }
 
   if (!track) {
-    return commentsTrack ? (
+    return commentsTrack || lyricsTrack ? (
       <Portal>
-        <TrackCommentsModal track={commentsTrack} open onClose={() => setCommentsTrack(null)} />
+        {commentsTrack ? (
+          <TrackCommentsModal track={commentsTrack} open onClose={() => setCommentsTrack(null)} />
+        ) : null}
+        {lyricsTrack ? (
+          <TrackLyricsEditorModal
+            track={lyricsTrack}
+            open
+            onClose={() => setLyricsTrack(null)}
+            onSaved={(text) => setCustomLyricsCache(lyricsTrack.src, text)}
+          />
+        ) : null}
       </Portal>
     ) : null;
   }
 
   const liked = isFavorite(track.src);
+  const isOwner = Boolean(track.ownerId && user?.id && track.ownerId === user.id);
 
   function withHaptic(action: () => void) {
     if (hapticsEnabled) vibrate(12);
@@ -168,6 +192,17 @@ export default function TrackContextMenu({ track, onClose, removeFromPlaylist }:
           <MessageCircle size={18} className="opacity-80" />
           Commentaires
         </button>
+
+        {isOwner ? (
+          <button
+            type="button"
+            className="w-full flex items-center gap-3 px-2 py-3 rounded-xl hover:bg-white/5 transition text-left text-sm text-white/85"
+            onClick={openLyricsEditor}
+          >
+            <Mic size={18} className="opacity-80" />
+            Modifier les paroles
+          </button>
+        ) : null}
 
         <button
           type="button"

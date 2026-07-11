@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePlayer } from "./PlayerContext";
+import { useAuth } from "./AuthProvider";
 import AudioBars from "./AudioBars";
 import { useFocusTrap } from "./useFocusTrap";
 import { vibrate } from "./haptics";
@@ -23,8 +24,10 @@ import {
   Volume1,
   Volume2,
   Mic,
+  Pencil,
 } from "lucide-react";
-import { useLyrics } from "./useLyrics";
+import { useLyrics, setCustomLyricsCache } from "./useLyrics";
+import TrackLyricsEditorModal from "./TrackLyricsEditorModal";
 
 function withAlpha(color: string, alpha: number) {
   if (!color) return `rgba(255,255,255,${alpha})`;
@@ -185,6 +188,7 @@ export default function PlayerOverlay() {
     focusMode,
     hapticsEnabled,
   } = usePlayer();
+  const { user } = useAuth();
 
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const hideHudTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -213,9 +217,11 @@ export default function PlayerOverlay() {
   const lastCoverTapRef = useRef(0);
 
   const [showLyrics, setShowLyrics] = useState(false);
+  const [editingLyrics, setEditingLyrics] = useState(false);
   const lyrics = useLyrics(track, duration);
   const lyricsContainerRef = useRef<HTMLDivElement | null>(null);
   const activeLyricRef = useRef<HTMLDivElement | null>(null);
+  const isLyricsOwner = Boolean(track?.ownerId && user?.id && track.ownerId === user.id);
 
   const currentLineIdx = useMemo(() => {
     if (!lyrics.lines.length || !currentTime) return -1;
@@ -492,6 +498,17 @@ export default function PlayerOverlay() {
             >
               <Mic size={18} className="mx-auto opacity-90 text-white/85" />
             </button>
+
+            {isLyricsOwner && (
+              <button
+                onClick={() => setEditingLyrics(true)}
+                className="h-11 w-11 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98]"
+                title={lyrics.isCustom ? "Modifier les paroles" : "Ajouter des paroles"}
+                type="button"
+              >
+                <Pencil size={16} className="mx-auto opacity-90 text-white/85" />
+              </button>
+            )}
 
             <button
               onClick={() => {
@@ -1160,6 +1177,15 @@ export default function PlayerOverlay() {
           </div>
         </div>
       </div>
+
+      <TrackLyricsEditorModal
+        track={track}
+        open={editingLyrics}
+        onClose={() => setEditingLyrics(false)}
+        onSaved={(text) => {
+          if (track) setCustomLyricsCache(track.src, text);
+        }}
+      />
     </>
   );
 }

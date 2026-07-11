@@ -213,7 +213,7 @@ export default function PlayerOverlay() {
   const lastCoverTapRef = useRef(0);
 
   const [showLyrics, setShowLyrics] = useState(false);
-  const lyrics = useLyrics(track);
+  const lyrics = useLyrics(track, duration);
   const lyricsContainerRef = useRef<HTMLDivElement | null>(null);
   const activeLyricRef = useRef<HTMLDivElement | null>(null);
 

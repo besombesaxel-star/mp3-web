@@ -29,16 +29,17 @@ const lyricsCache = new Map<string, LyricsState>();
 
 const EMPTY_LYRICS_STATE: LyricsState = { lines: [], plain: null, loading: false, hasLyrics: false };
 
-function cacheKeyFor(track: Track | null): string | null {
-  return track?.title ? `${track.title}|||${track.artist ?? ""}` : null;
+function cacheKeyFor(track: Track | null, durationSeconds?: number): string | null {
+  if (!track?.title || !durationSeconds || !Number.isFinite(durationSeconds) || durationSeconds <= 0) return null;
+  return `${track.title}|||${track.artist ?? ""}|||${Math.round(durationSeconds)}`;
 }
 
 type FetchedResult = { key: string; value: LyricsState };
 
-export function useLyrics(track: Track | null): LyricsState {
+export function useLyrics(track: Track | null, durationSeconds?: number): LyricsState {
   const [fetched, setFetched] = useState<FetchedResult | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const key = cacheKeyFor(track);
+  const key = cacheKeyFor(track, durationSeconds);
   const cached = key ? lyricsCache.get(key) : undefined;
 
   useEffect(() => {
@@ -55,7 +56,7 @@ export function useLyrics(track: Track | null): LyricsState {
     const ctrl = new AbortController();
     abortRef.current = ctrl;
 
-    const params = new URLSearchParams({ track_name: track.title });
+    const params = new URLSearchParams({ track_name: track.title, duration: String(Math.round(durationSeconds as number)) });
     if (track.artist) params.set("artist_name", track.artist);
 
     fetch(`https://lrclib.net/api/get?${params.toString()}`, { signal: ctrl.signal })
@@ -80,9 +81,10 @@ export function useLyrics(track: Track | null): LyricsState {
       });
 
     return () => ctrl.abort();
-  }, [key, track?.title, track?.artist]);
+  }, [key, track?.title, track?.artist, durationSeconds]);
 
-  if (!key) return EMPTY_LYRICS_STATE;
+  if (!track?.title) return EMPTY_LYRICS_STATE;
+  if (!key) return { lines: [], plain: null, loading: true, hasLyrics: false };
   if (cached) return cached;
   if (fetched?.key === key) return fetched.value;
 

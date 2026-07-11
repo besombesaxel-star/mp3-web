@@ -39,6 +39,11 @@ html[data-mp3-theme="emerald"] {
   --mp3-bg-base: #050a08;
   --mp3-glow-a: rgba(79, 156, 122, 0.16);
   --mp3-glow-b: rgba(45, 102, 84, 0.24);
+  --mp3-surface-1: #121f18;
+  --mp3-surface-2: #0e1a15;
+  --mp3-surface-3: #0b1510;
+  --mp3-surface-4: #17281f;
+  --mp3-surface-5: #08100b;
   --mp3-accent: #4f9c7a;
   --mp3-accent-strong: #6fc79f;
   --mp3-accent-soft: rgba(79, 156, 122, 0.16);
@@ -52,6 +57,11 @@ html[data-mp3-theme="amber"] {
   --mp3-bg-base: #0b0805;
   --mp3-glow-a: rgba(201, 151, 79, 0.16);
   --mp3-glow-b: rgba(140, 98, 45, 0.24);
+  --mp3-surface-1: #1f1a12;
+  --mp3-surface-2: #1a150e;
+  --mp3-surface-3: #15110b;
+  --mp3-surface-4: #282017;
+  --mp3-surface-5: #100c08;
   --mp3-accent: #c9974f;
   --mp3-accent-strong: #e0b370;
   --mp3-accent-soft: rgba(201, 151, 79, 0.16);
@@ -65,6 +75,11 @@ html[data-mp3-theme="rose"] {
   --mp3-bg-base: #0b0608;
   --mp3-glow-a: rgba(201, 111, 139, 0.16);
   --mp3-glow-b: rgba(140, 63, 89, 0.24);
+  --mp3-surface-1: #1f1218;
+  --mp3-surface-2: #1a0e14;
+  --mp3-surface-3: #150b10;
+  --mp3-surface-4: #281720;
+  --mp3-surface-5: #10080c;
   --mp3-accent: #c96f8b;
   --mp3-accent-strong: #e096b0;
   --mp3-accent-soft: rgba(201, 111, 139, 0.16);
@@ -78,6 +93,11 @@ html[data-mp3-theme="violet"] {
   --mp3-bg-base: #08060b;
   --mp3-glow-a: rgba(143, 111, 201, 0.16);
   --mp3-glow-b: rgba(90, 63, 140, 0.24);
+  --mp3-surface-1: #18121f;
+  --mp3-surface-2: #140e1a;
+  --mp3-surface-3: #100b15;
+  --mp3-surface-4: #201728;
+  --mp3-surface-5: #0c0810;
   --mp3-accent: #8f6fc9;
   --mp3-accent-strong: #ac96e0;
   --mp3-accent-soft: rgba(143, 111, 201, 0.16);

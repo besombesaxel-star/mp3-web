@@ -21,6 +21,7 @@ import { detectPlatform, PlatformIcon } from "@/app/PlatformIcon";
 import { computeStreak } from "@/lib/streak";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
 import { COSMETICS, getCosmeticForAchievement } from "@/lib/cosmetics";
+import { fetchTracksShared, type ApiTrack } from "@/app/tracksCache";
 
 type DeviceSession = {
   deviceId: string;
@@ -180,6 +181,8 @@ export default function AccountPage() {
   // Personalisation
   const [links, setLinks] = useState<ProfileLink[]>([]);
   const [pinnedSrcs, setPinnedSrcs] = useState<Set<string>>(new Set());
+  const [pinSearch, setPinSearch] = useState("");
+  const [catalogTracks, setCatalogTracks] = useState<ApiTrack[]>([]);
   const [themeHue, setThemeHue] = useState<number | null>(null);
   const [avatarFrame, setAvatarFrame] = useState<AchievementId | null>(null);
   const [followingCount, setFollowingCount] = useState(0);
@@ -248,6 +251,19 @@ export default function AccountPage() {
   );
   const activeHue = themeHue ?? fallbackHue;
 
+  const pinCandidates = useMemo(() => {
+    const query = pinSearch.trim().toLowerCase();
+    const base = query
+      ? catalogTracks
+          .filter((t) => t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query))
+          .slice(0, 25)
+      : uploads;
+
+    const seen = new Set(base.map((t) => t.src));
+    const pinnedElsewhere = catalogTracks.filter((t) => pinnedSrcs.has(t.src) && !seen.has(t.src));
+    return [...pinnedElsewhere, ...base];
+  }, [pinSearch, uploads, catalogTracks, pinnedSrcs]);
+
   useEffect(() => { setProfileName(displayName); }, [displayName]);
 
   useEffect(() => {
@@ -294,6 +310,15 @@ export default function AccountPage() {
     void load();
     return () => { cancelled = true; };
   }, [accessToken, isAuthenticated]);
+
+  // Full catalog, used to search for any track to feature (not just uploads)
+  useEffect(() => {
+    let cancelled = false;
+    fetchTracksShared(accessToken)
+      .then((tracks) => { if (!cancelled) setCatalogTracks(tracks); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [accessToken]);
 
   // --- Sessions actives ---
   useEffect(() => {
@@ -841,17 +866,27 @@ export default function AccountPage() {
                   )}
                 </div>
 
+                <input
+                  type="text"
+                  value={pinSearch}
+                  onChange={(e) => setPinSearch(e.target.value)}
+                  placeholder="Chercher un son (titre, artiste)..."
+                  className="w-full mb-2 rounded-2xl bg-white/5 border border-white/10 px-3.5 py-2 text-xs text-white/90 outline-none focus:border-white/25 placeholder:text-white/25"
+                />
+
                 {profileLoading ? (
                   <div className="space-y-1">
                     {[...Array(3)].map((_, i) => (
                       <div key={i} className="h-11 rounded-2xl bg-white/5 animate-pulse" />
                     ))}
                   </div>
-                ) : uploads.length === 0 ? (
-                  <p className="text-xs text-white/25 py-3">Aucun upload disponible.</p>
+                ) : pinCandidates.length === 0 ? (
+                  <p className="text-xs text-white/25 py-3">
+                    {pinSearch.trim() ? "Aucun son trouve." : "Aucun upload disponible."}
+                  </p>
                 ) : (
                   <div className="space-y-1">
-                    {uploads.map((track) => {
+                    {pinCandidates.map((track) => {
                       const pinned = pinnedSrcs.has(track.src);
                       return (
                         <button

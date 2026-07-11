@@ -1,4 +1,4 @@
-const DAY_MS = 24 * 60 * 60 * 1000;
+export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function getDayKey(timestamp: number): string {
   const d = new Date(timestamp);
@@ -10,6 +10,7 @@ export function getDayKey(timestamp: number): string {
 
 export function computeStreak(
   playsByDay: Record<string, number>,
+  frozenDays: string[] | Set<string> = [],
   now: number = Date.now()
 ): { current: number; longest: number } {
   const activeDays = new Set(
@@ -17,6 +18,7 @@ export function computeStreak(
       .filter(([, count]) => count > 0)
       .map(([day]) => day)
   );
+  for (const day of frozenDays) activeDays.add(day);
 
   let current = 0;
   if (activeDays.size > 0) {

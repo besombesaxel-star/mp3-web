@@ -54,6 +54,7 @@ async function readAccountStats(userId: string): Promise<{ unlockedAchievements:
     const parsed = JSON.parse(await data.text()) as {
       achievements?: Record<string, unknown>;
       playsByDay?: Record<string, number>;
+      streakFreezeUsedDates?: unknown;
     };
 
     const achievements = parsed?.achievements;
@@ -62,7 +63,10 @@ async function readAccountStats(userId: string): Promise<{ unlockedAchievements:
       : [];
 
     const playsByDay = parsed?.playsByDay && typeof parsed.playsByDay === "object" ? parsed.playsByDay : {};
-    const currentStreak = computeStreak(playsByDay).current;
+    const frozenDays = Array.isArray(parsed?.streakFreezeUsedDates)
+      ? parsed.streakFreezeUsedDates.filter((d): d is string => typeof d === "string")
+      : [];
+    const currentStreak = computeStreak(playsByDay, frozenDays).current;
 
     return { unlockedAchievements, currentStreak };
   } catch {

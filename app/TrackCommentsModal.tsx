@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { MessageCircle, Send, Trash2, X } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
+import { usePlayer } from "./PlayerContext";
 import { useFocusTrap } from "./useFocusTrap";
 import { getPublicProfileHref } from "@/lib/publicLinks";
 import type { Track } from "./PlayerContext";
@@ -32,6 +33,7 @@ function formatDate(ts: number) {
 
 export default function TrackCommentsModal({ track, open, onClose }: Props) {
   const { accessToken, isAuthenticated, user } = useAuth();
+  const { markCommentPosted } = usePlayer();
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(open, dialogRef);
 
@@ -93,6 +95,7 @@ export default function TrackCommentsModal({ track, open, onClose }: Props) {
       }
       setComments((prev) => [...prev, json.comment as TrackComment]);
       setText("");
+      markCommentPosted();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Envoi impossible.");
     } finally {

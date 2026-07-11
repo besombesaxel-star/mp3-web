@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   ArrowDown, ArrowUp, Camera, Check, ExternalLink, Flame, Heart,
   KeyRound, Link2, Lock, LogOut, Music, Palette, Play, Plus, Repeat, Shield,
-  Smartphone, Trash2, Upload, User, UserCheck, UserPlus, Users, X,
+  Smartphone, Snowflake, Trash2, Upload, User, UserCheck, UserPlus, Users, X,
 } from "lucide-react";
 import { useAuth } from "@/app/AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
@@ -220,7 +220,10 @@ export default function AccountPage() {
     return d.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
   }, [user?.created_at]);
 
-  const streak = useMemo(() => computeStreak(stats.playsByDay), [stats.playsByDay]);
+  const streak = useMemo(
+    () => computeStreak(stats.playsByDay, stats.streakFreezeUsedDates),
+    [stats.playsByDay, stats.streakFreezeUsedDates]
+  );
 
   const uploadsForPlayer = useMemo(
     () => uploads.map((t) => ({ artist: t.artist, cover: t.cover ?? undefined, src: t.src, title: t.title })),
@@ -611,6 +614,15 @@ export default function AccountPage() {
                         {streak.current} jour{streak.current > 1 ? "s" : ""}
                       </span>
                     )}
+                    {stats.streakFreezes > 0 && (
+                      <span
+                        className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase border bg-sky-500/20 text-sky-300 border-sky-500/30"
+                        title="Protège ton streak si tu rates un jour"
+                      >
+                        <Snowflake size={10} />
+                        {stats.streakFreezes} gel{stats.streakFreezes > 1 ? "s" : ""}
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm text-white/45 truncate mt-0.5">{user?.email ?? ""}</p>
                   {createdAtLabel && <p className="text-xs text-white/25 mt-1">Membre depuis le {createdAtLabel}</p>}
@@ -777,7 +789,7 @@ export default function AccountPage() {
               {/* Recompenses */}
               <div className="mb-6">
                 <p className="text-xs text-white/45 mb-3">
-                  Recompenses debloquees <span className="text-white/25">({unlockedAchievementIds.size}/{ACHIEVEMENTS.length})</span>
+                  Recompenses debloquees <span className="text-white/25">({COSMETICS.filter((c) => unlockedAchievementIds.has(c.achievementId)).length}/{COSMETICS.length})</span>
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {COSMETICS.map((cosmetic) => {

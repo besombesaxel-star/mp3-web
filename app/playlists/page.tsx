@@ -189,7 +189,7 @@ function badgeToneClass(tone: PlaylistBadge["tone"]) {
 
 export default function PlaylistsPage() {
   const { accessToken, isAuthenticated, loading, user } = useAuth();
-  const { setQueueAndPlay, markPlaylistCreated, stats, favorites } = usePlayer();
+  const { setQueueAndPlay, markPlaylistCreated, markSharedPlaylistCreated, stats, favorites } = usePlayer();
 
   const [library, setLibrary] = useState<TrackWithCover[]>([]);
   const [libLoading, setLibLoading] = useState(true);
@@ -384,6 +384,7 @@ export default function PlaylistsPage() {
         setNewSharedName("");
         setOpenSharedId(json.playlist.id);
         markPlaylistCreated();
+        markSharedPlaylistCreated();
       }
     } catch {}
     finally {

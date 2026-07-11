@@ -16,6 +16,7 @@ import { getOrCreateSharedGraph, type SharedGraph } from "./audioGraph";
 import { fetchTracksShared } from "./tracksCache";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
+import { computeStreak } from "@/lib/streak";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import { cacheTracksForOffline } from "@/lib/offlineCache";
 import { getDeviceId, getDeviceLabel } from "@/lib/deviceId";
@@ -56,6 +57,15 @@ export type PlayerStats = {
 
   /** âœ… achievements map: unlockedAt timestamp (ms) */
   achievements: Partial<Record<AchievementId, { unlockedAt: number }>>;
+
+  /** total comments posted across all tracks, powers the comments_10 achievement */
+  commentsPosted: number;
+  /** available streak-freeze tokens (auto-cover one missed day each) */
+  streakFreezes: number;
+  /** "YYYY-MM-DD" days covered by a freeze instead of a real play, merged into the streak calculation */
+  streakFreezeUsedDates: string[];
+  /** highest 7-day streak milestone already rewarded with a freeze token, avoids re-awarding on every render */
+  streakMilestoneAwarded: number;
 };
 
 export type AchievementToast = {
@@ -189,6 +199,8 @@ type PlayerCtx = {
 
   /** âœ… pour dÃ©clencher lâ€™achievement â€œPremière playlistâ€ depuis PlaylistsPage */
   markPlaylistCreated: () => void;
+  markSharedPlaylistCreated: () => void;
+  markCommentPosted: () => void;
 
   reloadFavoritesFromStorage: () => void;
 };
@@ -430,6 +442,8 @@ function safePrefs(parsed: unknown): PlayerPrefs {
   };
 }
 
+const MAX_STREAK_FREEZES = 2;
+
 function emptyStats(): PlayerStats {
   return {
     totalListenSeconds: 0,
@@ -443,6 +457,10 @@ function emptyStats(): PlayerStats {
     firstPlayedAtByTrack: {},
     playsByDay: {},
     achievements: {},
+    commentsPosted: 0,
+    streakFreezes: 0,
+    streakFreezeUsedDates: [],
+    streakMilestoneAwarded: 0,
   };
 }
 
@@ -554,6 +572,25 @@ function safeStats(parsed: unknown): PlayerStats {
     }
   }
 
+  const commentsPosted =
+    typeof parsed.commentsPosted === "number" && Number.isFinite(parsed.commentsPosted)
+      ? Math.max(0, Math.round(parsed.commentsPosted))
+      : 0;
+
+  const streakFreezes =
+    typeof parsed.streakFreezes === "number" && Number.isFinite(parsed.streakFreezes)
+      ? clamp(Math.round(parsed.streakFreezes), 0, MAX_STREAK_FREEZES)
+      : 0;
+
+  const streakFreezeUsedDates = Array.isArray(parsed.streakFreezeUsedDates)
+    ? [...new Set(parsed.streakFreezeUsedDates.filter((d): d is string => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)))]
+    : [];
+
+  const streakMilestoneAwarded =
+    typeof parsed.streakMilestoneAwarded === "number" && Number.isFinite(parsed.streakMilestoneAwarded)
+      ? Math.max(0, Math.round(parsed.streakMilestoneAwarded))
+      : 0;
+
   const uniqueTracksPlayed = Object.keys(cleanByTrack).filter((k) => (cleanByTrack[k]?.plays ?? 0) > 0).length;
 
   return computeLeaders({
@@ -568,6 +605,10 @@ function safeStats(parsed: unknown): PlayerStats {
     firstPlayedAtByTrack: cleanFirstPlayedAtByTrack,
     playsByDay: cleanPlaysByDay,
     achievements: cleanAchievements,
+    commentsPosted,
+    streakFreezes,
+    streakFreezeUsedDates,
+    streakMilestoneAwarded,
   });
 }
 
@@ -969,6 +1010,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   function markPlaylistCreated() {
     unlockAchievement("first_playlist");
+  }
+
+  function markSharedPlaylistCreated() {
+    unlockAchievement("first_shared_playlist");
+  }
+
+  function markCommentPosted() {
+    setStatsState((prev) => computeLeaders({ ...prev, commentsPosted: prev.commentsPosted + 1 }));
   }
 
   function pickRandomIndex(exclude: number) {
@@ -1892,6 +1941,61 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- unlockAchievement is redefined every render; only these two values should retrigger this
   }, [favorites.length, statsState.achievements?.first_favorite]);
+
+  useEffect(() => {
+    if (statsState.commentsPosted >= 10 && !statsState.achievements?.comments_10) {
+      unlockAchievement("comments_10");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- unlockAchievement is redefined every render; only these two values should retrigger this
+  }, [statsState.commentsPosted, statsState.achievements?.comments_10]);
+
+  // Streak achievement + freeze tokens: award a token every new 7-day milestone (capped),
+  // and auto-cover a single missed day with a token so an ongoing streak isn't lost.
+  useEffect(() => {
+    const streak = computeStreak(statsState.playsByDay, statsState.streakFreezeUsedDates);
+
+    if (streak.current >= 7 && !statsState.achievements?.streak_7) {
+      unlockAchievement("streak_7");
+    }
+
+    const milestone = Math.floor(streak.current / 7);
+    if (milestone > 0 && milestone > statsState.streakMilestoneAwarded) {
+      setStatsState((prev) => {
+        const prevMilestone = Math.floor(computeStreak(prev.playsByDay, prev.streakFreezeUsedDates).current / 7);
+        if (prevMilestone <= prev.streakMilestoneAwarded) return prev;
+        return {
+          ...prev,
+          streakFreezes: Math.min(MAX_STREAK_FREEZES, prev.streakFreezes + 1),
+          streakMilestoneAwarded: prevMilestone,
+        };
+      });
+    }
+
+    const yesterday = getDayKey(Date.now() - 24 * 60 * 60 * 1000);
+    const dayBeforeYesterday = getDayKey(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    const yesterdayHasPlay = (statsState.playsByDay[yesterday] ?? 0) > 0;
+    const yesterdayFrozen = statsState.streakFreezeUsedDates.includes(yesterday);
+    const dayBeforeActive =
+      (statsState.playsByDay[dayBeforeYesterday] ?? 0) > 0 || statsState.streakFreezeUsedDates.includes(dayBeforeYesterday);
+
+    if (!yesterdayHasPlay && !yesterdayFrozen && dayBeforeActive && statsState.streakFreezes > 0) {
+      setStatsState((prev) => {
+        if (prev.streakFreezeUsedDates.includes(yesterday) || prev.streakFreezes <= 0) return prev;
+        return {
+          ...prev,
+          streakFreezes: prev.streakFreezes - 1,
+          streakFreezeUsedDates: [...prev.streakFreezeUsedDates, yesterday],
+        };
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- unlockAchievement/setStatsState are redefined every render; only these tracked values should retrigger this
+  }, [
+    statsState.playsByDay,
+    statsState.streakFreezeUsedDates,
+    statsState.streakFreezes,
+    statsState.streakMilestoneAwarded,
+    statsState.achievements?.streak_7,
+  ]);
 
   useEffect(() => {
     for (const def of ACHIEVEMENTS) {
@@ -2866,6 +2970,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     dismissRemoteSession,
 
     markPlaylistCreated,
+    markSharedPlaylistCreated,
+    markCommentPosted,
 
     reloadFavoritesFromStorage,
   };

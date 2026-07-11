@@ -312,31 +312,33 @@ export default function PublicUserProfilePage() {
               </div>
             )}
 
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex flex-col gap-1.5 mb-1">
               <h1 className="text-2xl font-semibold text-white/95">{profile.displayName}</h1>
-              {profile.badges.map((badgeKey) => {
-                const style = BADGE_STYLES[badgeKey];
-                if (!style) return null;
-                const Icon = style.icon;
-                return (
+              <div className="flex items-center gap-2 flex-wrap">
+                {profile.badges.map((badgeKey) => {
+                  const style = BADGE_STYLES[badgeKey];
+                  if (!style) return null;
+                  const Icon = style.icon;
+                  return (
+                    <span
+                      key={badgeKey}
+                      className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase border ${style.className}`}
+                    >
+                      <Icon size={10} />
+                      {BADGE_LABELS[badgeKey]}
+                    </span>
+                  );
+                })}
+                {profile.currentStreak > 0 && (
                   <span
-                    key={badgeKey}
-                    className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase border ${style.className}`}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase border bg-orange-500/20 text-orange-300 border-orange-500/30"
+                    title={`${profile.currentStreak} jour${profile.currentStreak > 1 ? "s" : ""} d'affilée`}
                   >
-                    <Icon size={10} />
-                    {BADGE_LABELS[badgeKey]}
+                    <Flame size={10} />
+                    {profile.currentStreak}
                   </span>
-                );
-              })}
-              {profile.currentStreak > 0 && (
-                <span
-                  className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase border bg-orange-500/20 text-orange-300 border-orange-500/30"
-                  title={`${profile.currentStreak} jour${profile.currentStreak > 1 ? "s" : ""} d'affilée`}
-                >
-                  <Flame size={10} />
-                  {profile.currentStreak}
-                </span>
-              )}
+                )}
+              </div>
             </div>
 
             {formatJoinedAt(profile.joinedAt) && (

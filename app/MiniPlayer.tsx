@@ -1095,7 +1095,7 @@ export default function MiniPlayer() {
                 alt=""
                 width={64}
                 height={64}
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-50 object-contain"
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[64px] h-[64px] max-w-none opacity-50 object-contain"
                 priority={false}
               />
             </div>

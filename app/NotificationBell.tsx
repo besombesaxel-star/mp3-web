@@ -10,7 +10,16 @@ import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 
 type AppNotification = {
   id: string;
-  type: "follow" | "upload" | "reaction" | "mention" | "queue_suggestion" | "message" | "comment" | "playlist_invite";
+  type:
+    | "follow"
+    | "upload"
+    | "reaction"
+    | "mention"
+    | "queue_suggestion"
+    | "message"
+    | "comment"
+    | "playlist_invite"
+    | "track_milestone";
   fromUserId: string;
   fromDisplayName: string;
   fromAvatarUrl: string;
@@ -102,6 +111,12 @@ function NotifRow({ notif, onClose }: { notif: AppNotification; onClose: () => v
             <>
               vous a invité sur la playlist{" "}
               <span className="font-medium text-white/90">{notif.playlistName}</span>
+            </>
+          ) : notif.type === "track_milestone" ? (
+            <>
+              a vu son son{" "}
+              <span className="font-medium text-white/90">{notif.trackTitle}</span> dépasser{" "}
+              <span className="font-medium text-white/90">{notif.excerpt}</span> écoutes 🎉
             </>
           ) : (
             <>

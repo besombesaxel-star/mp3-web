@@ -3,7 +3,16 @@ import { sendPushToUser } from "@/lib/pushSubscriptions";
 
 export type AppNotification = {
   id: string;
-  type: "follow" | "upload" | "reaction" | "mention" | "queue_suggestion" | "message" | "comment" | "playlist_invite";
+  type:
+    | "follow"
+    | "upload"
+    | "reaction"
+    | "mention"
+    | "queue_suggestion"
+    | "message"
+    | "comment"
+    | "playlist_invite"
+    | "track_milestone";
   fromUserId: string;
   fromDisplayName: string;
   fromAvatarUrl: string;
@@ -71,13 +80,15 @@ export async function pushNotification(
                 ? `${notif.fromDisplayName} a commente "${notif.trackTitle}"`
                 : notif.type === "playlist_invite"
                   ? `${notif.fromDisplayName} vous a invite sur la playlist "${notif.playlistName}"`
-                  : `${notif.fromDisplayName} a partage "${notif.trackTitle}"`;
+                  : notif.type === "track_milestone"
+                    ? `"${notif.trackTitle}" a depasse ${notif.excerpt} ecoutes !`
+                    : `${notif.fromDisplayName} a partage "${notif.trackTitle}"`;
 
   void sendPushToUser(userId, {
     title: ".mp3",
     body: pushBody,
     url:
-      notif.type === "upload"
+      notif.type === "upload" || notif.type === "track_milestone"
         ? "/library"
         : notif.type === "message"
           ? `/messages/${notif.fromUserId}`

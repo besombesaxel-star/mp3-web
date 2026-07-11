@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { bumpTrackPlaysAndNotify } from "@/lib/trackPlays";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,10 +45,33 @@ export async function PUT(req: Request) {
   const admin = getSupabaseAdmin();
   if (!admin) return NextResponse.json({ ok: false, error: "No admin" }, { status: 500 });
 
+  const { data: previousData } = await admin.client.storage.from(BUCKET).download(getPath(auth.user.id));
+
   const blob = new Blob([JSON.stringify(body)], { type: "application/json" });
   await admin.client.storage
     .from(BUCKET)
     .upload(getPath(auth.user.id), blob, { upsert: true, contentType: "application/json" });
+
+  void (async () => {
+    try {
+      const previous = previousData ? JSON.parse(await previousData.text()) : null;
+      const previousByTrack = previous?.byTrack && typeof previous.byTrack === "object" ? previous.byTrack : {};
+      const nextByTrack = body?.byTrack && typeof body.byTrack === "object" ? body.byTrack : {};
+
+      await Promise.all(
+        Object.entries(nextByTrack as Record<string, { plays?: unknown }>).map(([src, entry]) => {
+          const nextPlays = typeof entry?.plays === "number" && Number.isFinite(entry.plays) ? entry.plays : 0;
+          const prevPlays =
+            typeof previousByTrack[src]?.plays === "number" && Number.isFinite(previousByTrack[src].plays)
+              ? previousByTrack[src].plays
+              : 0;
+          const delta = Math.round(nextPlays) - Math.round(prevPlays);
+          if (delta <= 0) return Promise.resolve();
+          return bumpTrackPlaysAndNotify(src, delta).catch(() => {});
+        })
+      );
+    } catch {}
+  })();
 
   return NextResponse.json({ ok: true });
 }

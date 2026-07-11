@@ -1026,12 +1026,12 @@ export default function MiniPlayer() {
           </div>
 
           <div className="flex items-center justify-end gap-2">
-            <div className="pointer-events-none hidden md:block -mr-4 mt-2 w-[140px] h-[47px] opacity-50" aria-hidden="true">
+            <div className="pointer-events-none hidden md:block -mr-6 mt-2 w-[170px] h-[57px] opacity-50" aria-hidden="true">
               <Image
                 src="/images/kanji.png"
                 alt=""
-                width={140}
-                height={47}
+                width={170}
+                height={57}
                 className="w-full h-full object-contain"
                 priority={false}
               />

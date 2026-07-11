@@ -564,12 +564,12 @@ export default function PlayerOverlay() {
                 focusMode
                   ? "max-w-[360px] sm:max-w-[420px] md:max-w-[760px]"
                   : showLyrics
-                  ? "md:sticky md:top-10"
+                  ? "max-w-[360px] sm:max-w-[500px] md:max-w-[640px] lg:max-w-[560px] md:sticky md:top-10"
                   : "max-w-[360px] sm:max-w-[500px] md:max-w-[640px] lg:max-w-[760px] md:sticky md:top-10",
               ].join(" ")}
             >
               <div
-                className="relative mp3-ov-cover aspect-square rounded-[26px] md:rounded-[38px] lg:rounded-[44px] overflow-hidden border border-white/10 bg-white/5"
+                className="relative mp3-ov-cover mp3-ov-cover-clip aspect-square rounded-[26px] md:rounded-[38px] lg:rounded-[44px] overflow-hidden border border-white/10 bg-white/5"
                 style={{
                   boxShadow: `0 0 0 1px rgba(255,255,255,0.06), 0 0 78px ${glow}`,
                 }}

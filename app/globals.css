@@ -324,9 +324,21 @@ body {
 }
 
 .mp3-now-cover {
-  will-change: transform, filter;
+  will-change: filter;
   transform-origin: center;
   transition: transform 220ms ease, filter 220ms ease;
+}
+
+/*
+ * Safari/iOS clips a rounded overflow:hidden box incorrectly once a descendant (or the
+ * box itself, e.g. the mp3-ov-cover pop-in animation) gets promoted to its own GPU layer
+ * via transform/animation - the rounded corners "leak" square on the side where the
+ * composited layer's bounds don't line up with the border-radius. Forcing a mask-image
+ * makes Safari respect the clip again regardless of what's animating inside.
+ */
+.mp3-ov-cover-clip {
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+  mask-image: radial-gradient(white, black);
 }
 
 .mp3-now-cover--idle {

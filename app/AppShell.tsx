@@ -48,13 +48,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <MiniPlayer />
       <PlayerOverlay />
       <div className="fixed top-0 right-16 z-[55] md:top-3 md:right-4">
-        <div className="pointer-events-none absolute top-2 right-0 opacity-40" aria-hidden="true">
+        <div className="pointer-events-none absolute top-2 right-0 w-[520px] h-[431px] opacity-40" aria-hidden="true">
           <Image
             src="/images/flowers.png"
             alt=""
             width={520}
             height={431}
-            className="object-contain"
+            className="w-full h-full object-contain"
             priority={false}
           />
         </div>

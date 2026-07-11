@@ -47,21 +47,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <MobileTabBar />
       <MiniPlayer />
       <PlayerOverlay />
-      <div className="fixed top-0 right-16 z-[55] md:top-3 md:right-4">
-        <div className="pointer-events-none absolute top-2 right-0 w-[520px] h-[431px] opacity-40" aria-hidden="true">
-          <Image
-            src="/images/flowers.png"
-            alt=""
-            width={520}
-            height={431}
-            className="w-full h-full object-contain"
-            priority={false}
-          />
-        </div>
-        <div className="relative flex items-center gap-[8px]">
-          <NotificationBell />
-          <GlobalChat />
-        </div>
+      <div className="pointer-events-none fixed -top-8 right-0 z-[1] w-[520px] h-[431px] opacity-40" aria-hidden="true">
+        <Image
+          src="/images/flowers.png"
+          alt=""
+          width={520}
+          height={431}
+          className="w-full h-full object-contain"
+          priority={false}
+        />
+      </div>
+
+      <div className="fixed top-0 right-16 z-[55] flex items-center gap-[8px] md:top-3 md:right-4">
+        <NotificationBell />
+        <GlobalChat />
       </div>
     </>
   );

@@ -140,7 +140,7 @@ function ThemeSwatchRow({
         <button
           type="button"
           onClick={() => onChange("custom")}
-          title="Personnalise"
+          title="Teinte libre"
           aria-pressed={isCustom}
           className={[
             "relative h-9 w-9 rounded-full transition ring-offset-2 ring-offset-[#0b0b0f]",

@@ -17,10 +17,12 @@ import NotificationBell from "./NotificationBell";
 import LauncherHeartbeat from "./LauncherHeartbeat";
 import CustomCursor from "./CustomCursor";
 import FallingPetals from "./FallingPetals";
+import { usePlayer } from "./PlayerContext";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isEmbed = pathname?.startsWith("/embed");
+  const { fallingPetals } = usePlayer();
 
   if (isEmbed) {
     return (
@@ -33,7 +35,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <DynamicBackdrop />
-      <FallingPetals />
+      {fallingPetals && <FallingPetals />}
       <CustomCursor />
       <OfflineBanner />
 

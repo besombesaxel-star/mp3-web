@@ -125,6 +125,8 @@ type PlayerCtx = {
   cycleEqPreset: () => void;
   customEqGains: EqGains;
   setCustomEqGains: (value: EqGains) => void;
+  fallingPetals: boolean;
+  toggleFallingPetals: () => void;
 
   expanded: boolean;
   setExpanded: (v: boolean) => void;
@@ -254,6 +256,7 @@ type PlayerPrefs = {
   customThemeHue: number;
   eqPreset: EqPreset;
   customEqGains: EqGains;
+  fallingPetals: boolean;
 };
 
 type ApiTrack = {
@@ -423,6 +426,7 @@ function safePrefs(parsed: unknown): PlayerPrefs {
       customThemeHue: 218,
       eqPreset: "off",
       customEqGains: [...DEFAULT_CUSTOM_EQ_GAINS],
+      fallingPetals: true,
     };
   }
 
@@ -462,6 +466,7 @@ function safePrefs(parsed: unknown): PlayerPrefs {
         ? parsed.eqPreset
         : "off",
     customEqGains: normalizeCustomEqGains(parsed.customEqGains),
+    fallingPetals: typeof parsed.fallingPetals === "boolean" ? parsed.fallingPetals : true,
   };
 }
 
@@ -725,6 +730,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [customEqGains, setCustomEqGains] = useState<EqGains>(DEFAULT_CUSTOM_EQ_GAINS);
   const customEqGainsRef = useRef(customEqGains);
   customEqGainsRef.current = customEqGains;
+  const [fallingPetals, setFallingPetals] = useState(true);
 
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState<RepeatMode>("off");
@@ -1909,6 +1915,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setCustomThemeHue(prefs.customThemeHue);
       setEqPreset(prefs.eqPreset);
       setCustomEqGains(prefs.customEqGains);
+      setFallingPetals(prefs.fallingPetals);
     } catch {}
   }, []);
 
@@ -2173,6 +2180,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       customThemeHue,
       eqPreset,
       customEqGains,
+      fallingPetals,
     };
     try {
       localStorage.setItem(LS_PREFS, JSON.stringify(payload));
@@ -2190,6 +2198,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     customThemeHue,
     eqPreset,
     customEqGains,
+    fallingPetals,
   ]);
 
   // persist playback session
@@ -2707,6 +2716,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setHighContrast((value) => !value);
   }
 
+  function toggleFallingPetals() {
+    setFallingPetals((value) => !value);
+  }
+
   function cycleEqPreset() {
     setEqPreset((value) => {
       const index = EQ_ORDER.indexOf(value);
@@ -2941,6 +2954,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     cycleEqPreset,
     customEqGains,
     setCustomEqGains,
+    fallingPetals,
+    toggleFallingPetals,
 
     expanded,
     setExpanded,

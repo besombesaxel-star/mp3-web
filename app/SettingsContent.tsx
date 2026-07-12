@@ -233,6 +233,7 @@ export default function SettingsContent() {
     customThemeHue, setCustomThemeHue,
     eqPreset, setEqPreset,
     customEqGains, setCustomEqGains,
+    fallingPetals, toggleFallingPetals,
   } = usePlayer();
 
   const [pushSupported, setPushSupported] = useState(false);
@@ -359,6 +360,12 @@ export default function SettingsContent() {
 
       <SettingsSection title="Apparence" delay={120}>
         <ThemeSwatchRow value={colorTheme} onChange={setColorTheme} hue={customThemeHue} onHueChange={setCustomThemeHue} />
+        <ToggleRow
+          label="Petales flottants"
+          desc="Petales blancs qui tombent doucement en arriere-plan."
+          checked={fallingPetals}
+          onChange={toggleFallingPetals}
+        />
       </SettingsSection>
 
       <SettingsSection title="Accessibilite" delay={150}>

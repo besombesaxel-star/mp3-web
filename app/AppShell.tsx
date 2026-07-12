@@ -16,6 +16,7 @@ import GlobalChat from "./GlobalChat";
 import NotificationBell from "./NotificationBell";
 import LauncherHeartbeat from "./LauncherHeartbeat";
 import CustomCursor from "./CustomCursor";
+import FallingPetals from "./FallingPetals";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -32,6 +33,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <DynamicBackdrop />
+      <FallingPetals />
       <CustomCursor />
       <OfflineBanner />
 

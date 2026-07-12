@@ -22,6 +22,7 @@ import { computeStreak } from "@/lib/streak";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
 import { COSMETICS, getCosmeticForAchievement } from "@/lib/cosmetics";
 import { PROFILE_THEME_TEMPLATES } from "@/lib/profileThemeTemplates";
+import ProfilePreviewCard from "@/app/account/ProfilePreviewCard";
 import { fetchTracksShared, type ApiTrack } from "@/app/tracksCache";
 
 type DeviceSession = {
@@ -278,6 +279,14 @@ export default function AccountPage() {
     const pinnedElsewhere = catalogTracks.filter((t) => pinnedSrcs.has(t.src) && !seen.has(t.src));
     return [...pinnedElsewhere, ...base];
   }, [pinSearch, uploads, catalogTracks, pinnedSrcs]);
+
+  const previewPinnedTracks = useMemo(() => {
+    const bySrc = new Map(catalogTracks.map((t) => [t.src, t]));
+    return [...pinnedSrcs]
+      .map((src) => bySrc.get(src))
+      .filter((t): t is ApiTrack => Boolean(t))
+      .map((t) => ({ src: t.src, title: t.title, cover: t.cover }));
+  }, [pinnedSrcs, catalogTracks]);
 
   const anthemCandidates = useMemo(() => {
     const query = anthemSearch.trim().toLowerCase();
@@ -867,32 +876,18 @@ export default function AccountPage() {
               </div>
 
               {/* Live preview */}
-              <div className="mb-6 rounded-2xl overflow-hidden border border-white/8" style={{
-                background: `radial-gradient(ellipse at 50% 0%, hsla(${activeHue}, 38%, 16%, 0.65) 0%, transparent 75%), #0d0d11`,
-              }}>
-                <div className="px-5 py-4 flex items-center gap-4">
-                  {avatarUrl ? (
-                    <div className="relative h-12 w-12 shrink-0 rounded-full overflow-hidden"
-                      style={{ boxShadow: `0 0 0 2px hsla(${activeHue}, 50%, 40%, 0.4)` }}>
-                      <Image src={avatarUrl} alt="Avatar" fill className="object-cover" sizes="48px" />
-                    </div>
-                  ) : (
-                    <div className="h-12 w-12 shrink-0 rounded-full flex items-center justify-center text-base font-semibold text-white"
-                      style={{ background: `linear-gradient(135deg, hsla(${activeHue}, 72%, 58%, 0.95), hsla(${(activeHue + 50) % 360}, 76%, 50%, 0.88))` }}>
-                      {initials}
-                    </div>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-white/95 truncate">{profileName || "Ton pseudo"}</p>
-                    {publicBio && (
-                      <p className="text-xs text-white/45 truncate mt-0.5">
-                        {publicBio.slice(0, 55)}{publicBio.length > 55 ? "…" : ""}
-                      </p>
-                    )}
-                  </div>
-                  <div className="shrink-0 h-5 w-5 rounded-full"
-                    style={{ background: `hsl(${activeHue}, 65%, 55%)` }} />
-                </div>
+              <div className="mb-6">
+                <ProfilePreviewCard
+                  displayName={profileName}
+                  bio={publicBio}
+                  avatarUrl={avatarUrl}
+                  hue={activeHue}
+                  bannerUrl={bannerUrl}
+                  bannerBlur={bannerBlur}
+                  bannerDim={bannerDim}
+                  showParticles={showParticles}
+                  pinnedTracks={previewPinnedTracks}
+                />
               </div>
 
               {/* Theme templates */}

@@ -107,10 +107,13 @@ function ToggleRow({
 }
 
 function ThemeSwatchRow({
-  value, onChange,
+  value, onChange, hue, onHueChange,
 }: {
   value: ColorTheme; onChange: (value: ColorTheme) => void;
+  hue: number; onHueChange: (value: number) => void;
 }) {
+  const isCustom = value === "custom";
+
   return (
     <div>
       <p className="text-sm text-white/85 mb-2">Couleur du theme</p>
@@ -133,7 +136,51 @@ function ThemeSwatchRow({
             )}
           </button>
         ))}
+
+        <button
+          type="button"
+          onClick={() => onChange("custom")}
+          title="Personnalise"
+          aria-pressed={isCustom}
+          className={[
+            "relative h-9 w-9 rounded-full transition ring-offset-2 ring-offset-[#0b0b0f]",
+            isCustom ? "ring-2 ring-white/80 scale-110" : "hover:scale-105 opacity-70 hover:opacity-100",
+          ].join(" ")}
+          style={{
+            background:
+              "conic-gradient(from 0deg, hsl(0,65%,60%), hsl(60,65%,60%), hsl(120,65%,60%), hsl(180,65%,60%), hsl(240,65%,60%), hsl(300,65%,60%), hsl(360,65%,60%))",
+          }}
+        >
+          {isCustom && <Check size={14} className="absolute inset-0 m-auto text-black drop-shadow" />}
+        </button>
       </div>
+
+      {isCustom && (
+        <div className="mt-3 space-y-2 mp3-fade-up">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] text-white/25">Roue des couleurs</p>
+            <div className="flex items-center gap-2">
+              <div
+                className="h-3.5 w-3.5 rounded-full ring-1 ring-white/15"
+                style={{ background: `hsl(${hue}, 65%, 55%)` }}
+              />
+              <span className="text-[11px] text-white/25 tabular-nums w-8">{hue}°</span>
+            </div>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="360"
+            value={hue}
+            onChange={(e) => onHueChange(Number(e.target.value))}
+            style={{
+              background:
+                "linear-gradient(to right, hsl(0,60%,55%), hsl(30,60%,55%), hsl(60,60%,55%), hsl(90,60%,55%), hsl(120,60%,55%), hsl(150,60%,55%), hsl(180,60%,55%), hsl(210,60%,55%), hsl(240,60%,55%), hsl(270,60%,55%), hsl(300,60%,55%), hsl(330,60%,55%), hsl(360,60%,55%))",
+            }}
+            className="w-full h-2.5 rounded-full cursor-pointer appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:shadow-lg [&::-moz-range-thumb]:cursor-pointer"
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -183,6 +230,7 @@ export default function SettingsContent() {
     fontSize, setFontSize,
     highContrast, toggleHighContrast,
     colorTheme, setColorTheme,
+    customThemeHue, setCustomThemeHue,
     eqPreset, setEqPreset,
     customEqGains, setCustomEqGains,
   } = usePlayer();
@@ -310,7 +358,7 @@ export default function SettingsContent() {
       </SettingsSection>
 
       <SettingsSection title="Apparence" delay={120}>
-        <ThemeSwatchRow value={colorTheme} onChange={setColorTheme} />
+        <ThemeSwatchRow value={colorTheme} onChange={setColorTheme} hue={customThemeHue} onHueChange={setCustomThemeHue} />
       </SettingsSection>
 
       <SettingsSection title="Accessibilite" delay={150}>

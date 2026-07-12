@@ -17,6 +17,7 @@ import { fetchTracksShared } from "./tracksCache";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
 import { computeStreak } from "@/lib/streak";
+import { applyCustomThemeToDom, clearCustomThemeFromDom } from "@/lib/customTheme";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import { cacheTracksForOffline } from "@/lib/offlineCache";
 import { getDeviceId, getDeviceLabel } from "@/lib/deviceId";
@@ -34,7 +35,7 @@ export type Track = {
 
 type RepeatMode = "off" | "all" | "one";
 type FontSizeMode = "sm" | "md" | "lg" | "xl";
-export type ColorTheme = "steel" | "emerald" | "amber" | "rose" | "violet";
+export type ColorTheme = "steel" | "emerald" | "amber" | "rose" | "violet" | "custom";
 type EqPreset = "off" | "bass" | "vocal" | "night" | "custom";
 export type EqGains = [number, number, number, number, number];
 
@@ -117,6 +118,8 @@ type PlayerCtx = {
   toggleHighContrast: () => void;
   colorTheme: ColorTheme;
   setColorTheme: (value: ColorTheme) => void;
+  customThemeHue: number;
+  setCustomThemeHue: (value: number) => void;
   eqPreset: EqPreset;
   setEqPreset: (value: EqPreset) => void;
   cycleEqPreset: () => void;
@@ -248,6 +251,7 @@ type PlayerPrefs = {
   fontSize: FontSizeMode;
   highContrast: boolean;
   colorTheme: ColorTheme;
+  customThemeHue: number;
   eqPreset: EqPreset;
   customEqGains: EqGains;
 };
@@ -416,6 +420,7 @@ function safePrefs(parsed: unknown): PlayerPrefs {
       fontSize: "md",
       highContrast: false,
       colorTheme: "steel",
+      customThemeHue: 218,
       eqPreset: "off",
       customEqGains: [...DEFAULT_CUSTOM_EQ_GAINS],
     };
@@ -440,9 +445,14 @@ function safePrefs(parsed: unknown): PlayerPrefs {
       parsed.colorTheme === "emerald" ||
       parsed.colorTheme === "amber" ||
       parsed.colorTheme === "rose" ||
-      parsed.colorTheme === "violet"
+      parsed.colorTheme === "violet" ||
+      parsed.colorTheme === "custom"
         ? parsed.colorTheme
         : "steel",
+    customThemeHue:
+      typeof parsed.customThemeHue === "number" && Number.isFinite(parsed.customThemeHue)
+        ? ((Math.round(parsed.customThemeHue) % 360) + 360) % 360
+        : 218,
     eqPreset:
       parsed.eqPreset === "off" ||
       parsed.eqPreset === "bass" ||
@@ -710,6 +720,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [fontSize, setFontSize] = useState<FontSizeMode>("md");
   const [highContrast, setHighContrast] = useState(false);
   const [colorTheme, setColorTheme] = useState<ColorTheme>("steel");
+  const [customThemeHue, setCustomThemeHue] = useState(218);
   const [eqPreset, setEqPreset] = useState<EqPreset>("off");
   const [customEqGains, setCustomEqGains] = useState<EqGains>(DEFAULT_CUSTOM_EQ_GAINS);
   const customEqGainsRef = useRef(customEqGains);
@@ -1521,7 +1532,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof document === "undefined") return;
     document.documentElement.dataset.mp3Theme = colorTheme;
-  }, [colorTheme]);
+    if (colorTheme === "custom") {
+      applyCustomThemeToDom(customThemeHue);
+    } else {
+      clearCustomThemeFromDom();
+    }
+  }, [colorTheme, customThemeHue]);
 
   // preload next track for smoother transitions
   useEffect(() => {
@@ -1890,6 +1906,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setFontSize(prefs.fontSize);
       setHighContrast(prefs.highContrast);
       setColorTheme(prefs.colorTheme);
+      setCustomThemeHue(prefs.customThemeHue);
       setEqPreset(prefs.eqPreset);
       setCustomEqGains(prefs.customEqGains);
     } catch {}
@@ -2153,6 +2170,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       fontSize,
       highContrast,
       colorTheme,
+      customThemeHue,
       eqPreset,
       customEqGains,
     };
@@ -2169,6 +2187,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     fontSize,
     highContrast,
     colorTheme,
+    customThemeHue,
     eqPreset,
     customEqGains,
   ]);
@@ -2915,6 +2934,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     toggleHighContrast,
     colorTheme,
     setColorTheme,
+    customThemeHue,
+    setCustomThemeHue,
     eqPreset,
     setEqPreset,
     cycleEqPreset,

@@ -6,6 +6,7 @@ import AppShell from "../app/AppShell";
 import { AuthProvider } from "../app/AuthProvider";
 import { PlayerProvider } from "../app/PlayerContext";
 import Toast from "../app/Toast";
+import { getSiteUrl } from "@/lib/siteUrl";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,6 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getSiteUrl()),
   title: ".mp3",
   description: "Personal music player",
   manifest: "/manifest.webmanifest",

@@ -809,12 +809,12 @@ export default function MiniPlayer() {
               disabled={!track}
             >
               <div className="group relative h-12 w-12 ml-3">
-                <div className="pointer-events-none hidden md:block absolute -inset-3 -z-10 opacity-60" aria-hidden="true">
+                <div className="pointer-events-none hidden md:block absolute -inset-1 -z-10 opacity-60" aria-hidden="true">
                   <Image
                     src="/images/ornement-strip.png"
                     alt=""
-                    width={78}
-                    height={78}
+                    width={56}
+                    height={56}
                     className="w-full h-full max-w-none object-contain"
                     priority={false}
                   />

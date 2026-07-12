@@ -68,6 +68,7 @@ type PublicProfile = {
   unlockedAchievements: AchievementId[];
   currentStreak: number;
   isPrivate: boolean;
+  viewsCount: number;
 };
 
 type PublicProfileResponse = {
@@ -457,6 +458,15 @@ export default function ProfileClient() {
                 <p className="text-xl font-light tabular-nums text-white/90">{formatCount(profile.uniqueArtistsCount)}</p>
                 <p className="text-xs text-white/30">artiste{profile.uniqueArtistsCount > 1 ? "s" : ""}</p>
               </div>
+              {profile.viewsCount > 0 && (
+                <>
+                  <div className="h-6 w-px bg-white/10" />
+                  <div>
+                    <p className="text-xl font-light tabular-nums text-white/90">{formatCount(profile.viewsCount)}</p>
+                    <p className="text-xs text-white/30">vue{profile.viewsCount > 1 ? "s" : ""}</p>
+                  </div>
+                </>
+              )}
             </div>
 
             {profile.unlockedAchievements.length > 0 && (

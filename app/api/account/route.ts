@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { readAccountProfile, saveAccountProfile, type AccountPlaylist, type EqGains, type EqPreset, type ProfileLink } from "@/lib/accountData";
 import { logActivity } from "@/lib/activityLog";
 import { isAchievementId } from "@/lib/cosmetics";
+import { getProfileViewStats } from "@/lib/profileViews";
 
 const EQ_PRESETS: EqPreset[] = ["off", "bass", "vocal", "night", "custom"];
 import { listTracksForApi } from "@/lib/libraryRepository";
@@ -30,7 +31,11 @@ export async function GET(req: Request) {
   }
   const user = auth.user;
 
-  const [profile, tracks] = await Promise.all([readAccountProfile(user.id), listTracksForApi()]);
+  const [profile, tracks, profileViews] = await Promise.all([
+    readAccountProfile(user.id),
+    listTracksForApi(),
+    getProfileViewStats(user.id).catch(() => ({ total: 0, last7Days: 0 })),
+  ]);
   const trackBySrc = new Map(tracks.map((t) => [t.src, t]));
   const favoriteTracks = profile.favoriteSrcs
     .map((src) => trackBySrc.get(src))
@@ -64,6 +69,7 @@ export async function GET(req: Request) {
     isPrivate: Boolean(profile.isPrivate),
     uploads: uploads.map(serializeTrack),
     uploadsCount: uploads.length,
+    profileViews,
   });
 }
 

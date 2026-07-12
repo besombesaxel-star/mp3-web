@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowDown, ArrowUp, Camera, Check, ExternalLink, Flame, Heart,
+  ArrowDown, ArrowUp, Camera, Check, ExternalLink, Eye, Flame, Heart,
   KeyRound, Link2, Lock, LogOut, Music, Palette, Play, Plus, Repeat, Shield,
   Smartphone, Snowflake, Trash2, Upload, User, UserCheck, UserPlus, Users, X,
 } from "lucide-react";
@@ -75,6 +75,7 @@ type AccountResponse = {
   isPrivate?: boolean;
   uploads?: AccountTrack[];
   uploadsCount?: number;
+  profileViews?: { total: number; last7Days: number };
 };
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -199,6 +200,7 @@ export default function AccountPage() {
   const [avatarFrame, setAvatarFrame] = useState<AchievementId | null>(null);
   const [followingCount, setFollowingCount] = useState(0);
   const [followersCount, setFollowersCount] = useState(0);
+  const [profileViews, setProfileViews] = useState({ total: 0, last7Days: 0 });
   const [newLinkLabel, setNewLinkLabel] = useState("");
   const [newLinkUrl, setNewLinkUrl] = useState("");
   const [addingLink, setAddingLink] = useState(false);
@@ -320,12 +322,13 @@ export default function AccountPage() {
         const uploadList = Array.isArray(json.uploads) ? json.uploads : [];
         setUploads(uploadList);
         setTotalUploads(json.uploadsCount ?? uploadList.length);
+        setProfileViews(json.profileViews ?? { total: 0, last7Days: 0 });
       } catch {
         if (!cancelled) {
           setAvatarUrl(""); setBannerUrl(""); setFavoriteCount(0); setFavoriteTracks([]); setPublicBio(""); setIsPrivate(false);
           setLinks([]); setPinnedSrcs(new Set()); setThemeHue(null); setAvatarFrame(null);
           setFollowingCount(0); setFollowersCount(0);
-          setUploads([]); setTotalUploads(0);
+          setUploads([]); setTotalUploads(0); setProfileViews({ total: 0, last7Days: 0 });
         }
       } finally {
         if (!cancelled) setProfileLoading(false);
@@ -842,13 +845,24 @@ export default function AccountPage() {
                   <Palette size={14} className="text-white/30" />
                   <h2 className="text-sm font-medium text-white/70">Personnalisation du profil public</h2>
                 </div>
-                {user?.id && (
-                  <Link href={getPublicProfileHref(user.id)} target="_blank"
-                    className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/70 transition">
-                    <ExternalLink size={11} />
-                    Voir le rendu
-                  </Link>
-                )}
+                <div className="flex items-center gap-4">
+                  {profileViews.total > 0 && (
+                    <span
+                      className="flex items-center gap-1.5 text-xs text-white/30"
+                      title={`${profileViews.last7Days} vue${profileViews.last7Days > 1 ? "s" : ""} sur les 7 derniers jours`}
+                    >
+                      <Eye size={12} />
+                      {profileViews.total} vue{profileViews.total > 1 ? "s" : ""}
+                    </span>
+                  )}
+                  {user?.id && (
+                    <Link href={getPublicProfileHref(user.id)} target="_blank"
+                      className="flex items-center gap-1.5 text-xs text-white/30 hover:text-white/70 transition">
+                      <ExternalLink size={11} />
+                      Voir le rendu
+                    </Link>
+                  )}
+                </div>
               </div>
 
               {/* Live preview */}

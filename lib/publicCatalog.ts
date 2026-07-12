@@ -4,6 +4,7 @@ import { getBadgesForUser, type BadgeKey } from "@/lib/badges";
 import { listTracksForApi } from "@/lib/libraryRepository";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getInitials, slugifyArtistName } from "@/lib/publicLinks";
+import { getProfileViewStats } from "@/lib/profileViews";
 import { computeStreak } from "@/lib/streak";
 
 type SerializedPublicTrack = {
@@ -42,6 +43,7 @@ export type PublicUserProfileData = {
   unlockedAchievements: AchievementId[];
   currentStreak: number;
   isPrivate: boolean;
+  viewsCount: number;
 };
 
 const STATS_BUCKET = "account-data";
@@ -130,12 +132,13 @@ export async function getPublicUserProfileData(
   userId: string,
   viewerId?: string | null
 ): Promise<PublicUserProfileData | null> {
-  const [tracks, profile, userBasics, badges, accountStats] = await Promise.all([
+  const [tracks, profile, userBasics, badges, accountStats, viewStats] = await Promise.all([
     listTracksForApi(),
     readAccountProfile(userId).catch(() => null),
     readPublicUserBasics(userId),
     getBadgesForUser(userId),
     readAccountStats(userId).catch(() => ({ unlockedAchievements: [] as AchievementId[], currentStreak: 0 })),
+    getProfileViewStats(userId).catch(() => ({ total: 0, last7Days: 0 })),
   ]);
   const { unlockedAchievements, currentStreak } = accountStats;
 
@@ -191,6 +194,7 @@ export async function getPublicUserProfileData(
       unlockedAchievements: [],
       currentStreak: 0,
       isPrivate: true,
+      viewsCount: 0,
     };
   }
 
@@ -221,6 +225,7 @@ export async function getPublicUserProfileData(
     unlockedAchievements,
     currentStreak,
     isPrivate: false,
+    viewsCount: viewStats.total,
   };
 }
 

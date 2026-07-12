@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPublicUserProfileData } from "@/lib/publicCatalog";
+import { bumpProfileView } from "@/lib/profileViews";
 import { readOptionalAuthenticatedUser } from "@/lib/supabaseAuthServer";
 
 export const runtime = "nodejs";
@@ -17,6 +18,8 @@ export async function GET(
   if (!profile) {
     return NextResponse.json({ ok: false, error: "Profil introuvable" }, { status: 404 });
   }
+
+  void bumpProfileView(userId, viewer?.id ?? null);
 
   return NextResponse.json({
     ok: true,

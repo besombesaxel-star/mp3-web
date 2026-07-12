@@ -21,6 +21,7 @@ import { detectPlatform, PlatformIcon } from "@/app/PlatformIcon";
 import { computeStreak } from "@/lib/streak";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
 import { COSMETICS, getCosmeticForAchievement } from "@/lib/cosmetics";
+import { PROFILE_THEME_TEMPLATES } from "@/lib/profileThemeTemplates";
 import { fetchTracksShared, type ApiTrack } from "@/app/tracksCache";
 
 type DeviceSession = {
@@ -891,6 +892,46 @@ export default function AccountPage() {
                   </div>
                   <div className="shrink-0 h-5 w-5 rounded-full"
                     style={{ background: `hsl(${activeHue}, 65%, 55%)` }} />
+                </div>
+              </div>
+
+              {/* Theme templates */}
+              <div className="mb-6">
+                <p className="text-xs text-white/45 mb-3">Modèles</p>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {PROFILE_THEME_TEMPLATES.map((template) => {
+                    const templateHue = template.hue ?? fallbackHue;
+                    const active =
+                      themeHue === template.hue &&
+                      bannerBlur === template.bannerBlur &&
+                      bannerDim === template.bannerDim &&
+                      showParticles === template.showParticles;
+                    return (
+                      <button
+                        key={template.id}
+                        type="button"
+                        onClick={() => {
+                          setThemeHue(template.hue);
+                          setBannerBlur(template.bannerBlur);
+                          setBannerDim(template.bannerDim);
+                          setShowParticles(template.showParticles);
+                        }}
+                        title={template.label}
+                        className={[
+                          "flex flex-col items-center gap-1.5 rounded-2xl border p-2 transition",
+                          active ? "border-white/25 bg-white/10" : "border-white/8 bg-white/[0.02] hover:bg-white/6",
+                        ].join(" ")}
+                      >
+                        <span
+                          className="h-8 w-full rounded-lg"
+                          style={{
+                            background: `radial-gradient(ellipse at 50% 0%, hsla(${templateHue}, 38%, 45%, 0.9) 0%, hsla(${templateHue}, 45%, 15%, 0.9) 100%)`,
+                          }}
+                        />
+                        <span className="text-[10px] text-white/60 truncate w-full text-center">{template.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

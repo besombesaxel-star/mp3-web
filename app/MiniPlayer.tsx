@@ -808,7 +808,7 @@ export default function MiniPlayer() {
               aria-label={track ? "Ouvrir le lecteur plein ecran" : "Aucun morceau en lecture"}
               disabled={!track}
             >
-              <div className="group relative h-12 w-12 ml-3">
+              <div className="group relative isolate h-12 w-12 ml-3">
                 <div className="pointer-events-none hidden md:block absolute -inset-1 -z-10 opacity-60" aria-hidden="true">
                   <Image
                     src="/images/ornement-strip.png"

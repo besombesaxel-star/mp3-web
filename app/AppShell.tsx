@@ -60,6 +60,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         />
       </div>
 
+      <div
+        className="pointer-events-none fixed left-64 bottom-[72px] z-[1] hidden h-[220px] w-[420px] opacity-40 md:block"
+        aria-hidden="true"
+      >
+        <Image
+          src="/images/flower miror.png"
+          alt=""
+          width={736}
+          height={294}
+          className="h-full w-full object-contain object-left-bottom"
+          priority={false}
+        />
+      </div>
+
       <div className="fixed top-0 right-16 z-[55] flex items-center gap-[8px] md:top-3 md:right-4">
         <NotificationBell />
         <GlobalChat />

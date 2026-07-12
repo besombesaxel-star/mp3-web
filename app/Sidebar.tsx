@@ -246,16 +246,6 @@ export default function Sidebar() {
                     priority={false}
                   />
                 </div>
-                <div className="pointer-events-none absolute left-[-24px] right-[-44px] bottom-0 z-0 h-24 opacity-60">
-                  <Image
-                    src="/images/flower miror.png"
-                    alt=""
-                    aria-hidden="true"
-                    fill
-                    className="object-contain object-bottom"
-                    priority={false}
-                  />
-                </div>
               </>
             ) : null}
 

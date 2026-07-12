@@ -59,6 +59,10 @@ type AccountResponse = {
   avatarFrame?: AchievementId | null;
   avatarUrl?: string;
   bannerUrl?: string;
+  bannerBlur?: number;
+  bannerDim?: number;
+  anthemSrc?: string;
+  showParticles?: boolean;
   favoriteSrcs?: string[];
   favoriteTracks?: AccountTrack[];
   followersCount?: number;
@@ -175,6 +179,11 @@ export default function AccountPage() {
 
   const [avatarUrl, setAvatarUrl] = useState("");
   const [bannerUrl, setBannerUrl] = useState("");
+  const [bannerBlur, setBannerBlur] = useState(0);
+  const [bannerDim, setBannerDim] = useState(45);
+  const [anthemSrc, setAnthemSrc] = useState("");
+  const [anthemSearch, setAnthemSearch] = useState("");
+  const [showParticles, setShowParticles] = useState(false);
   const [favoriteCount, setFavoriteCount] = useState(0);
   const [favoriteTracks, setFavoriteTracks] = useState<AccountTrack[]>([]);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -267,6 +276,19 @@ export default function AccountPage() {
     return [...pinnedElsewhere, ...base];
   }, [pinSearch, uploads, catalogTracks, pinnedSrcs]);
 
+  const anthemCandidates = useMemo(() => {
+    const query = anthemSearch.trim().toLowerCase();
+    const base = query
+      ? catalogTracks
+          .filter((t) => t.title.toLowerCase().includes(query) || t.artist.toLowerCase().includes(query))
+          .slice(0, 25)
+      : uploads;
+
+    if (!anthemSrc || base.some((t) => t.src === anthemSrc)) return base;
+    const selected = catalogTracks.find((t) => t.src === anthemSrc);
+    return selected ? [selected, ...base] : base;
+  }, [anthemSearch, uploads, catalogTracks, anthemSrc]);
+
   useEffect(() => { setProfileName(displayName); }, [displayName]);
 
   useEffect(() => {
@@ -281,6 +303,10 @@ export default function AccountPage() {
         if (cancelled) return;
         setAvatarUrl(json.avatarUrl ?? "");
         setBannerUrl(json.bannerUrl ?? "");
+        setBannerBlur(typeof json.bannerBlur === "number" ? json.bannerBlur : 0);
+        setBannerDim(typeof json.bannerDim === "number" ? json.bannerDim : 45);
+        setAnthemSrc(json.anthemSrc ?? "");
+        setShowParticles(Boolean(json.showParticles));
         setFavoriteCount(Array.isArray(json.favoriteSrcs) ? json.favoriteSrcs.length : 0);
         setFavoriteTracks(Array.isArray(json.favoriteTracks) ? json.favoriteTracks : []);
         setPublicBio(json.publicBio ?? "");
@@ -547,6 +573,10 @@ export default function AccountPage() {
           pinnedTrackSrcs: [...pinnedSrcs],
           themeHue,
           avatarFrame,
+          bannerBlur,
+          bannerDim,
+          anthemSrc,
+          showParticles,
         }),
       });
       if (!res.ok) throw new Error(`Erreur ${res.status}`);
@@ -1006,6 +1036,115 @@ export default function AccountPage() {
                     })}
                   </div>
                 )}
+              </div>
+
+              {bannerUrl && (
+                <div className="mb-6">
+                  <p className="text-xs text-white/45 mb-3">Bannière</p>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-[11px] text-white/25">Flou</p>
+                        <span className="text-[11px] text-white/25 tabular-nums">{bannerBlur}px</span>
+                      </div>
+                      <input
+                        type="range" min={0} max={20} value={bannerBlur}
+                        onChange={(e) => setBannerBlur(Number(e.target.value))}
+                        className="w-full h-2 rounded-full cursor-pointer appearance-none bg-white/10 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <p className="text-[11px] text-white/25">Assombrissement</p>
+                        <span className="text-[11px] text-white/25 tabular-nums">{bannerDim}%</span>
+                      </div>
+                      <input
+                        type="range" min={0} max={100} value={bannerDim}
+                        onChange={(e) => setBannerDim(Number(e.target.value))}
+                        className="w-full h-2 rounded-full cursor-pointer appearance-none bg-white/10 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-0"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Hymne du profil */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs text-white/45">Hymne du profil</p>
+                  {anthemSrc && (
+                    <button type="button" onClick={() => setAnthemSrc("")}
+                      className="flex items-center gap-1 text-xs text-white/30 hover:text-white/60 transition">
+                      <X size={11} />
+                      Retirer
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  value={anthemSearch}
+                  onChange={(e) => setAnthemSearch(e.target.value)}
+                  placeholder="Chercher un son (titre, artiste)..."
+                  className="w-full mb-2 rounded-2xl bg-white/5 border border-white/10 px-3.5 py-2 text-xs text-white/90 outline-none focus:border-white/25 placeholder:text-white/25"
+                />
+                {profileLoading ? (
+                  <div className="h-11 rounded-2xl bg-white/5 animate-pulse" />
+                ) : anthemCandidates.length === 0 ? (
+                  <p className="text-xs text-white/25 py-3">
+                    {anthemSearch.trim() ? "Aucun son trouve." : "Aucun upload disponible."}
+                  </p>
+                ) : (
+                  <div className="space-y-1 max-h-[220px] overflow-y-auto">
+                    {anthemCandidates.map((track) => {
+                      const selected = anthemSrc === track.src;
+                      return (
+                        <button
+                          key={track.src}
+                          type="button"
+                          onClick={() => setAnthemSrc(selected ? "" : track.src)}
+                          className={[
+                            "w-full flex items-center gap-3 rounded-2xl px-3 py-2 transition text-left",
+                            selected ? "bg-white/10 border border-white/15" : "border border-transparent hover:bg-white/5",
+                          ].join(" ")}
+                        >
+                          <div className="relative h-8 w-8 shrink-0 rounded-xl overflow-hidden bg-white/5">
+                            {track.cover ? (
+                              <Image src={track.cover} alt={track.title} fill className="object-cover" sizes="32px" />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center">
+                                <Music size={10} className="text-white/20" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-white/80 truncate">{track.title}</p>
+                            <p className="text-[11px] text-white/35 truncate">{track.artist}</p>
+                          </div>
+                          <div className={["h-5 w-5 rounded-full border flex items-center justify-center shrink-0 transition",
+                            selected ? "bg-white border-white" : "border-white/20"].join(" ")}>
+                            {selected && <Check size={10} className="text-black" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Effet de particules */}
+              <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-white/8 bg-white/5 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm text-white/85">Effet de particules</p>
+                  <p className="text-xs text-white/35 mt-0.5">Notes de musique flottantes en fond sur ton profil public.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowParticles((v) => !v)}
+                  aria-pressed={showParticles}
+                  className={["shrink-0 h-8 w-14 rounded-full transition relative", showParticles ? "bg-white" : "bg-white/15"].join(" ")}
+                >
+                  <span className={["absolute top-1 h-6 w-6 rounded-full transition-all", showParticles ? "left-7 bg-black" : "left-1 bg-white"].join(" ")} />
+                </button>
               </div>
 
               {/* Save personalisation */}

@@ -14,6 +14,7 @@ import { usePlayer } from "@/app/PlayerContext";
 import { useAuth } from "@/app/AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { getInitials, hashStringToHue } from "@/lib/publicLinks";
+import ProfileParticles from "@/app/ProfileParticles";
 
 const BADGE_STYLES: Record<BadgeKey, { icon: typeof Shield; className: string }> = {
   admin: { icon: Shield, className: "bg-red-500/20 text-red-300 border-red-500/30" },
@@ -47,6 +48,10 @@ type PublicProfile = {
   avatarFrame: AchievementId | null;
   avatarUrl: string;
   bannerUrl: string;
+  bannerBlur: number;
+  bannerDim: number;
+  anthemTrack: PublicTrack | null;
+  showParticles: boolean;
   badges: BadgeKey[];
   bio: string;
   displayName: string;
@@ -89,7 +94,7 @@ function formatJoinedAt(value: string | null) {
 
 export default function PublicUserProfilePage() {
   const params = useParams<{ userId: string }>();
-  const { setQueueAndPlay, track: myTrack, suggestTrackToUser } = usePlayer();
+  const { setQueueAndPlay, track: myTrack, playing, togglePlay, suggestTrackToUser } = usePlayer();
   const { accessToken, isAuthenticated, user } = useAuth();
   const userId = typeof params?.userId === "string" ? params.userId : "";
 
@@ -256,7 +261,31 @@ export default function PublicUserProfilePage() {
     : `radial-gradient(ellipse at 50% 0%, hsla(${fallbackHue}, 25%, 10%, 0.45) 0%, transparent 65%)`;
 
   return (
-    <div className="pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28" style={{ backgroundImage: bgGradient, backgroundAttachment: "local" }}>
+    <div
+      className="pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28"
+      style={!profile?.bannerUrl ? { backgroundImage: bgGradient, backgroundAttachment: "local" } : undefined}
+    >
+      {profile?.bannerUrl && (
+        <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">
+          <Image
+            src={profile.bannerUrl}
+            alt=""
+            fill
+            className="object-cover"
+            sizes="100vw"
+            priority={false}
+            style={{
+              filter: profile.bannerBlur > 0 ? `blur(${profile.bannerBlur}px)` : undefined,
+              transform: "scale(1.1)",
+            }}
+          />
+          <div className="absolute inset-0" style={{ background: `hsla(${hue}, 45%, 6%, ${profile.bannerDim / 100})` }} />
+        </div>
+      )}
+
+      {profile?.showParticles && <ProfileParticles hue={hue} />}
+
+      <div className="relative z-10">
       {/* Top nav */}
       <div className="mb-8 flex items-center justify-between mp3-fade-up">
         <p className="text-xs uppercase tracking-[0.28em] text-white/25">Profil public</p>
@@ -285,13 +314,6 @@ export default function PublicUserProfilePage() {
         </div>
       ) : profile ? (
         <div className="mx-auto max-w-[520px] lg:max-w-[680px] space-y-5">
-
-          {profile.bannerUrl && (
-            <div className="relative -mt-2 h-32 sm:h-44 w-full overflow-hidden rounded-3xl border border-white/10 mp3-fade-up">
-              <Image src={profile.bannerUrl} alt="" fill className="object-cover" sizes="680px" priority={false} />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0b0b0f]/70 via-transparent to-transparent" />
-            </div>
-          )}
 
           {/* Avatar + identity */}
           <div className="flex flex-col items-center text-center pt-4 pb-2 mp3-fade-up">
@@ -443,7 +465,8 @@ export default function PublicUserProfilePage() {
                   <span
                     key={def.id}
                     title={def.desc}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs bg-white/6 border border-white/10 text-white/70"
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs bg-white/6 border text-white/70"
+                    style={{ borderColor: `hsla(${hue}, 50%, 55%, 0.18)` }}
                   >
                     <span>{def.icon}</span>
                     {def.title}
@@ -474,6 +497,33 @@ export default function PublicUserProfilePage() {
                   </button>
                 </>
               )}
+              {profile.anthemTrack && (() => {
+                const anthemTrack = profile.anthemTrack;
+                const isCurrentAnthem = myTrack?.src === anthemTrack.src;
+                return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isCurrentAnthem) togglePlay();
+                      else
+                        setQueueAndPlay(
+                          [{ title: anthemTrack.title, artist: anthemTrack.artist, src: anthemTrack.src, cover: anthemTrack.cover ?? undefined }],
+                          0
+                        );
+                    }}
+                    className="flex items-center gap-2 h-10 px-4 rounded-full text-sm font-medium border transition"
+                    style={{
+                      borderColor: `hsla(${hue}, 60%, 60%, 0.4)`,
+                      background: `hsla(${hue}, 60%, 50%, 0.14)`,
+                      color: `hsl(${hue}, 70%, 82%)`,
+                    }}
+                    title={`Hymne du profil : ${anthemTrack.title}`}
+                  >
+                    <Music size={13} className={isCurrentAnthem && playing ? "animate-pulse" : ""} />
+                    Hymne
+                  </button>
+                );
+              })()}
               {isAuthenticated && !isOwnProfile && (
                 <button
                   type="button"
@@ -483,8 +533,9 @@ export default function PublicUserProfilePage() {
                     "flex items-center gap-2 h-10 px-5 rounded-full text-sm font-medium border transition disabled:opacity-50",
                     following
                       ? "bg-white/10 border-white/15 text-white/80 hover:bg-red-500/10 hover:border-red-400/20 hover:text-red-300"
-                      : "bg-white text-black border-white/20 hover:opacity-90",
+                      : "text-black border-transparent hover:opacity-90",
                   ].join(" ")}
+                  style={following ? undefined : { background: `hsla(${hue}, 72%, 70%, 1)` }}
                 >
                   {followBusy ? (
                     <div className="h-3.5 w-3.5 rounded-full border-2 border-current/30 border-t-current animate-spin" />
@@ -532,7 +583,10 @@ export default function PublicUserProfilePage() {
 
           {/* Pinned tracks */}
           {profile.pinnedTracks.length > 0 && (
-            <section className="rounded-3xl border border-white/8 bg-white/[0.03] p-5 mp3-fade-up" style={{ animationDelay: "90ms" }}>
+            <section
+              className="rounded-3xl border border-white/8 bg-white/[0.03] p-5 mp3-fade-up"
+              style={{ animationDelay: "90ms", boxShadow: `0 0 0 1px hsla(${hue}, 50%, 50%, 0.06), 0 20px 50px -30px hsla(${hue}, 60%, 40%, 0.35)` }}
+            >
               <p className="text-xs uppercase tracking-[0.22em] text-white/25 mb-4">Sons mis en avant</p>
               <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
                 {profile.pinnedTracks.map((track, idx) => (
@@ -565,6 +619,7 @@ export default function PublicUserProfilePage() {
 
         </div>
       ) : null}
+      </div>
     </div>
   );
 }

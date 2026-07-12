@@ -45,6 +45,10 @@ export async function GET(req: Request) {
     avatarFrame: profile.avatarFrame ?? null,
     avatarUrl: profile.avatarUrl ?? "",
     bannerUrl: profile.bannerUrl ?? "",
+    bannerBlur: profile.bannerBlur ?? 0,
+    bannerDim: profile.bannerDim ?? 45,
+    anthemSrc: profile.anthemSrc ?? "",
+    showParticles: Boolean(profile.showParticles),
     customEqGains: profile.customEqGains ?? null,
     eqPreset: profile.eqPreset ?? null,
     favoriteSrcs: profile.favoriteSrcs,
@@ -77,6 +81,10 @@ export async function PUT(req: Request) {
   const publicBio = typeof body?.publicBio === "string" ? body.publicBio : undefined;
   const avatarUrl = typeof body?.avatarUrl === "string" ? body.avatarUrl : undefined;
   const bannerUrl = typeof body?.bannerUrl === "string" ? body.bannerUrl : undefined;
+  const bannerBlur = typeof body?.bannerBlur === "number" ? body.bannerBlur : undefined;
+  const bannerDim = typeof body?.bannerDim === "number" ? body.bannerDim : undefined;
+  const anthemSrc = typeof body?.anthemSrc === "string" ? body.anthemSrc : undefined;
+  const showParticles = typeof body?.showParticles === "boolean" ? body.showParticles : undefined;
   const links = Array.isArray(body?.links) ? (body.links as ProfileLink[]) : undefined;
   const pinnedTrackSrcs = Array.isArray(body?.pinnedTrackSrcs)
     ? body.pinnedTrackSrcs.filter((v: unknown): v is string => typeof v === "string")
@@ -100,9 +108,10 @@ export async function PUT(req: Request) {
     body?.avatarFrame === null ? null : isAchievementId(body?.avatarFrame) ? body.avatarFrame : undefined;
 
   if (
-    [favoriteSrcs, publicBio, avatarUrl, bannerUrl, links, pinnedTrackSrcs, playlists, eqPreset, customEqGains, themeHue, isPrivate, avatarFrame].every(
-      (v) => v === undefined
-    )
+    [
+      favoriteSrcs, publicBio, avatarUrl, bannerUrl, bannerBlur, bannerDim, anthemSrc, showParticles,
+      links, pinnedTrackSrcs, playlists, eqPreset, customEqGains, themeHue, isPrivate, avatarFrame,
+    ].every((v) => v === undefined)
   ) {
     return NextResponse.json({ ok: false, error: "Aucune mise a jour fournie" }, { status: 400 });
   }
@@ -111,6 +120,10 @@ export async function PUT(req: Request) {
     avatarFrame,
     avatarUrl,
     bannerUrl,
+    bannerBlur,
+    bannerDim,
+    anthemSrc,
+    showParticles,
     customEqGains,
     eqPreset,
     favoriteSrcs,

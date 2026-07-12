@@ -28,6 +28,10 @@ type AccountProfileData = {
   avatarFrame: AchievementId | null;
   avatarUrl: string;
   bannerUrl: string;
+  bannerBlur: number;
+  bannerDim: number;
+  anthemSrc: string;
+  showParticles: boolean;
   customEqGains: EqGains | null;
   eqPreset: EqPreset | null;
   favoriteSrcs: string[];
@@ -47,6 +51,10 @@ const EMPTY_PROFILE: AccountProfileData = {
   avatarFrame: null,
   avatarUrl: "",
   bannerUrl: "",
+  bannerBlur: 0,
+  bannerDim: 45,
+  anthemSrc: "",
+  showParticles: false,
   customEqGains: null,
   eqPreset: null,
   favoriteSrcs: [],
@@ -97,6 +105,20 @@ function normalizeLinks(value: unknown): ProfileLink[] {
     out.push({ id, label, url });
   }
   return out.slice(0, 20);
+}
+
+function normalizeBannerBlur(value: unknown): number {
+  if (typeof value !== "number" || !isFinite(value)) return 0;
+  return Math.max(0, Math.min(20, Math.round(value)));
+}
+
+function normalizeBannerDim(value: unknown): number {
+  if (typeof value !== "number" || !isFinite(value)) return 45;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function normalizeAnthemSrc(value: unknown): string {
+  return typeof value === "string" ? value.trim().slice(0, 500) : "";
 }
 
 function normalizePinnedTrackSrcs(value: unknown): string[] {
@@ -181,6 +203,10 @@ function normalizeProfile(raw: unknown): AccountProfileData {
     avatarFrame: normalizeAvatarFrame(v.avatarFrame),
     avatarUrl: typeof v.avatarUrl === "string" ? v.avatarUrl.trim() : "",
     bannerUrl: typeof v.bannerUrl === "string" ? v.bannerUrl.trim() : "",
+    bannerBlur: normalizeBannerBlur(v.bannerBlur),
+    bannerDim: normalizeBannerDim(v.bannerDim),
+    anthemSrc: normalizeAnthemSrc(v.anthemSrc),
+    showParticles: Boolean(v.showParticles),
     customEqGains: normalizeCustomEqGains(v.customEqGains),
     eqPreset: normalizeEqPreset(v.eqPreset),
     favoriteSrcs: normalizeFavoriteSrcs(v.favoriteSrcs),
@@ -249,6 +275,10 @@ async function writeAccountProfile(userId: string, profile: AccountProfileData) 
     avatarFrame: normalizeAvatarFrame(profile.avatarFrame),
     avatarUrl: typeof profile.avatarUrl === "string" ? profile.avatarUrl.trim() : "",
     bannerUrl: typeof profile.bannerUrl === "string" ? profile.bannerUrl.trim() : "",
+    bannerBlur: normalizeBannerBlur(profile.bannerBlur),
+    bannerDim: normalizeBannerDim(profile.bannerDim),
+    anthemSrc: normalizeAnthemSrc(profile.anthemSrc),
+    showParticles: Boolean(profile.showParticles),
     customEqGains: normalizeCustomEqGains(profile.customEqGains),
     eqPreset: normalizeEqPreset(profile.eqPreset),
     favoriteSrcs: normalizeFavoriteSrcs(profile.favoriteSrcs),
@@ -281,6 +311,10 @@ export async function saveAccountProfile(
     avatarFrame?: AchievementId | null;
     avatarUrl?: string;
     bannerUrl?: string;
+    bannerBlur?: number;
+    bannerDim?: number;
+    anthemSrc?: string;
+    showParticles?: boolean;
     customEqGains?: EqGains | null;
     eqPreset?: EqPreset | null;
     favoriteSrcs?: string[];
@@ -299,6 +333,10 @@ export async function saveAccountProfile(
     avatarFrame: patch.avatarFrame === undefined ? current.avatarFrame : normalizeAvatarFrame(patch.avatarFrame),
     avatarUrl: patch.avatarUrl === undefined ? current.avatarUrl : patch.avatarUrl.trim(),
     bannerUrl: patch.bannerUrl === undefined ? current.bannerUrl : patch.bannerUrl.trim(),
+    bannerBlur: patch.bannerBlur === undefined ? current.bannerBlur : normalizeBannerBlur(patch.bannerBlur),
+    bannerDim: patch.bannerDim === undefined ? current.bannerDim : normalizeBannerDim(patch.bannerDim),
+    anthemSrc: patch.anthemSrc === undefined ? current.anthemSrc : normalizeAnthemSrc(patch.anthemSrc),
+    showParticles: patch.showParticles === undefined ? current.showParticles : Boolean(patch.showParticles),
     customEqGains: patch.customEqGains === undefined ? current.customEqGains : normalizeCustomEqGains(patch.customEqGains),
     eqPreset: patch.eqPreset === undefined ? current.eqPreset : normalizeEqPreset(patch.eqPreset),
     favoriteSrcs: patch.favoriteSrcs === undefined ? current.favoriteSrcs : normalizeFavoriteSrcs(patch.favoriteSrcs),

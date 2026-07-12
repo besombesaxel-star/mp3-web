@@ -22,6 +22,10 @@ export type PublicUserProfileData = {
   avatarFrame: AchievementId | null;
   avatarUrl: string;
   bannerUrl: string;
+  bannerBlur: number;
+  bannerDim: number;
+  anthemTrack: SerializedPublicTrack | null;
+  showParticles: boolean;
   badges: BadgeKey[];
   bio: string;
   displayName: string;
@@ -157,6 +161,9 @@ export async function getPublicUserProfileData(
     .filter((t): t is Awaited<ReturnType<typeof listTracksForApi>>[number] => Boolean(t))
     .map(serializeTrack);
 
+  const anthemTrackRaw = profile?.anthemSrc ? tracks.find((t) => t.src === profile.anthemSrc) : undefined;
+  const anthemTrack = anthemTrackRaw ? serializeTrack(anthemTrackRaw) : null;
+
   const isPrivate = Boolean(profile?.isPrivate) && viewerId !== userId;
 
   if (isPrivate) {
@@ -164,6 +171,10 @@ export async function getPublicUserProfileData(
       avatarFrame: null,
       avatarUrl: profile?.avatarUrl ?? "",
       bannerUrl: "",
+      bannerBlur: 0,
+      bannerDim: 45,
+      anthemTrack: null,
+      showParticles: false,
       badges: [],
       bio: "",
       displayName,
@@ -190,6 +201,10 @@ export async function getPublicUserProfileData(
     avatarFrame,
     avatarUrl: profile?.avatarUrl ?? "",
     bannerUrl: profile?.bannerUrl ?? "",
+    bannerBlur: profile?.bannerBlur ?? 0,
+    bannerDim: profile?.bannerDim ?? 45,
+    anthemTrack,
+    showParticles: Boolean(profile?.showParticles),
     badges,
     bio: profile?.publicBio ?? "",
     displayName,

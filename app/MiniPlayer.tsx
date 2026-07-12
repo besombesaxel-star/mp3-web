@@ -800,17 +800,6 @@ export default function MiniPlayer() {
 
         <div className="hidden h-[72px] px-6 sm:grid grid-cols-[1fr_auto_1fr] items-center gap-4">
           <div className="min-w-0 flex items-center gap-4">
-            <div className="pointer-events-none hidden md:block -ml-3 mr-1 w-[64px] h-[64px] opacity-50 shrink-0" aria-hidden="true">
-              <Image
-                src="/images/ornement-strip.png"
-                alt=""
-                width={64}
-                height={64}
-                className="w-[64px] h-[64px] max-w-none object-contain"
-                priority={false}
-              />
-            </div>
-
             <button
               type="button"
               className="min-w-0 flex items-center gap-4 cursor-pointer text-left disabled:cursor-default disabled:opacity-85 shrink-0"
@@ -819,7 +808,17 @@ export default function MiniPlayer() {
               aria-label={track ? "Ouvrir le lecteur plein ecran" : "Aucun morceau en lecture"}
               disabled={!track}
             >
-              <div className="group relative h-12 w-12">
+              <div className="group relative h-12 w-12 ml-3">
+                <div className="pointer-events-none hidden md:block absolute -inset-3 -z-10 opacity-60" aria-hidden="true">
+                  <Image
+                    src="/images/ornement-strip.png"
+                    alt=""
+                    width={78}
+                    height={78}
+                    className="w-full h-full max-w-none object-contain"
+                    priority={false}
+                  />
+                </div>
                 <div
                   className="pointer-events-none absolute -inset-2 rounded-2xl opacity-0 blur-md transition-opacity duration-200 group-hover:opacity-100"
                   style={{

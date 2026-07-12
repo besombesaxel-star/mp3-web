@@ -58,6 +58,7 @@ type AccountTrack = {
 type AccountResponse = {
   avatarFrame?: AchievementId | null;
   avatarUrl?: string;
+  bannerUrl?: string;
   favoriteSrcs?: string[];
   favoriteTracks?: AccountTrack[];
   followersCount?: number;
@@ -154,6 +155,7 @@ export default function AccountPage() {
   } = useAuth();
   const { setQueueAndPlay, stats } = usePlayer();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bannerFileInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState<"profile" | "settings">("profile");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -165,13 +167,14 @@ export default function AccountPage() {
   const [publicBio, setPublicBio] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
 
-  const [busy, setBusy] = useState<"" | "signin" | "signup" | "profile" | "password" | "logout" | "avatar" | "links">("");
+  const [busy, setBusy] = useState<"" | "signin" | "signup" | "profile" | "password" | "logout" | "avatar" | "banner" | "links">("");
   const [profileMsg, setProfileMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [passwordMsg, setPasswordMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [authMsg, setAuthMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [linksMsg, setLinksMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [bannerUrl, setBannerUrl] = useState("");
   const [favoriteCount, setFavoriteCount] = useState(0);
   const [favoriteTracks, setFavoriteTracks] = useState<AccountTrack[]>([]);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -277,6 +280,7 @@ export default function AccountPage() {
         const json = (await res.json()) as AccountResponse;
         if (cancelled) return;
         setAvatarUrl(json.avatarUrl ?? "");
+        setBannerUrl(json.bannerUrl ?? "");
         setFavoriteCount(Array.isArray(json.favoriteSrcs) ? json.favoriteSrcs.length : 0);
         setFavoriteTracks(Array.isArray(json.favoriteTracks) ? json.favoriteTracks : []);
         setPublicBio(json.publicBio ?? "");
@@ -292,7 +296,7 @@ export default function AccountPage() {
         setTotalUploads(json.uploadsCount ?? uploadList.length);
       } catch {
         if (!cancelled) {
-          setAvatarUrl(""); setFavoriteCount(0); setFavoriteTracks([]); setPublicBio(""); setIsPrivate(false);
+          setAvatarUrl(""); setBannerUrl(""); setFavoriteCount(0); setFavoriteTracks([]); setPublicBio(""); setIsPrivate(false);
           setLinks([]); setPinnedSrcs(new Set()); setThemeHue(null); setAvatarFrame(null);
           setFollowingCount(0); setFollowersCount(0);
           setUploads([]); setTotalUploads(0);
@@ -302,7 +306,7 @@ export default function AccountPage() {
       }
     }
     if (!isAuthenticated || !accessToken) {
-      setAvatarUrl(""); setFavoriteCount(0); setFavoriteTracks([]); setPublicBio(""); setIsPrivate(false);
+      setAvatarUrl(""); setBannerUrl(""); setFavoriteCount(0); setFavoriteTracks([]); setPublicBio(""); setIsPrivate(false);
       setLinks([]); setPinnedSrcs(new Set()); setThemeHue(null); setAvatarFrame(null);
       setUploads([]); setTotalUploads(0); setProfileLoading(false);
       return;
@@ -444,6 +448,47 @@ export default function AccountPage() {
       setAvatarUrl(json.avatarUrl ?? "");
     } catch (err) {
       setProfileMsg({ text: getErrorMessage(err, "Erreur lors de l'upload."), ok: false });
+    } finally {
+      setBusy("");
+    }
+  }
+
+  // --- Banner ---
+  async function handleBannerChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !accessToken) return;
+    setBusy("banner");
+    try {
+      const form = new FormData();
+      form.append("image", file, file.name);
+      const res = await fetch("/api/account/banner", {
+        method: "POST",
+        headers: createAuthorizedHeaders(accessToken),
+        body: form,
+      });
+      const json = await res.json() as { ok?: boolean; bannerUrl?: string; error?: string };
+      if (!res.ok || !json.ok) throw new Error(json.error ?? "Upload impossible.");
+      setBannerUrl(json.bannerUrl ?? "");
+    } catch (err) {
+      setProfileMsg({ text: getErrorMessage(err, "Erreur lors de l'upload."), ok: false });
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function removeBanner() {
+    if (!accessToken || busy === "banner") return;
+    setBusy("banner");
+    try {
+      const res = await fetch("/api/account/banner", {
+        method: "DELETE",
+        headers: createAuthorizedHeaders(accessToken),
+      });
+      if (!res.ok) throw new Error("Suppression impossible.");
+      setBannerUrl("");
+    } catch (err) {
+      setProfileMsg({ text: getErrorMessage(err, "Suppression impossible."), ok: false });
     } finally {
       setBusy("");
     }
@@ -596,8 +641,48 @@ export default function AccountPage() {
           <div className="space-y-4">
 
             {/* Hero */}
-            <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up">
-              <div className="flex items-start gap-5">
+            <section className="rounded-3xl border border-white/8 bg-white/[0.04] overflow-hidden mp3-fade-up">
+              <input
+                ref={bannerFileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={handleBannerChange}
+              />
+              <div className="group relative h-28 sm:h-36 w-full bg-white/[0.03]">
+                {bannerUrl ? (
+                  <Image src={bannerUrl} alt="Bannière" fill className="object-cover" sizes="680px" />
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => bannerFileInputRef.current?.click()}
+                  disabled={busy === "banner"}
+                  className="absolute inset-0 flex items-center justify-center gap-2 bg-black/0 group-hover:bg-black/45 opacity-0 group-hover:opacity-100 transition text-sm text-white/90"
+                  title={bannerUrl ? "Changer la bannière" : "Ajouter une bannière"}
+                >
+                  {busy === "banner" ? (
+                    <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  ) : (
+                    <>
+                      <Camera size={16} />
+                      {bannerUrl ? "Changer la bannière" : "Ajouter une bannière"}
+                    </>
+                  )}
+                </button>
+                {bannerUrl && (
+                  <button
+                    type="button"
+                    onClick={() => void removeBanner()}
+                    disabled={busy === "banner"}
+                    className="absolute top-3 right-3 h-8 w-8 rounded-full bg-black/60 hover:bg-black/80 transition flex items-center justify-center text-white/80"
+                    title="Retirer la bannière"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              <div className="p-6 flex items-start gap-5">
                 <div className="relative shrink-0">
                   <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarChange} />
                   <button

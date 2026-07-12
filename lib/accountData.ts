@@ -27,6 +27,7 @@ export type EqGains = [number, number, number, number, number];
 type AccountProfileData = {
   avatarFrame: AchievementId | null;
   avatarUrl: string;
+  bannerUrl: string;
   customEqGains: EqGains | null;
   eqPreset: EqPreset | null;
   favoriteSrcs: string[];
@@ -45,6 +46,7 @@ type AccountProfileData = {
 const EMPTY_PROFILE: AccountProfileData = {
   avatarFrame: null,
   avatarUrl: "",
+  bannerUrl: "",
   customEqGains: null,
   eqPreset: null,
   favoriteSrcs: [],
@@ -178,6 +180,7 @@ function normalizeProfile(raw: unknown): AccountProfileData {
   return {
     avatarFrame: normalizeAvatarFrame(v.avatarFrame),
     avatarUrl: typeof v.avatarUrl === "string" ? v.avatarUrl.trim() : "",
+    bannerUrl: typeof v.bannerUrl === "string" ? v.bannerUrl.trim() : "",
     customEqGains: normalizeCustomEqGains(v.customEqGains),
     eqPreset: normalizeEqPreset(v.eqPreset),
     favoriteSrcs: normalizeFavoriteSrcs(v.favoriteSrcs),
@@ -245,6 +248,7 @@ async function writeAccountProfile(userId: string, profile: AccountProfileData) 
   const payload = JSON.stringify({
     avatarFrame: normalizeAvatarFrame(profile.avatarFrame),
     avatarUrl: typeof profile.avatarUrl === "string" ? profile.avatarUrl.trim() : "",
+    bannerUrl: typeof profile.bannerUrl === "string" ? profile.bannerUrl.trim() : "",
     customEqGains: normalizeCustomEqGains(profile.customEqGains),
     eqPreset: normalizeEqPreset(profile.eqPreset),
     favoriteSrcs: normalizeFavoriteSrcs(profile.favoriteSrcs),
@@ -276,6 +280,7 @@ export async function saveAccountProfile(
   patch: {
     avatarFrame?: AchievementId | null;
     avatarUrl?: string;
+    bannerUrl?: string;
     customEqGains?: EqGains | null;
     eqPreset?: EqPreset | null;
     favoriteSrcs?: string[];
@@ -293,6 +298,7 @@ export async function saveAccountProfile(
   const next: AccountProfileData = {
     avatarFrame: patch.avatarFrame === undefined ? current.avatarFrame : normalizeAvatarFrame(patch.avatarFrame),
     avatarUrl: patch.avatarUrl === undefined ? current.avatarUrl : patch.avatarUrl.trim(),
+    bannerUrl: patch.bannerUrl === undefined ? current.bannerUrl : patch.bannerUrl.trim(),
     customEqGains: patch.customEqGains === undefined ? current.customEqGains : normalizeCustomEqGains(patch.customEqGains),
     eqPreset: patch.eqPreset === undefined ? current.eqPreset : normalizeEqPreset(patch.eqPreset),
     favoriteSrcs: patch.favoriteSrcs === undefined ? current.favoriteSrcs : normalizeFavoriteSrcs(patch.favoriteSrcs),

@@ -46,6 +46,7 @@ type ProfileLink = {
 type PublicProfile = {
   avatarFrame: AchievementId | null;
   avatarUrl: string;
+  bannerUrl: string;
   badges: BadgeKey[];
   bio: string;
   displayName: string;
@@ -284,6 +285,13 @@ export default function PublicUserProfilePage() {
         </div>
       ) : profile ? (
         <div className="mx-auto max-w-[520px] lg:max-w-[680px] space-y-5">
+
+          {profile.bannerUrl && (
+            <div className="relative -mt-2 h-32 sm:h-44 w-full overflow-hidden rounded-3xl border border-white/10 mp3-fade-up">
+              <Image src={profile.bannerUrl} alt="" fill className="object-cover" sizes="680px" priority={false} />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0b0b0f]/70 via-transparent to-transparent" />
+            </div>
+          )}
 
           {/* Avatar + identity */}
           <div className="flex flex-col items-center text-center pt-4 pb-2 mp3-fade-up">

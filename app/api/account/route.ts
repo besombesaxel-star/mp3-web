@@ -44,6 +44,7 @@ export async function GET(req: Request) {
     ok: true,
     avatarFrame: profile.avatarFrame ?? null,
     avatarUrl: profile.avatarUrl ?? "",
+    bannerUrl: profile.bannerUrl ?? "",
     customEqGains: profile.customEqGains ?? null,
     eqPreset: profile.eqPreset ?? null,
     favoriteSrcs: profile.favoriteSrcs,
@@ -75,6 +76,7 @@ export async function PUT(req: Request) {
     : undefined;
   const publicBio = typeof body?.publicBio === "string" ? body.publicBio : undefined;
   const avatarUrl = typeof body?.avatarUrl === "string" ? body.avatarUrl : undefined;
+  const bannerUrl = typeof body?.bannerUrl === "string" ? body.bannerUrl : undefined;
   const links = Array.isArray(body?.links) ? (body.links as ProfileLink[]) : undefined;
   const pinnedTrackSrcs = Array.isArray(body?.pinnedTrackSrcs)
     ? body.pinnedTrackSrcs.filter((v: unknown): v is string => typeof v === "string")
@@ -98,7 +100,7 @@ export async function PUT(req: Request) {
     body?.avatarFrame === null ? null : isAchievementId(body?.avatarFrame) ? body.avatarFrame : undefined;
 
   if (
-    [favoriteSrcs, publicBio, avatarUrl, links, pinnedTrackSrcs, playlists, eqPreset, customEqGains, themeHue, isPrivate, avatarFrame].every(
+    [favoriteSrcs, publicBio, avatarUrl, bannerUrl, links, pinnedTrackSrcs, playlists, eqPreset, customEqGains, themeHue, isPrivate, avatarFrame].every(
       (v) => v === undefined
     )
   ) {
@@ -108,6 +110,7 @@ export async function PUT(req: Request) {
   await saveAccountProfile(user.id, {
     avatarFrame,
     avatarUrl,
+    bannerUrl,
     customEqGains,
     eqPreset,
     favoriteSrcs,

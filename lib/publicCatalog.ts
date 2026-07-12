@@ -21,6 +21,7 @@ type SerializedPublicTrack = {
 export type PublicUserProfileData = {
   avatarFrame: AchievementId | null;
   avatarUrl: string;
+  bannerUrl: string;
   badges: BadgeKey[];
   bio: string;
   displayName: string;
@@ -162,6 +163,7 @@ export async function getPublicUserProfileData(
     return {
       avatarFrame: null,
       avatarUrl: profile?.avatarUrl ?? "",
+      bannerUrl: "",
       badges: [],
       bio: "",
       displayName,
@@ -187,6 +189,7 @@ export async function getPublicUserProfileData(
   return {
     avatarFrame,
     avatarUrl: profile?.avatarUrl ?? "",
+    bannerUrl: profile?.bannerUrl ?? "",
     badges,
     bio: profile?.publicBio ?? "",
     displayName,

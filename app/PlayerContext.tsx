@@ -17,10 +17,12 @@ import { fetchTracksShared } from "./tracksCache";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
 import { computeStreak } from "@/lib/streak";
-import { applyCustomThemeToDom, clearCustomThemeFromDom } from "@/lib/customTheme";
 import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import { cacheTracksForOffline } from "@/lib/offlineCache";
 import { getDeviceId, getDeviceLabel } from "@/lib/deviceId";
+import { usePlayerAppearance, type ColorTheme, type FontSizeMode } from "./usePlayerAppearance";
+
+export type { ColorTheme };
 
 export type Track = {
   title: string;
@@ -34,8 +36,6 @@ export type Track = {
 };
 
 type RepeatMode = "off" | "all" | "one";
-type FontSizeMode = "sm" | "md" | "lg" | "xl";
-export type ColorTheme = "steel" | "emerald" | "amber" | "rose" | "violet" | "custom";
 type EqPreset = "off" | "bass" | "vocal" | "night" | "custom";
 export type EqGains = [number, number, number, number, number];
 
@@ -722,15 +722,17 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [volume, _setVolume] = useState(1);
   const [muted, _setMuted] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
-  const [fontSize, setFontSize] = useState<FontSizeMode>("md");
-  const [highContrast, setHighContrast] = useState(false);
-  const [colorTheme, setColorTheme] = useState<ColorTheme>("steel");
-  const [customThemeHue, setCustomThemeHue] = useState(218);
+  const {
+    fontSize, setFontSize,
+    highContrast, setHighContrast, toggleHighContrast,
+    colorTheme, setColorTheme,
+    customThemeHue, setCustomThemeHue,
+    fallingPetals, setFallingPetals, toggleFallingPetals,
+  } = usePlayerAppearance();
   const [eqPreset, setEqPreset] = useState<EqPreset>("off");
   const [customEqGains, setCustomEqGains] = useState<EqGains>(DEFAULT_CUSTOM_EQ_GAINS);
   const customEqGainsRef = useRef(customEqGains);
   customEqGainsRef.current = customEqGains;
-  const [fallingPetals, setFallingPetals] = useState(true);
 
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState<RepeatMode>("off");
@@ -1525,26 +1527,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eqPreset, playing, customEqGains]);
 
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    document.documentElement.dataset.mp3FontSize = fontSize;
-  }, [fontSize]);
-
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    document.documentElement.dataset.mp3Contrast = highContrast ? "high" : "normal";
-  }, [highContrast]);
-
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    document.documentElement.dataset.mp3Theme = colorTheme;
-    if (colorTheme === "custom") {
-      applyCustomThemeToDom(customThemeHue);
-    } else {
-      clearCustomThemeFromDom();
-    }
-  }, [colorTheme, customThemeHue]);
-
   // preload next track for smoother transitions
   useEffect(() => {
     const preloadAudio = preloadAudioRef.current;
@@ -1917,6 +1899,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setCustomEqGains(prefs.customEqGains);
       setFallingPetals(prefs.fallingPetals);
     } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally mount-only; setters are stable
   }, []);
 
   // load playback session
@@ -2710,14 +2693,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   function toggleFocusMode() {
     setFocusMode((value) => !value);
-  }
-
-  function toggleHighContrast() {
-    setHighContrast((value) => !value);
-  }
-
-  function toggleFallingPetals() {
-    setFallingPetals((value) => !value);
   }
 
   function cycleEqPreset() {

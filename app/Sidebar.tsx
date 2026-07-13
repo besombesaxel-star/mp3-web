@@ -207,7 +207,7 @@ export default function Sidebar() {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={[
-                  "group flex items-center rounded-2xl px-4 py-2.5 text-sm transition mp3-slide-right",
+                  "group flex flex-1 max-h-16 min-h-10 items-center rounded-2xl px-4 py-2 text-sm transition mp3-slide-right",
                   `mp3-d-${i}`,
                   compact ? "justify-center gap-0 px-0" : "gap-3",
                   active
@@ -217,7 +217,7 @@ export default function Sidebar() {
                 title={label}
               >
                 <span className="w-6 flex items-center justify-center transition-transform duration-150 group-hover:scale-110" aria-hidden="true">
-                  <Icon size={18} className={active ? "text-[var(--mp3-accent-strong)]" : "opacity-80"} />
+                  <Icon size={20} className={active ? "text-[var(--mp3-accent-strong)]" : "opacity-80"} />
                 </span>
 
                 {!compact ? <span className="flex-1 transition-transform duration-150">{label}</span> : null}

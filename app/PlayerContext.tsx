@@ -273,20 +273,20 @@ type AccountResponse = {
   favoriteTracks?: ApiTrack[];
 };
 
-function clamp(n: number, a: number, b: number) {
+export function clamp(n: number, a: number, b: number) {
   return Math.max(a, Math.min(b, n));
 }
 
-function normalizeArtist(a?: string) {
+export function normalizeArtist(a?: string) {
   const s = (a ?? "").trim();
   return s || "-";
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function safeTrack(value: unknown): Track | null {
+export function safeTrack(value: unknown): Track | null {
   if (!isRecord(value)) return null;
   if (typeof value.src !== "string" || typeof value.title !== "string") return null;
 
@@ -307,7 +307,7 @@ function safeTrack(value: unknown): Track | null {
   };
 }
 
-function tracksToFavoritesMap(value: Array<ApiTrack | Track>) {
+export function tracksToFavoritesMap(value: Array<ApiTrack | Track>) {
   const entries = value
     .filter((item): item is ApiTrack | Track => Boolean(item?.src && item?.title))
     .map((item) => [
@@ -327,7 +327,7 @@ function tracksToFavoritesMap(value: Array<ApiTrack | Track>) {
   return Object.fromEntries(entries);
 }
 
-function sanitizeFavoritesMap(value: unknown): Record<string, Track> {
+export function sanitizeFavoritesMap(value: unknown): Record<string, Track> {
   const entries: Array<readonly [string, Track]> = [];
 
   if (Array.isArray(value)) {
@@ -372,7 +372,7 @@ function sanitizeFavoritesMap(value: unknown): Record<string, Track> {
   return Object.fromEntries(entries) as Record<string, Track>;
 }
 
-function safeSession(parsed: unknown): PlayerSession | null {
+export function safeSession(parsed: unknown): PlayerSession | null {
   if (!isRecord(parsed)) return null;
   if (!Array.isArray(parsed.tracks)) return null;
 
@@ -406,12 +406,12 @@ function safeSession(parsed: unknown): PlayerSession | null {
   };
 }
 
-function normalizeCustomEqGains(value: unknown): EqGains {
+export function normalizeCustomEqGains(value: unknown): EqGains {
   if (!Array.isArray(value) || value.length !== 5) return [...DEFAULT_CUSTOM_EQ_GAINS];
   return value.map((v) => (typeof v === "number" && isFinite(v) ? Math.max(-12, Math.min(12, v)) : 0)) as EqGains;
 }
 
-function safePrefs(parsed: unknown): PlayerPrefs {
+export function safePrefs(parsed: unknown): PlayerPrefs {
   if (!isRecord(parsed)) {
     return {
       focusMode: false,
@@ -472,7 +472,7 @@ function safePrefs(parsed: unknown): PlayerPrefs {
 
 const MAX_STREAK_FREEZES = 2;
 
-function emptyStats(): PlayerStats {
+export function emptyStats(): PlayerStats {
   return {
     totalListenSeconds: 0,
     uniqueTracksPlayed: 0,
@@ -492,7 +492,7 @@ function emptyStats(): PlayerStats {
   };
 }
 
-function getDayKey(timestamp: number): string {
+export function getDayKey(timestamp: number): string {
   const d = new Date(timestamp);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -500,7 +500,7 @@ function getDayKey(timestamp: number): string {
   return `${y}-${m}-${day}`;
 }
 
-function safeStats(parsed: unknown): PlayerStats {
+export function safeStats(parsed: unknown): PlayerStats {
   const base = emptyStats();
   if (!isRecord(parsed)) return base;
 
@@ -640,7 +640,7 @@ function safeStats(parsed: unknown): PlayerStats {
   });
 }
 
-function computeLeaders(stats: PlayerStats): PlayerStats {
+export function computeLeaders(stats: PlayerStats): PlayerStats {
   let topArtist: PlayerStats["topArtist"] = null;
   for (const [name, v] of Object.entries(stats.byArtist)) {
     if (!topArtist || v.seconds > topArtist.seconds) {
@@ -658,7 +658,7 @@ function computeLeaders(stats: PlayerStats): PlayerStats {
   return { ...stats, topArtist, topTrack };
 }
 
-function buildSmartQueue(
+export function buildSmartQueue(
   library: Track[],
   stats: PlayerStats,
   favoritesMap: Record<string, Track>,

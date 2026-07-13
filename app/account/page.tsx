@@ -1209,83 +1209,6 @@ export default function AccountPage() {
               </div>
             </section>
 
-            {/* Mes uploads */}
-            <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "170ms" }}>
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-2">
-                  <Upload size={14} className="text-white/30" />
-                  <h2 className="text-sm font-medium text-white/70">Mes uploads</h2>
-                  {totalUploads > 0 && <span className="text-xs text-white/25 tabular-nums">{totalUploads}</span>}
-                </div>
-                <div className="flex items-center gap-3">
-                  {uploads.length > 0 && (
-                    <button type="button" onClick={() => setQueueAndPlay(uploadsForPlayer, 0)}
-                      className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/80 transition">
-                      <Play size={11} className="fill-current" />
-                      Tout écouter
-                    </button>
-                  )}
-                  <Link href="/library" className="text-xs text-white/35 hover:text-white/70 transition">Bibliothèque →</Link>
-                </div>
-              </div>
-              {profileLoading ? (
-                <div className="space-y-1">{[...Array(3)].map((_, i) => (
-                  <div key={i} className="flex items-center gap-3 px-3 py-2.5">
-                    <div className="h-9 w-9 shrink-0 rounded-xl bg-white/5 animate-pulse" />
-                    <div className="flex-1 space-y-1.5">
-                      <div className="h-3 w-2/3 rounded-full bg-white/5 animate-pulse" />
-                      <div className="h-2.5 w-1/3 rounded-full bg-white/4 animate-pulse" />
-                    </div>
-                  </div>
-                ))}</div>
-              ) : uploads.length === 0 ? (
-                <div className="rounded-2xl border border-white/8 bg-white/3 px-4 py-7 text-center">
-                  <Upload size={24} className="mx-auto mb-2.5 text-white/15" />
-                  <p className="text-sm text-white/40 mb-3">Aucun upload pour l&apos;instant</p>
-                  <Link href="/upload" className="inline-flex items-center gap-1.5 h-8 px-4 rounded-full bg-white/8 border border-white/10 text-xs text-white/60 hover:bg-white/12 transition">
-                    <Upload size={11} />
-                    Ajouter un son
-                  </Link>
-                </div>
-              ) : (
-                <div className="space-y-0.5">
-                  {uploads.slice(0, 8).map((item, index) => (
-                    <div key={item.src}
-                      className="group flex items-center gap-3 rounded-2xl px-3 py-2.5 hover:bg-white/5 transition cursor-pointer"
-                      onClick={() => setQueueAndPlay(uploadsForPlayer, index)}
-                    >
-                      <div className="relative h-9 w-9 shrink-0 rounded-xl overflow-hidden bg-white/5">
-                        {item.cover ? (
-                          <Image src={item.cover} alt={item.title} fill className="object-cover" sizes="36px" />
-                        ) : (
-                          <div className="h-full w-full flex items-center justify-center"><Music size={12} className="text-white/20" /></div>
-                        )}
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition">
-                          <Play size={12} className="fill-white text-white ml-0.5" />
-                        </div>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm text-white/85 truncate">{item.title}</p>
-                        <p className="text-xs text-white/40 truncate">{item.artist}</p>
-                      </div>
-                      {item.createdAt && (
-                        <p className="text-xs text-white/20 shrink-0 tabular-nums group-hover:text-white/35 transition">
-                          {formatDate(item.createdAt)}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                  {totalUploads > 8 && (
-                    <div className="pt-2 text-center">
-                      <Link href="/library" className="text-xs text-white/30 hover:text-white/60 transition">
-                        +{totalUploads - 8} autres · Voir tout
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              )}
-            </section>
-
               </div>
 
               <div className="space-y-4">
@@ -1587,6 +1510,83 @@ export default function AccountPage() {
                 </div>
               ))}
             </div>
+
+            {/* Mes uploads */}
+            <section className="rounded-3xl border border-white/8 bg-white/[0.04] p-6 mp3-fade-up" style={{ animationDelay: "190ms" }}>
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                  <Upload size={14} className="text-white/30" />
+                  <h2 className="text-sm font-medium text-white/70">Mes uploads</h2>
+                  {totalUploads > 0 && <span className="text-xs text-white/25 tabular-nums">{totalUploads}</span>}
+                </div>
+                <div className="flex items-center gap-3">
+                  {uploads.length > 0 && (
+                    <button type="button" onClick={() => setQueueAndPlay(uploadsForPlayer, 0)}
+                      className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/80 transition">
+                      <Play size={11} className="fill-current" />
+                      Tout écouter
+                    </button>
+                  )}
+                  <Link href="/library" className="text-xs text-white/35 hover:text-white/70 transition">Bibliothèque →</Link>
+                </div>
+              </div>
+              {profileLoading ? (
+                <div className="space-y-1">{[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 px-3 py-2.5">
+                    <div className="h-9 w-9 shrink-0 rounded-xl bg-white/5 animate-pulse" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3 w-2/3 rounded-full bg-white/5 animate-pulse" />
+                      <div className="h-2.5 w-1/3 rounded-full bg-white/4 animate-pulse" />
+                    </div>
+                  </div>
+                ))}</div>
+              ) : uploads.length === 0 ? (
+                <div className="rounded-2xl border border-white/8 bg-white/3 px-4 py-7 text-center">
+                  <Upload size={24} className="mx-auto mb-2.5 text-white/15" />
+                  <p className="text-sm text-white/40 mb-3">Aucun upload pour l&apos;instant</p>
+                  <Link href="/upload" className="inline-flex items-center gap-1.5 h-8 px-4 rounded-full bg-white/8 border border-white/10 text-xs text-white/60 hover:bg-white/12 transition">
+                    <Upload size={11} />
+                    Ajouter un son
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-0.5">
+                  {uploads.slice(0, 8).map((item, index) => (
+                    <div key={item.src}
+                      className="group flex items-center gap-3 rounded-2xl px-3 py-2.5 hover:bg-white/5 transition cursor-pointer"
+                      onClick={() => setQueueAndPlay(uploadsForPlayer, index)}
+                    >
+                      <div className="relative h-9 w-9 shrink-0 rounded-xl overflow-hidden bg-white/5">
+                        {item.cover ? (
+                          <Image src={item.cover} alt={item.title} fill className="object-cover" sizes="36px" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center"><Music size={12} className="text-white/20" /></div>
+                        )}
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition">
+                          <Play size={12} className="fill-white text-white ml-0.5" />
+                        </div>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-white/85 truncate">{item.title}</p>
+                        <p className="text-xs text-white/40 truncate">{item.artist}</p>
+                      </div>
+                      {item.createdAt && (
+                        <p className="text-xs text-white/20 shrink-0 tabular-nums group-hover:text-white/35 transition">
+                          {formatDate(item.createdAt)}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                  {totalUploads > 8 && (
+                    <div className="pt-2 text-center">
+                      <Link href="/library" className="text-xs text-white/30 hover:text-white/60 transition">
+                        +{totalUploads - 8} autres · Voir tout
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
 
             {/* Mes favoris */}
             {(profileLoading || favoriteTracks.length > 0) && (

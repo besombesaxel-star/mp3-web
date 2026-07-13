@@ -60,7 +60,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           width={520}
           height={431}
           className="w-full h-full object-contain"
-          priority={false}
+          priority
         />
       </div>
 

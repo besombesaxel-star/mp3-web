@@ -158,13 +158,13 @@ export default function Sidebar() {
         ].join(" ")}
       >
         {!compact ? (
-          <div className="pointer-events-none absolute -top-8 -right-0 opacity-[0.4]">
+          <div className="pointer-events-none absolute -top-8 -right-0 h-[220px] w-[196px] opacity-[0.4]">
             <Image
               src="/images/birds.png"
               alt=""
               aria-hidden="true"
-              width={220}
-              height={220}
+              fill
+              sizes="220px"
               className="object-contain"
               priority={false}
             />
@@ -241,6 +241,7 @@ export default function Sidebar() {
                   alt=""
                   aria-hidden="true"
                   fill
+                  sizes="256px"
                   className="object-cover object-top"
                   priority={false}
                 />

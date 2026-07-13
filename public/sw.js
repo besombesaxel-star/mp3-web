@@ -2,7 +2,7 @@ const STATIC_CACHE = "mp3-static-v2";
 const RUNTIME_CACHE = "mp3-runtime-v2";
 const SHARE_CACHE = "mp3-share-target-v1";
 const SHARE_KEY = "/__share-target-stash__";
-const PRECACHE_URLS = ["/", "/manifest.webmanifest"];
+const PRECACHE_URLS = ["/", "/manifest.webmanifest", "/favicon.ico"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

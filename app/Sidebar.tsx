@@ -174,7 +174,7 @@ export default function Sidebar() {
         <div
           className={[
             "relative z-10 flex shrink-0 items-center",
-            compact ? "mb-8 justify-center" : "mb-6 justify-between",
+            compact ? "mb-8 justify-center" : "mb-5 justify-between",
           ].join(" ")}
         >
           <h1 className={["font-light tracking-widest text-white", compact ? "text-2xl" : "text-3xl"].join(" ")}>
@@ -195,7 +195,7 @@ export default function Sidebar() {
         </div>
 
         <nav
-          className="relative z-10 flex flex-1 min-h-0 flex-col gap-1 overflow-y-auto scrollbar-none"
+          className="relative z-10 flex flex-1 min-h-0 flex-col gap-1.5 overflow-y-auto scrollbar-none"
           aria-label="Navigation principale"
         >
           {nav.map(({ href, label, Icon }, i) => {
@@ -207,7 +207,7 @@ export default function Sidebar() {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={[
-                  "group flex items-center rounded-2xl px-4 py-2 text-sm transition mp3-slide-right",
+                  "group flex items-center rounded-2xl px-4 py-2.5 text-sm transition mp3-slide-right",
                   `mp3-d-${i}`,
                   compact ? "justify-center gap-0 px-0" : "gap-3",
                   active
@@ -232,7 +232,7 @@ export default function Sidebar() {
           })}
         </nav>
 
-        <div className="relative z-10 shrink-0 mt-auto pt-4 pb-[76px]">
+        <div className="relative z-10 shrink-0 mt-auto pt-3 pb-[76px]">
           <div className="relative">
             {!compact ? (
               <div className="pointer-events-none absolute left-[-24px] right-[-44px] top-[-56px] z-0 h-32 opacity-60">

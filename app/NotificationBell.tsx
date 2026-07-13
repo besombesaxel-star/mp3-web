@@ -19,7 +19,8 @@ type AppNotification = {
     | "message"
     | "comment"
     | "playlist_invite"
-    | "track_milestone";
+    | "track_milestone"
+    | "guestbook";
   fromUserId: string;
   fromDisplayName: string;
   fromAvatarUrl: string;
@@ -117,6 +118,13 @@ function NotifRow({ notif, onClose }: { notif: AppNotification; onClose: () => v
               a vu son son{" "}
               <span className="font-medium text-white/90">{notif.trackTitle}</span> dépasser{" "}
               <span className="font-medium text-white/90">{notif.excerpt}</span> écoutes 🎉
+            </>
+          ) : notif.type === "guestbook" ? (
+            <>
+              a laissé un mot sur votre profil
+              {notif.excerpt && (
+                <span className="block text-white/45 italic mt-0.5 truncate">« {notif.excerpt} »</span>
+              )}
             </>
           ) : (
             <>

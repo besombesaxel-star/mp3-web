@@ -15,6 +15,7 @@ import { useAuth } from "@/app/AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { getInitials, hashStringToHue } from "@/lib/publicLinks";
 import ProfileParticles from "@/app/ProfileParticles";
+import GuestbookSection from "@/app/GuestbookSection";
 
 const BADGE_STYLES: Record<BadgeKey, { icon: typeof Shield; className: string }> = {
   admin: { icon: Shield, className: "bg-red-500/20 text-red-300 border-red-500/30" },
@@ -625,6 +626,10 @@ export default function ProfileClient() {
                 ))}
               </div>
             </section>
+          )}
+
+          {(!profile.isPrivate || isOwnProfile) && (
+            <GuestbookSection userId={userId} hue={hue} isOwnProfile={isOwnProfile} />
           )}
 
         </div>

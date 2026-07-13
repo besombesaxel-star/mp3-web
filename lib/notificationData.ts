@@ -12,7 +12,8 @@ export type AppNotification = {
     | "message"
     | "comment"
     | "playlist_invite"
-    | "track_milestone";
+    | "track_milestone"
+    | "guestbook";
   fromUserId: string;
   fromDisplayName: string;
   fromAvatarUrl: string;
@@ -82,7 +83,9 @@ export async function pushNotification(
                   ? `${notif.fromDisplayName} vous a invite sur la playlist "${notif.playlistName}"`
                   : notif.type === "track_milestone"
                     ? `"${notif.trackTitle}" a depasse ${notif.excerpt} ecoutes !`
-                    : `${notif.fromDisplayName} a partage "${notif.trackTitle}"`;
+                    : notif.type === "guestbook"
+                      ? `${notif.fromDisplayName} a laisse un mot sur votre profil`
+                      : `${notif.fromDisplayName} a partage "${notif.trackTitle}"`;
 
   void sendPushToUser(userId, {
     title: ".mp3",

@@ -234,6 +234,7 @@ export default function SettingsContent() {
     eqPreset, setEqPreset,
     customEqGains, setCustomEqGains,
     fallingPetals, toggleFallingPetals,
+    reducedMotion, toggleReducedMotion,
   } = usePlayer();
 
   const [pushSupported, setPushSupported] = useState(false);
@@ -385,6 +386,12 @@ export default function SettingsContent() {
           desc="Eclaircit les textes et bordures les plus discrets."
           checked={highContrast}
           onChange={toggleHighContrast}
+        />
+        <ToggleRow
+          label="Reduire les animations"
+          desc="Supprime les animations et transitions decoratives, en plus du reglage systeme eventuel."
+          checked={reducedMotion}
+          onChange={toggleReducedMotion}
         />
       </SettingsSection>
 

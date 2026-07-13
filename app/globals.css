@@ -636,3 +636,36 @@ html[data-mp3-contrast="high"] [class*="border-white/12"],
 html[data-mp3-contrast="high"] [class*="border-white/15"] {
   border-color: color-mix(in srgb, var(--foreground) 35%, transparent) !important;
 }
+
+/* ---------------------------------------------------------------------
+   Accessibility: reduced motion.
+   Near-zero duration + a single iteration (rather than `animation: none`)
+   so `animation-fill-mode` still lands every element on its end state -
+   most of this app's looping/decorative animations (falling petals,
+   profile particles, the now-playing avatar pulse) travel to fully
+   off-screen or opacity:0 at 100%, so this makes them vanish instead of
+   freezing mid-motion. The OS-level query is always honored and can't be
+   overridden back to full motion from inside the app; the attribute
+   selector below only ever adds *more* reduction, for users who want it
+   without changing their OS setting (see usePlayerAppearance.ts).
+   --------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+html[data-mp3-motion="reduced"] *,
+html[data-mp3-motion="reduced"] *::before,
+html[data-mp3-motion="reduced"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}

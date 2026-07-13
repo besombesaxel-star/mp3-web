@@ -127,6 +127,8 @@ type PlayerCtx = {
   setCustomEqGains: (value: EqGains) => void;
   fallingPetals: boolean;
   toggleFallingPetals: () => void;
+  reducedMotion: boolean;
+  toggleReducedMotion: () => void;
 
   expanded: boolean;
   setExpanded: (v: boolean) => void;
@@ -257,6 +259,7 @@ type PlayerPrefs = {
   eqPreset: EqPreset;
   customEqGains: EqGains;
   fallingPetals: boolean;
+  reducedMotion: boolean;
 };
 
 type ApiTrack = {
@@ -427,6 +430,7 @@ export function safePrefs(parsed: unknown): PlayerPrefs {
       eqPreset: "off",
       customEqGains: [...DEFAULT_CUSTOM_EQ_GAINS],
       fallingPetals: true,
+      reducedMotion: false,
     };
   }
 
@@ -467,6 +471,7 @@ export function safePrefs(parsed: unknown): PlayerPrefs {
         : "off",
     customEqGains: normalizeCustomEqGains(parsed.customEqGains),
     fallingPetals: typeof parsed.fallingPetals === "boolean" ? parsed.fallingPetals : true,
+    reducedMotion: typeof parsed.reducedMotion === "boolean" ? parsed.reducedMotion : false,
   };
 }
 
@@ -728,6 +733,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     colorTheme, setColorTheme,
     customThemeHue, setCustomThemeHue,
     fallingPetals, setFallingPetals, toggleFallingPetals,
+    reducedMotion, setReducedMotion, toggleReducedMotion,
   } = usePlayerAppearance();
   const [eqPreset, setEqPreset] = useState<EqPreset>("off");
   const [customEqGains, setCustomEqGains] = useState<EqGains>(DEFAULT_CUSTOM_EQ_GAINS);
@@ -1898,6 +1904,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setEqPreset(prefs.eqPreset);
       setCustomEqGains(prefs.customEqGains);
       setFallingPetals(prefs.fallingPetals);
+      setReducedMotion(prefs.reducedMotion);
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally mount-only; setters are stable
   }, []);
@@ -2164,6 +2171,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       eqPreset,
       customEqGains,
       fallingPetals,
+      reducedMotion,
     };
     try {
       localStorage.setItem(LS_PREFS, JSON.stringify(payload));
@@ -2182,6 +2190,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     eqPreset,
     customEqGains,
     fallingPetals,
+    reducedMotion,
   ]);
 
   // persist playback session
@@ -2931,6 +2940,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setCustomEqGains,
     fallingPetals,
     toggleFallingPetals,
+    reducedMotion,
+    toggleReducedMotion,
 
     expanded,
     setExpanded,

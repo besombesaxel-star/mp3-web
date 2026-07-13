@@ -16,6 +16,7 @@ import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { getInitials, hashStringToHue } from "@/lib/publicLinks";
 import ProfileParticles from "@/app/ProfileParticles";
 import GuestbookSection from "@/app/GuestbookSection";
+import { accentFromCover } from "@/app/accent";
 
 const BADGE_STYLES: Record<BadgeKey, { icon: typeof Shield; className: string }> = {
   admin: { icon: Shield, className: "bg-red-500/20 text-red-300 border-red-500/30" },
@@ -122,6 +123,22 @@ export default function ProfileClient() {
   const themeHue = profile?.themeHue ?? null;
   const hue = themeHue ?? fallbackHue;
   const equippedCosmetic = useMemo(() => getCosmeticForAchievement(profile?.avatarFrame ?? null), [profile?.avatarFrame]);
+
+  // Ambient "now playing" pulse around the avatar: no real audio-sync (which would need
+  // streaming amplitude over Realtime broadcast at ~15-30 msg/s per viewer — not worth the
+  // bandwidth/latency cost), just a generic pulse gated on nowPlaying, tinted by the track's
+  // cover accent when available so it still feels reactive to visitors, not just the owner.
+  const [pulseColor, setPulseColor] = useState(`hsl(${hue}, 70%, 60%)`);
+  useEffect(() => {
+    if (!nowPlaying?.cover) return;
+    let cancelled = false;
+    accentFromCover(nowPlaying.cover).then((accent) => {
+      if (!cancelled && accent) setPulseColor(`rgb(${accent.r}, ${accent.g}, ${accent.b})`);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [nowPlaying?.cover]);
 
   const uploadsQueue = useMemo(
     () => (profile?.uploads ?? []).map((t) => ({
@@ -319,10 +336,35 @@ export default function ProfileClient() {
 
           {/* Avatar + identity */}
           <div className="flex flex-col items-center text-center pt-4 pb-2 mp3-fade-up">
+          <div className="relative mb-4">
+            {nowPlaying && (
+              <>
+                <style jsx>{`
+                  @keyframes mp3NowPlayingPulse {
+                    0% {
+                      transform: scale(1);
+                      opacity: 0.6;
+                    }
+                    100% {
+                      transform: scale(1.35);
+                      opacity: 0;
+                    }
+                  }
+                  .mp3-now-playing-pulse {
+                    animation: mp3NowPlayingPulse 1.8s ease-out infinite;
+                  }
+                `}</style>
+                <span
+                  className="pointer-events-none absolute inset-0 rounded-full border-2 mp3-now-playing-pulse"
+                  style={{ borderColor: pulseColor }}
+                  aria-hidden="true"
+                />
+              </>
+            )}
             {profile.avatarUrl ? (
               <div
                 className={[
-                  "relative mb-4 h-24 w-24 rounded-full overflow-hidden ring-4",
+                  "relative h-24 w-24 rounded-full overflow-hidden ring-4",
                   equippedCosmetic ? `ring-offset-4 ring-offset-[#0b0b0f] ${equippedCosmetic.ringClassName}` : "",
                 ].join(" ")}
                 style={equippedCosmetic ? undefined : { boxShadow: `0 0 0 4px hsla(${hue}, 50%, 30%, 0.35), 0 12px 48px hsla(${hue}, 60%, 30%, 0.3)` }}
@@ -332,7 +374,7 @@ export default function ProfileClient() {
             ) : (
               <div
                 className={[
-                  "mb-4 h-24 w-24 rounded-full flex items-center justify-center text-3xl font-semibold text-white",
+                  "h-24 w-24 rounded-full flex items-center justify-center text-3xl font-semibold text-white",
                   equippedCosmetic ? `ring-4 ring-offset-4 ring-offset-[#0b0b0f] ${equippedCosmetic.ringClassName}` : "",
                 ].join(" ")}
                 style={{
@@ -343,6 +385,7 @@ export default function ProfileClient() {
                 {getInitials(profile.displayName, profile.initials)}
               </div>
             )}
+          </div>
 
             <div className="flex flex-col gap-1.5 mb-1">
               <h1 className="text-2xl font-semibold text-white/95">{profile.displayName}</h1>

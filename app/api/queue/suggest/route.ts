@@ -4,6 +4,7 @@ import { readAccountProfile } from "@/lib/accountData";
 import { pushNotification } from "@/lib/notificationData";
 import { broadcastToUser } from "@/lib/realtimeBroadcast";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { unexpectedErrorResponse } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 
@@ -11,6 +12,7 @@ const SUGGEST_LIMIT = 10;
 const SUGGEST_WINDOW_MS = 60 * 1000;
 
 export async function POST(req: Request) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -68,4 +70,7 @@ export async function POST(req: Request) {
   }).catch(() => {});
 
   return NextResponse.json({ ok: true });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }

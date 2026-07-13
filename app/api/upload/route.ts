@@ -97,7 +97,7 @@ export async function POST(req: Request) {
     });
   } catch (errorValue: unknown) {
     return NextResponse.json(
-      { ok: false, error: "Upload failed", details: getErrorMessage(errorValue) },
+      { ok: false, error: "Echec de l'upload", details: getErrorMessage(errorValue) },
       { status: 500 }
     );
   }

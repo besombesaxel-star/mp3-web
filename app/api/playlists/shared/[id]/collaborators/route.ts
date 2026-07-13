@@ -5,6 +5,7 @@ import { readAccountProfile } from "@/lib/accountData";
 import { pushNotification } from "@/lib/notificationData";
 import { broadcastToUser } from "@/lib/realtimeBroadcast";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { unexpectedErrorResponse } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +16,7 @@ const INVITE_WINDOW_MS = 10 * 60 * 1000;
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function POST(req: Request, ctx: Ctx) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -72,9 +74,13 @@ export async function POST(req: Request, ctx: Ctx) {
   })();
 
   return NextResponse.json({ ok: true, playlist });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }
 
 export async function DELETE(req: Request, ctx: Ctx) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -98,4 +104,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
 
   const playlist = await readSharedPlaylist(id);
   return NextResponse.json({ ok: true, playlist });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }

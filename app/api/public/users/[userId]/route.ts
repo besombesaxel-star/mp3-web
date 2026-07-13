@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getPublicUserProfileData } from "@/lib/publicCatalog";
 import { bumpProfileView } from "@/lib/profileViews";
 import { readOptionalAuthenticatedUser } from "@/lib/supabaseAuthServer";
+import { unexpectedErrorResponse } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,6 +12,7 @@ export async function GET(
   req: Request,
   context: { params: Promise<{ userId: string }> }
 ) {
+  try {
   const { userId } = await context.params;
   const viewer = await readOptionalAuthenticatedUser(req);
   const profile = await getPublicUserProfileData(userId, viewer?.id ?? null);
@@ -25,4 +27,7 @@ export async function GET(
     ok: true,
     profile,
   });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }

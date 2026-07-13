@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { deleteTrackForApi, getLibraryBackendMode, isValidTrackSrc, listTracksForApi } from "@/lib/libraryRepository";
 import { readAuthenticatedUser, readOptionalAuthenticatedUser } from "@/lib/supabaseAuthServer";
+import { unexpectedErrorResponse } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function GET(req: Request) {
+  try {
   const tracks = await listTracksForApi();
   const viewer = await readOptionalAuthenticatedUser(req);
   const viewerId = viewer?.id ?? null;
@@ -33,9 +35,13 @@ export async function GET(req: Request) {
       },
     }
   );
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }
 
 export async function DELETE(req: Request) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -62,4 +68,7 @@ export async function DELETE(req: Request) {
   }
 
   return NextResponse.json({ ok: true });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }

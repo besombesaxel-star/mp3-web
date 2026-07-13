@@ -216,6 +216,7 @@ export default function RadioLivePage() {
                   fill
                   sizes="700px"
                   className="object-cover scale-110 blur-2xl opacity-40"
+                  priority
                 />
               ) : null}
               <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/75 to-black/90" />

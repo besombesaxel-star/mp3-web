@@ -17,21 +17,21 @@ function getPath(userId: string) {
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const userId = url.searchParams.get("userId");
-  if (!userId) return NextResponse.json({ nowPlaying: null });
+  if (!userId) return NextResponse.json({ ok: true, nowPlaying: null });
 
   const admin = getSupabaseAdmin();
-  if (!admin) return NextResponse.json({ nowPlaying: null });
+  if (!admin) return NextResponse.json({ ok: true, nowPlaying: null });
 
   const { data, error } = await admin.client.storage.from(BUCKET).download(getPath(userId));
-  if (error || !data) return NextResponse.json({ nowPlaying: null });
+  if (error || !data) return NextResponse.json({ ok: true, nowPlaying: null });
 
   try {
     const json = JSON.parse(await data.text());
-    if (!json?.title || !json?.src) return NextResponse.json({ nowPlaying: null });
-    if (Date.now() - (json.updatedAt ?? 0) > STALE_MS) return NextResponse.json({ nowPlaying: null });
-    return NextResponse.json({ nowPlaying: json });
+    if (!json?.title || !json?.src) return NextResponse.json({ ok: true, nowPlaying: null });
+    if (Date.now() - (json.updatedAt ?? 0) > STALE_MS) return NextResponse.json({ ok: true, nowPlaying: null });
+    return NextResponse.json({ ok: true, nowPlaying: json });
   } catch {
-    return NextResponse.json({ nowPlaying: null });
+    return NextResponse.json({ ok: true, nowPlaying: null });
   }
 }
 

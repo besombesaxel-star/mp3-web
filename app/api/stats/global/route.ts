@@ -220,6 +220,6 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ ok: true, top, listeners, period });
   } catch {
-    return NextResponse.json({ ok: false, top: [], listeners: [], period });
+    return NextResponse.json({ ok: false, top: [], listeners: [], period }, { status: 500 });
   }
 }

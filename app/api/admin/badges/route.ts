@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { getAllBadgeAssignments, setBadgesForUser, MANUAL_BADGE_KEYS, type BadgeKey } from "@/lib/badges";
 import { isAdminUser } from "@/lib/adminAccess";
 import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
+import { unexpectedErrorResponse } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function GET(req: Request) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -18,9 +20,13 @@ export async function GET(req: Request) {
 
   const assignments = await getAllBadgeAssignments();
   return NextResponse.json({ ok: true, assignments });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }
 
 export async function PUT(req: Request) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -42,4 +48,7 @@ export async function PUT(req: Request) {
   await setBadgesForUser(userId, badges);
   const assignments = await getAllBadgeAssignments();
   return NextResponse.json({ ok: true, assignments });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }

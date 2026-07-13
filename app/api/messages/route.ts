@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
 import { getOtherParticipant, listConversationIdsForUser, readConversation } from "@/lib/directMessages";
 import { getPublicUserProfileData } from "@/lib/publicCatalog";
+import { unexpectedErrorResponse } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function GET(req: Request) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -45,4 +47,7 @@ export async function GET(req: Request) {
     .sort((a, b) => b.updatedAt - a.updatedAt);
 
   return NextResponse.json({ ok: true, conversations });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }

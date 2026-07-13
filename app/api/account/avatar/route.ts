@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { saveAccountProfile } from "@/lib/accountData";
 import { getSupabaseAdmin, ensureSupabaseBucketReady } from "@/lib/supabaseAdmin";
 import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
+import { unexpectedErrorResponse } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 
@@ -13,6 +14,7 @@ function extractPublicUrl(data: unknown) {
 }
 
 export async function POST(req: Request) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -69,9 +71,13 @@ export async function POST(req: Request) {
   await saveAccountProfile(auth.user.id, { avatarUrl });
 
   return NextResponse.json({ ok: true, avatarUrl });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }
 
 export async function DELETE(req: Request) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -79,4 +85,7 @@ export async function DELETE(req: Request) {
 
   await saveAccountProfile(auth.user.id, { avatarUrl: "" });
   return NextResponse.json({ ok: true });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }

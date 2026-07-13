@@ -5,6 +5,7 @@ import { readAccountProfile } from "@/lib/accountData";
 import { pushNotification } from "@/lib/notificationData";
 import { broadcastToChannel, broadcastToUser } from "@/lib/realtimeBroadcast";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { unexpectedErrorResponse } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ const DM_WINDOW_MS = 60 * 1000;
 type Ctx = { params: Promise<{ userId: string }> };
 
 export async function GET(req: Request, ctx: Ctx) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -30,9 +32,13 @@ export async function GET(req: Request, ctx: Ctx) {
   const conversationId = getConversationId(auth.user.id, otherId);
   const messages = await readConversation(conversationId);
   return NextResponse.json({ ok: true, messages });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }
 
 export async function POST(req: Request, ctx: Ctx) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -88,4 +94,7 @@ export async function POST(req: Request, ctx: Ctx) {
   void broadcastToUser(otherId, "new_notification", { type: "message", id: crypto.randomUUID() }).catch(() => {});
 
   return NextResponse.json({ ok: true, messages });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }

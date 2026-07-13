@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
 import { deleteSharedPlaylist, readSharedPlaylist, updateSharedPlaylist } from "@/lib/sharedPlaylists";
+import { unexpectedErrorResponse } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +13,7 @@ function isMember(playlist: { ownerId: string; collaboratorIds: string[] }, user
 }
 
 export async function GET(req: Request, ctx: Ctx) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -24,9 +26,13 @@ export async function GET(req: Request, ctx: Ctx) {
   }
 
   return NextResponse.json({ ok: true, playlist });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }
 
 export async function PATCH(req: Request, ctx: Ctx) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -53,9 +59,13 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
   const playlist = await readSharedPlaylist(id);
   return NextResponse.json({ ok: true, playlist });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }
 
 export async function DELETE(req: Request, ctx: Ctx) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -71,4 +81,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
   }
 
   return NextResponse.json({ ok: true });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }

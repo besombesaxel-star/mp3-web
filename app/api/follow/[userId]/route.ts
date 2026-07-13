@@ -5,6 +5,7 @@ import { pushNotification } from "@/lib/notificationData";
 import { broadcastToUser } from "@/lib/realtimeBroadcast";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { pushActivityEvent } from "@/lib/activityFeed";
+import { unexpectedErrorResponse } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +16,7 @@ const FOLLOW_WINDOW_MS = 60 * 1000;
 type Ctx = { params: Promise<{ userId: string }> };
 
 export async function POST(req: Request, ctx: Ctx) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -71,9 +73,13 @@ export async function POST(req: Request, ctx: Ctx) {
   }).catch(() => {});
 
   return NextResponse.json({ ok: true, followersCount: newCount });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }
 
 export async function DELETE(req: Request, ctx: Ctx) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -100,4 +106,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
   ]);
 
   return NextResponse.json({ ok: true, followersCount: newCount });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }

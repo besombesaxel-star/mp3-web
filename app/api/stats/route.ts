@@ -20,7 +20,7 @@ export async function GET(req: Request) {
   }
 
   const admin = getSupabaseAdmin();
-  if (!admin) return NextResponse.json({ ok: false, stats: null });
+  if (!admin) return NextResponse.json({ ok: false, stats: null }, { status: 503 });
 
   const { data, error } = await admin.client.storage.from(BUCKET).download(getPath(auth.user.id));
   if (error || !data) return NextResponse.json({ ok: true, stats: null });

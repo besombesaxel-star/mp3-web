@@ -3,6 +3,7 @@ import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
 import { readAccountProfile } from "@/lib/accountData";
 import { pushNotification } from "@/lib/notificationData";
 import { broadcastToUser } from "@/lib/realtimeBroadcast";
+import { unexpectedErrorResponse } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 
@@ -12,6 +13,7 @@ const MIN_INTERVAL_MS = 3000;
 const lastReactionAtByUser = new Map<string, number>();
 
 export async function POST(req: Request) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -56,4 +58,7 @@ export async function POST(req: Request) {
   void broadcastToUser(targetUserId, "new_notification", { ...notifPayload, id: crypto.randomUUID(), read: false }).catch(() => {});
 
   return NextResponse.json({ ok: true });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }

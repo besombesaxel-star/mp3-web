@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readAccountProfile } from "@/lib/accountData";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { unexpectedErrorResponse } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,6 +9,7 @@ export const revalidate = 0;
 
 // Returns { [userId]: { avatarUrl, displayName } } for a list of user IDs
 export async function GET(req: Request) {
+  try {
   const url = new URL(req.url);
   const raw = url.searchParams.get("ids") ?? "";
   const ids = raw
@@ -17,7 +19,7 @@ export async function GET(req: Request) {
     .slice(0, 20);
 
   if (ids.length === 0) {
-    return NextResponse.json({});
+    return NextResponse.json({ ok: true });
   }
 
   const admin = getSupabaseAdmin();
@@ -40,5 +42,8 @@ export async function GET(req: Request) {
     })
   );
 
-  return NextResponse.json(Object.fromEntries(entries));
+  return NextResponse.json({ ok: true, ...Object.fromEntries(entries) });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }

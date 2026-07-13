@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
 import { createSharedPlaylist, listSharedPlaylistsForUser } from "@/lib/sharedPlaylists";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { unexpectedErrorResponse } from "@/lib/apiError";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,6 +11,7 @@ const CREATE_LIMIT = 20;
 const CREATE_WINDOW_MS = 10 * 60 * 1000;
 
 export async function GET(req: Request) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -17,9 +19,13 @@ export async function GET(req: Request) {
 
   const playlists = await listSharedPlaylistsForUser(auth.user.id);
   return NextResponse.json({ ok: true, playlists });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }
 
 export async function POST(req: Request) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -38,4 +44,7 @@ export async function POST(req: Request) {
 
   const playlist = await createSharedPlaylist(auth.user.id, name);
   return NextResponse.json({ ok: true, playlist });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }

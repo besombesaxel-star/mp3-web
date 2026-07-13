@@ -3,6 +3,7 @@ import { readAccountProfile, saveAccountProfile, type AccountPlaylist, type EqGa
 import { logActivity } from "@/lib/activityLog";
 import { isAchievementId } from "@/lib/cosmetics";
 import { getProfileViewStats } from "@/lib/profileViews";
+import { unexpectedErrorResponse } from "@/lib/apiError";
 
 const EQ_PRESETS: EqPreset[] = ["off", "bass", "vocal", "night", "custom"];
 import { listTracksForApi } from "@/lib/libraryRepository";
@@ -25,6 +26,7 @@ function serializeTrack(track: Awaited<ReturnType<typeof listTracksForApi>>[numb
 }
 
 export async function GET(req: Request) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -71,9 +73,13 @@ export async function GET(req: Request) {
     uploadsCount: uploads.length,
     profileViews,
   });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }
 
 export async function PUT(req: Request) {
+  try {
   const auth = await readAuthenticatedUser(req);
   if (!auth.user) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
@@ -146,4 +152,7 @@ export async function PUT(req: Request) {
   }
 
   return NextResponse.json({ ok: true });
+  } catch {
+    return unexpectedErrorResponse();
+  }
 }

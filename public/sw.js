@@ -2,7 +2,7 @@ const STATIC_CACHE = "mp3-static-v2";
 const RUNTIME_CACHE = "mp3-runtime-v2";
 const SHARE_CACHE = "mp3-share-target-v1";
 const SHARE_KEY = "/__share-target-stash__";
-const PRECACHE_URLS = ["/", "/manifest.webmanifest", "/favicon.ico"];
+const PRECACHE_URLS = ["/", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -17,7 +17,7 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((key) => key !== STATIC_CACHE && key !== RUNTIME_CACHE)
+            .filter((key) => key !== STATIC_CACHE && key !== RUNTIME_CACHE && key !== SHARE_CACHE)
             .map((key) => caches.delete(key))
         )
       )

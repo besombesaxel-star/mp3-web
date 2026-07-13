@@ -17,6 +17,7 @@ import NotificationBell from "./NotificationBell";
 import LauncherHeartbeat from "./LauncherHeartbeat";
 import CustomCursor from "./CustomCursor";
 import FallingPetals from "./FallingPetals";
+import WelcomeCard from "./WelcomeCard";
 import { usePlayer } from "./PlayerContext";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -47,6 +48,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <KeyboardShortcuts />
+      <WelcomeCard />
       <PwaInstaller />
       <LauncherHeartbeat />
       <LandscapeGuard />

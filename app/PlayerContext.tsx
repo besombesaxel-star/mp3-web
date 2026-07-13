@@ -13,7 +13,7 @@ import { toast } from "./Toast";
 import { vibrate } from "./haptics";
 import { playChimeSound, playPopSound, unlockAudio } from "./sound";
 import { getOrCreateSharedGraph, type SharedGraph } from "./audioGraph";
-import { fetchTracksShared } from "./tracksCache";
+import { fetchTracksShared, type ApiTrack } from "./tracksCache";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { ACHIEVEMENTS, type AchievementId } from "@/lib/achievements";
 import { computeStreak } from "@/lib/streak";
@@ -260,16 +260,6 @@ type PlayerPrefs = {
   customEqGains: EqGains;
   fallingPetals: boolean;
   reducedMotion: boolean;
-};
-
-type ApiTrack = {
-  title: string;
-  artist: string;
-  src: string;
-  cover: string | null;
-  ownerDisplayName?: string | null;
-  ownerId?: string | null;
-  credits?: string | null;
 };
 
 type AccountResponse = {
@@ -704,6 +694,42 @@ export function buildSmartQueue(
   return scored.slice(0, 40);
 }
 
+// Non-shuffle "next" resolution: advance by one, wrap to 0 on repeat "all",
+// or return null when the queue is exhausted (caller decides what happens then).
+export function resolveNextIndex(
+  currentIndex: number,
+  tracksLength: number,
+  repeat: RepeatMode
+): number | null {
+  if (tracksLength === 0) return null;
+  if (currentIndex < 0) return 0;
+
+  const last = tracksLength - 1;
+  if (currentIndex === last) return repeat === "all" ? 0 : null;
+  return currentIndex + 1;
+}
+
+// Non-shuffle "previous" resolution: step back by one, wrap to the last track
+// on repeat "all", or return null to mean "restart the current track instead".
+export function resolvePrevIndex(
+  currentIndex: number,
+  tracksLength: number,
+  repeat: RepeatMode
+): number | null {
+  if (tracksLength === 0 || currentIndex < 0) return null;
+  if (currentIndex === 0) return repeat === "all" ? tracksLength - 1 : null;
+  return currentIndex - 1;
+}
+
+// Picks a random index other than `exclude`. Returns `exclude` itself when
+// there is nothing else to pick from (0 or 1 track).
+export function pickRandomIndex(exclude: number, tracksLength: number): number {
+  if (tracksLength <= 1) return exclude;
+  let r = exclude;
+  while (r === exclude) r = Math.floor(Math.random() * tracksLength);
+  return r;
+}
+
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const { accessToken, isAuthenticated, loading: authLoading, user } = useAuth();
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -1059,13 +1085,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setStatsState((prev) => computeLeaders({ ...prev, commentsPosted: prev.commentsPosted + 1 }));
   }
 
-  function pickRandomIndex(exclude: number) {
-    if (tracks.length <= 1) return exclude;
-    let r = exclude;
-    while (r === exclude) r = Math.floor(Math.random() * tracks.length);
-    return r;
-  }
-
   function getPlannedShuffleNext(currentIndex: number) {
     const planned = plannedShuffleNextRef.current;
     if (
@@ -1077,7 +1096,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       return planned;
     }
 
-    const nextIdx = pickRandomIndex(currentIndex);
+    const nextIdx = pickRandomIndex(currentIndex, tracks.length);
     plannedShuffleNextRef.current = nextIdx;
     return nextIdx;
   }
@@ -2594,25 +2613,19 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const last = tracks.length - 1;
-
-    if (index === last) {
-      if (repeat === "all") {
-        setIndex(0);
-        setPlaying(true);
-      } else {
-        if (fromEnded) {
-          setPlaying(false);
-          const currentSrc = track?.src ?? "";
-          if (smartAutoplay) {
-            void startSmartAutoplay(currentSrc);
-          }
+    const nextIdx = resolveNextIndex(index, tracks.length, repeat);
+    if (nextIdx === null) {
+      if (fromEnded) {
+        setPlaying(false);
+        const currentSrc = track?.src ?? "";
+        if (smartAutoplay) {
+          void startSmartAutoplay(currentSrc);
         }
       }
       return;
     }
 
-    setIndex(index + 1);
+    setIndex(nextIdx);
     setPlaying(true);
   }
 
@@ -2644,7 +2657,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         });
         return;
       }
-      const prevIdx = pickRandomIndex(index);
+      const prevIdx = pickRandomIndex(index, tracks.length);
       runSoftTransition(() => {
         setIndex(prevIdx);
         setPlaying(true);
@@ -2652,21 +2665,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (index === 0) {
-      if (repeat === "all") {
-        runSoftTransition(() => {
-          setIndex(tracks.length - 1);
-          setPlaying(true);
-        });
-      } else {
-        audio.currentTime = 0;
-        lastCtRef.current = 0;
-      }
+    const prevIdx = resolvePrevIndex(index, tracks.length, repeat);
+    if (prevIdx === null) {
+      audio.currentTime = 0;
+      lastCtRef.current = 0;
       return;
     }
 
     runSoftTransition(() => {
-      setIndex(index - 1);
+      setIndex(prevIdx);
       setPlaying(true);
     });
   }

@@ -13,6 +13,7 @@ import { pictureToFile, readId3Tags } from "@/lib/id3";
 import { compressAudioFile, shouldSuggestCompression } from "@/lib/audioCompress";
 import { trimAudioSilence } from "@/lib/audioTrim";
 import { isAcceptedAudioFileName } from "@/lib/libraryFiles";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 type SignUploadResponse = {
   ok?: boolean;
@@ -46,10 +47,6 @@ type MetaResponse = {
   ok?: boolean;
   error?: string;
 };
-
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
-}
 
 function normalizeText(value: string) {
   return value

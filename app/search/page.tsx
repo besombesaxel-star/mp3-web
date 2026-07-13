@@ -9,6 +9,7 @@ import { Track, usePlayer } from "../PlayerContext";
 import { fetchTracksShared } from "../tracksCache";
 import { subscribeTracksUpdated } from "../tracksSync";
 import { getInitials, hashStringToHue } from "@/lib/publicLinks";
+import { getErrorMessage } from "@/lib/errorMessage";
 import { useLongPress } from "../useLongPress";
 import TrackContextMenu from "../TrackContextMenu";
 
@@ -18,10 +19,6 @@ type SearchTab = "all" | "titres" | "artistes" | "utilisateurs";
 
 type ArtistEntry = { name: string; count: number; cover?: string };
 type UserEntry = { id: string; displayName: string; trackCount: number };
-
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
-}
 
 function normalizeText(value: string) {
   return value

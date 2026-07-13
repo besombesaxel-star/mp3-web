@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Play, Plus, Trash2, Users, X } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
+import { getErrorMessage } from "@/lib/errorMessage";
 import { useFocusTrap } from "./useFocusTrap";
 import { getPublicProfileHref } from "@/lib/publicLinks";
 import type { Track } from "./PlayerContext";
@@ -31,10 +32,6 @@ type Props = {
   onDeleted: (id: string) => void;
   onPlay: (tracks: Track[], startIndex: number) => void;
 };
-
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
-}
 
 export default function SharedPlaylistModal({ playlist, library, onClose, onUpdated, onDeleted, onPlay }: Props) {
   const { accessToken, user } = useAuth();

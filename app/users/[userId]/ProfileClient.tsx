@@ -13,6 +13,7 @@ import { PlatformIcon } from "@/app/PlatformIcon";
 import { usePlayer } from "@/app/PlayerContext";
 import { useAuth } from "@/app/AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
+import { getErrorMessage } from "@/lib/errorMessage";
 import { getInitials, hashStringToHue } from "@/lib/publicLinks";
 import ProfileParticles from "@/app/ProfileParticles";
 import GuestbookSection from "@/app/GuestbookSection";
@@ -78,10 +79,6 @@ type PublicProfileResponse = {
   ok?: boolean;
   profile?: PublicProfile;
 };
-
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
-}
 
 function formatCount(n: number) {
   if (n >= 1000) return (n / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 }) + "k";

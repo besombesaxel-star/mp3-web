@@ -7,27 +7,15 @@ import { Image as ImageIcon, LayoutGrid, List as ListIcon, Pencil } from "lucide
 import AlbumCard from "../AlbumCard";
 import { useAuth } from "../AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
+import { getErrorMessage } from "@/lib/errorMessage";
 import { Track, usePlayer } from "../PlayerContext";
-import { fetchTracksShared } from "../tracksCache";
+import { fetchTracksShared, type ApiTrack } from "../tracksCache";
 import { dispatchTracksUpdated, subscribeTracksUpdated } from "../tracksSync";
 import { COVER_SCROLL_TRANSFORM, useCoverScrollEffect } from "../useCoverScrollEffect";
 import { useFocusTrap } from "../useFocusTrap";
 import { useLongPress } from "../useLongPress";
 import { getArtistHref, getPublicProfileHref } from "@/lib/publicLinks";
 import TrackContextMenu from "../TrackContextMenu";
-
-type ApiTrack = {
-  title: string;
-  artist: string;
-  src: string;
-  cover: string | null;
-  isLegacyShared?: boolean;
-  isOwnedByViewer?: boolean;
-  ownerDisplayName?: string | null;
-  ownerId?: string | null;
-  ownerLabel?: string | null;
-  credits?: string | null;
-};
 
 type MetaSaveResponse = {
   ok?: boolean;
@@ -38,10 +26,6 @@ type DeleteTrackResponse = {
   ok?: boolean;
   error?: string;
 };
-
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
-}
 
 function normalizeTitle(value: string) {
   return value

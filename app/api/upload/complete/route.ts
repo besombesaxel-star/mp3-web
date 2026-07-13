@@ -4,12 +4,9 @@ import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
 import { readAccountProfile } from "@/lib/accountData";
 import { notifyAllUsersOfUpload } from "@/lib/notificationData";
 import { pushActivityEvent } from "@/lib/activityFeed";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 export const runtime = "nodejs";
-
-function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
-}
 
 export async function POST(req: Request) {
   try {

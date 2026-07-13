@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/app/AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
+import { getErrorMessage } from "@/lib/errorMessage";
 import { usePlayer } from "@/app/PlayerContext";
 import { getPublicProfileHref, hashStringToHue } from "@/lib/publicLinks";
 import { getDeviceId } from "@/lib/deviceId";
@@ -79,10 +80,6 @@ type AccountResponse = {
   uploadsCount?: number;
   profileViews?: { total: number; last7Days: number };
 };
-
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
-}
 
 function uid() {
   return Math.random().toString(36).slice(2, 10);

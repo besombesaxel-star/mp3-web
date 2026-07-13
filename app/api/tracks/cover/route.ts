@@ -2,15 +2,12 @@ import { NextResponse } from "next/server";
 import { isValidCoverUpload, isValidTrackSrc, saveTrackCoverForApi } from "@/lib/libraryRepository";
 import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 export const runtime = "nodejs";
 
 const COVER_LIMIT = 20;
 const COVER_WINDOW_MS = 10 * 60 * 1000;
-
-function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
-}
 
 export async function POST(req: Request) {
   try {

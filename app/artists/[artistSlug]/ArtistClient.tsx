@@ -8,6 +8,7 @@ import { LayoutGrid, List as ListIcon } from "lucide-react";
 import AlbumCard from "@/app/AlbumCard";
 import { usePlayer } from "@/app/PlayerContext";
 import { getPublicProfileHref } from "@/lib/publicLinks";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 type ArtistTrack = {
   artist: string;
@@ -41,10 +42,6 @@ type ArtistResponse = {
   error?: string;
   ok?: boolean;
 };
-
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
-}
 
 const ARTIST_VIEW_KEY = "mp3_artist_view";
 

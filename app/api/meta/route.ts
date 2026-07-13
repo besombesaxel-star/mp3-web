@@ -2,12 +2,9 @@ import { NextResponse } from "next/server";
 import { getLibraryBackendMode, isValidTrackSrc, saveTrackMetaForApi } from "@/lib/libraryRepository";
 import { readLocalMeta } from "@/lib/localLibrary";
 import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 export const runtime = "nodejs";
-
-function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
-}
 
 export async function GET() {
   const meta = await readLocalMeta();

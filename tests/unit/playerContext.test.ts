@@ -8,6 +8,9 @@ import {
   isRecord,
   normalizeArtist,
   normalizeCustomEqGains,
+  pickRandomIndex,
+  resolveNextIndex,
+  resolvePrevIndex,
   safePrefs,
   safeSession,
   safeStats,
@@ -319,5 +322,68 @@ describe("buildSmartQueue", () => {
     const indexA = queue.findIndex((t) => t.src === "/a.mp3");
     const indexB = queue.findIndex((t) => t.src === "/b.mp3");
     expect(indexA).toBeGreaterThan(indexB);
+  });
+});
+
+describe("resolveNextIndex", () => {
+  it("returns null for an empty queue", () => {
+    expect(resolveNextIndex(0, 0, "off")).toBeNull();
+  });
+
+  it("starts at 0 when nothing is playing yet", () => {
+    expect(resolveNextIndex(-1, 5, "off")).toBe(0);
+  });
+
+  it("advances by one in the middle of the queue, regardless of repeat mode", () => {
+    expect(resolveNextIndex(1, 5, "off")).toBe(2);
+    expect(resolveNextIndex(1, 5, "all")).toBe(2);
+    expect(resolveNextIndex(1, 5, "one")).toBe(2);
+  });
+
+  it("wraps to 0 at the end when repeat is 'all'", () => {
+    expect(resolveNextIndex(4, 5, "all")).toBe(0);
+  });
+
+  it("returns null at the end when repeat is 'off' or 'one' (caller decides what happens)", () => {
+    expect(resolveNextIndex(4, 5, "off")).toBeNull();
+    expect(resolveNextIndex(4, 5, "one")).toBeNull();
+  });
+});
+
+describe("resolvePrevIndex", () => {
+  it("returns null for an empty queue or no current track", () => {
+    expect(resolvePrevIndex(0, 0, "off")).toBeNull();
+    expect(resolvePrevIndex(-1, 5, "off")).toBeNull();
+  });
+
+  it("steps back by one in the middle of the queue, regardless of repeat mode", () => {
+    expect(resolvePrevIndex(2, 5, "off")).toBe(1);
+    expect(resolvePrevIndex(2, 5, "all")).toBe(1);
+    expect(resolvePrevIndex(2, 5, "one")).toBe(1);
+  });
+
+  it("wraps to the last track at the start when repeat is 'all'", () => {
+    expect(resolvePrevIndex(0, 5, "all")).toBe(4);
+  });
+
+  it("returns null at the start when repeat is 'off' or 'one' (caller restarts the current track)", () => {
+    expect(resolvePrevIndex(0, 5, "off")).toBeNull();
+    expect(resolvePrevIndex(0, 5, "one")).toBeNull();
+  });
+});
+
+describe("pickRandomIndex", () => {
+  it("returns the same index when there is nothing else to pick from", () => {
+    expect(pickRandomIndex(0, 0)).toBe(0);
+    expect(pickRandomIndex(0, 1)).toBe(0);
+  });
+
+  it("never returns the excluded index, and stays in range", () => {
+    for (let i = 0; i < 200; i++) {
+      const result = pickRandomIndex(2, 5);
+      expect(result).not.toBe(2);
+      expect(result).toBeGreaterThanOrEqual(0);
+      expect(result).toBeLessThan(5);
+    }
   });
 });

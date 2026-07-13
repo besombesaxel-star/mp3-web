@@ -6,12 +6,9 @@ import { useAuth } from "@/app/AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { isAdminUser } from "@/lib/adminAccess";
 import { BADGE_LABELS, MANUAL_BADGE_KEYS, type BadgeKey } from "@/lib/badges";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 type Assignments = Record<string, BadgeKey[]>;
-
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
-}
 
 export default function AdminBadgesPage() {
   const { accessToken, isAuthenticated, loading, user } = useAuth();

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GripVertical, Music2, Plus, Users } from "lucide-react";
 import { useAuth } from "../AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
+import { getErrorMessage } from "@/lib/errorMessage";
 import { usePlayer, Track } from "../PlayerContext";
 import { fetchTracksShared } from "../tracksCache";
 import { subscribeTracksUpdated } from "../tracksSync";
@@ -175,10 +176,6 @@ function isValidPlaylist(value: unknown): value is Playlist {
     Array.isArray(obj.trackSrcs) &&
     obj.trackSrcs.every((src) => typeof src === "string")
   );
-}
-
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
 }
 
 function badgeToneClass(tone: PlaylistBadge["tone"]) {

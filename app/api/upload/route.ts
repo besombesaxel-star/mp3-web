@@ -5,15 +5,12 @@ import { readAccountProfile } from "@/lib/accountData";
 import { notifyAllUsersOfUpload } from "@/lib/notificationData";
 import { checkRateLimit } from "@/lib/rateLimit";
 import { pushActivityEvent } from "@/lib/activityFeed";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 export const runtime = "nodejs";
 
 const UPLOAD_LIMIT = 20;
 const UPLOAD_WINDOW_MS = 10 * 60 * 1000;
-
-function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
-}
 
 export async function POST(req: Request) {
   try {

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { HardDrive, Music, Image as ImageIcon, Database } from "lucide-react";
 import { useAuth } from "@/app/AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
+import { getErrorMessage } from "@/lib/errorMessage";
 import { isAdminUser } from "@/lib/adminAccess";
 
 type TopUser = {
@@ -55,10 +56,6 @@ function StatCard({
       {sub ? <p className="text-xs text-white/30 mt-1">{sub}</p> : null}
     </div>
   );
-}
-
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
 }
 
 export default function AdminStoragePage() {

@@ -7,20 +7,11 @@ import AlbumCard from "./AlbumCard";
 import ActivityFeed from "./ActivityFeed";
 import { useAuth } from "./AuthProvider";
 import { Track, usePlayer } from "./PlayerContext";
-import { fetchTracksShared } from "./tracksCache";
+import { fetchTracksShared, type ApiTrack } from "./tracksCache";
 import { subscribeTracksUpdated } from "./tracksSync";
 import { COVER_SCROLL_TRANSFORM, useCoverScrollEffect } from "./useCoverScrollEffect";
 import { computeRecommendations } from "@/lib/recommendations";
-
-type ApiTrack = {
-  title: string;
-  artist: string;
-  src: string;
-  cover: string | null;
-  ownerDisplayName?: string | null;
-  ownerId?: string | null;
-  credits?: string | null;
-};
+import { getErrorMessage } from "@/lib/errorMessage";
 
 type RecentCard = {
   title: string;
@@ -40,10 +31,6 @@ function SkeletonCard() {
       </div>
     </div>
   );
-}
-
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
 }
 
 function getCoverDedupKey(track: Track) {

@@ -813,6 +813,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const autoAdvanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeFrameRef = useRef<number | null>(null);
+  // Target volume of whatever fade is currently in-flight (fadeFrameRef pending),
+  // so a visibilitychange listener can snap straight to it if the tab gets hidden
+  // mid-fade - requestAnimationFrame is paused while hidden/minimized, which would
+  // otherwise leave the audio stuck silent (or at a partial volume) until the
+  // window is restored.
+  const activeFadeTargetVolumeRef = useRef<number | null>(null);
   const fadeInAfterTransitionRef = useRef(false);
   const startupFadeDoneRef = useRef(false);
   const smartAutoplayBusyRef = useRef(false);
@@ -1381,6 +1387,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const fromVolume = muted ? 0 : clamp(volume, 0, 1);
 
       if (fromVolume > 0 && !muted) {
+        activeFadeTargetVolumeRef.current = 0;
         const fadeOut = (now: number) => {
           const ratio = clamp((now - start) / transitionMs, 0, 1);
           audio.volume = clamp(fromVolume * (1 - ratio), 0, 1);
@@ -1388,6 +1395,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
             fadeFrameRef.current = window.requestAnimationFrame(fadeOut);
           } else {
             fadeFrameRef.current = null;
+            activeFadeTargetVolumeRef.current = null;
           }
         };
         fadeFrameRef.current = window.requestAnimationFrame(fadeOut);
@@ -1423,10 +1431,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           } else {
             audio.muted = muted;
             fadeFrameRef.current = null;
+            activeFadeTargetVolumeRef.current = null;
           }
         };
 
         if (target > 0) {
+          activeFadeTargetVolumeRef.current = target;
           fadeFrameRef.current = window.requestAnimationFrame(fadeIn);
         } else {
           audio.muted = muted;
@@ -1515,16 +1525,30 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       doNext(true);
     };
 
+    // requestAnimationFrame is paused while the tab/window is hidden or
+    // minimized, which otherwise leaves a fade-out/fade-in stuck partway
+    // (typically silent at volume 0) until the window is restored - jump
+    // straight to the intended target the instant we notice.
+    const onVisibilityChange = () => {
+      if (!document.hidden) return;
+      if (activeFadeTargetVolumeRef.current === null) return;
+      audio.volume = clamp(activeFadeTargetVolumeRef.current, 0, 1);
+      clearFadeFrame();
+      activeFadeTargetVolumeRef.current = null;
+    };
+
     audio.addEventListener("timeupdate", onTime);
     audio.addEventListener("loadedmetadata", onTime);
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("play", onPlay);
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
       audio.removeEventListener("timeupdate", onTime);
       audio.removeEventListener("loadedmetadata", onTime);
       audio.removeEventListener("ended", onEnded);
       audio.removeEventListener("play", onPlay);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       clearAutoAdvanceTimer();
       clearTransitionTimer();
       clearFadeFrame();
@@ -2327,6 +2351,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     const fadeMs = 900;
     const start = performance.now();
     clearFadeFrame();
+    activeFadeTargetVolumeRef.current = targetVolume;
     const fadeIn = (now: number) => {
       const ratio = clamp((now - start) / fadeMs, 0, 1);
       audio.volume = clamp(targetVolume * ratio, 0, 1);
@@ -2334,6 +2359,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         fadeFrameRef.current = window.requestAnimationFrame(fadeIn);
       } else {
         fadeFrameRef.current = null;
+        activeFadeTargetVolumeRef.current = null;
       }
     };
     fadeFrameRef.current = window.requestAnimationFrame(fadeIn);

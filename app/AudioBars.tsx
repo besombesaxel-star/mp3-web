@@ -103,9 +103,14 @@ export default function AudioBars({
 
   useEffect(() => {
     if (playing) return;
+    if (prevRef.current.every((v) => v < 0.001)) return;
+
     const id = window.setInterval(() => {
-      prevRef.current = prevRef.current.map((v) => v * 0.9);
-      setLevels((p) => p.map((v) => v * 0.9));
+      const next = prevRef.current.map((v) => v * 0.9);
+      prevRef.current = next;
+      setLevels(next);
+      // Stop once fully decayed instead of ticking setState forever while idle.
+      if (next.every((v) => v < 0.001)) window.clearInterval(id);
     }, 30);
     return () => window.clearInterval(id);
   }, [playing]);

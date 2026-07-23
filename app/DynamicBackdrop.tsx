@@ -112,17 +112,20 @@ export default function DynamicBackdrop() {
 
       {/* Static (not animated) - a continuously animated transform on a blur-3xl
           layer this large forced a repaint of the full viewport every frame,
-          tanking fps especially at larger/fullscreen viewport sizes. */}
+          tanking fps especially at larger/fullscreen viewport sizes. Kept the
+          blur radius and blob size moderate (vs. the original blur-3xl at
+          38-44rem) since rendering this much blur still isn't free even
+          static, and it scales with visible area. */}
       <div
-        className="absolute left-[-18rem] top-[-12rem] h-[44rem] w-[44rem] rounded-full blur-3xl"
+        className="absolute left-[-15rem] top-[-10rem] h-[36rem] w-[36rem] rounded-full blur-2xl"
         style={primaryBlobStyle}
       />
       <div
-        className="absolute right-[-16rem] top-[2rem] h-[40rem] w-[40rem] rounded-full blur-3xl"
+        className="absolute right-[-13rem] top-[2rem] h-[33rem] w-[33rem] rounded-full blur-2xl"
         style={secondaryBlobStyle}
       />
       <div
-        className="absolute bottom-[-20rem] left-[24%] h-[38rem] w-[38rem] rounded-full blur-3xl"
+        className="absolute bottom-[-16rem] left-[24%] h-[31rem] w-[31rem] rounded-full blur-2xl"
         style={tertiaryBlobStyle}
       />
 

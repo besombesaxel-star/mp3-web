@@ -1387,18 +1387,24 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const fromVolume = muted ? 0 : clamp(volume, 0, 1);
 
       if (fromVolume > 0 && !muted) {
-        activeFadeTargetVolumeRef.current = 0;
-        const fadeOut = (now: number) => {
-          const ratio = clamp((now - start) / transitionMs, 0, 1);
-          audio.volume = clamp(fromVolume * (1 - ratio), 0, 1);
-          if (ratio < 1 && autoAdvanceArmedRef.current) {
-            fadeFrameRef.current = window.requestAnimationFrame(fadeOut);
-          } else {
-            fadeFrameRef.current = null;
-            activeFadeTargetVolumeRef.current = null;
-          }
-        };
-        fadeFrameRef.current = window.requestAnimationFrame(fadeOut);
+        if (document.hidden) {
+          // rAF may never fire a first frame while hidden/minimized - don't schedule
+          // an animation nobody will run, just land on the end state directly.
+          audio.volume = 0;
+        } else {
+          activeFadeTargetVolumeRef.current = 0;
+          const fadeOut = (now: number) => {
+            const ratio = clamp((now - start) / transitionMs, 0, 1);
+            audio.volume = clamp(fromVolume * (1 - ratio), 0, 1);
+            if (ratio < 1 && autoAdvanceArmedRef.current) {
+              fadeFrameRef.current = window.requestAnimationFrame(fadeOut);
+            } else {
+              fadeFrameRef.current = null;
+              activeFadeTargetVolumeRef.current = null;
+            }
+          };
+          fadeFrameRef.current = window.requestAnimationFrame(fadeOut);
+        }
       }
 
       autoAdvanceTimerRef.current = setTimeout(() => {
@@ -1420,26 +1426,33 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         const fadeMs = 260;
         const start = performance.now();
 
-        audio.volume = 0;
         audio.muted = false;
 
-        const fadeIn = (now: number) => {
-          const ratio = clamp((now - start) / fadeMs, 0, 1);
-          audio.volume = clamp(target * ratio, 0, 1);
-          if (ratio < 1) {
+        if (document.hidden) {
+          // Same rationale as the fade-out above: no point animating (and rAF may
+          // never even run a first frame) while hidden/minimized.
+          audio.volume = target;
+          audio.muted = muted;
+        } else {
+          audio.volume = 0;
+          const fadeIn = (now: number) => {
+            const ratio = clamp((now - start) / fadeMs, 0, 1);
+            audio.volume = clamp(target * ratio, 0, 1);
+            if (ratio < 1) {
+              fadeFrameRef.current = window.requestAnimationFrame(fadeIn);
+            } else {
+              audio.muted = muted;
+              fadeFrameRef.current = null;
+              activeFadeTargetVolumeRef.current = null;
+            }
+          };
+
+          if (target > 0) {
+            activeFadeTargetVolumeRef.current = target;
             fadeFrameRef.current = window.requestAnimationFrame(fadeIn);
           } else {
             audio.muted = muted;
-            fadeFrameRef.current = null;
-            activeFadeTargetVolumeRef.current = null;
           }
-        };
-
-        if (target > 0) {
-          activeFadeTargetVolumeRef.current = target;
-          fadeFrameRef.current = window.requestAnimationFrame(fadeIn);
-        } else {
-          audio.muted = muted;
         }
       }
 
@@ -2345,12 +2358,20 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    clearFadeFrame();
+
+    if (document.hidden) {
+      // Same rationale as the crossfade fades: rAF may never run a first frame
+      // while hidden/minimized, so don't schedule an animation for that case.
+      audio.volume = targetVolume;
+      audio.play().catch(() => setPlaying(false));
+      return;
+    }
+
     audio.volume = 0;
     audio.play().catch(() => setPlaying(false));
-
     const fadeMs = 900;
     const start = performance.now();
-    clearFadeFrame();
     activeFadeTargetVolumeRef.current = targetVolume;
     const fadeIn = (now: number) => {
       const ratio = clamp((now - start) / fadeMs, 0, 1);

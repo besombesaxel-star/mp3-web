@@ -2213,23 +2213,34 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   ]);
 
   // persist playback session
-  useEffect(() => {
-    if (!sessionHydratedRef.current) return;
+  //
+  // localStorage.setItem is synchronous and blocks the main thread - writing
+  // on every currentTime change (multiple times/sec during playback, via the
+  // timeupdate-driven state above) caused visible jank across the whole app.
+  // Keep the latest snapshot in a ref (cheap) and flush it on a slow interval
+  // plus on page hide, instead of on every render.
+  const latestSessionRef = useRef<PlayerSession>({ tracks, index, currentTime, volume, muted, shuffle, repeat });
+  latestSessionRef.current = { tracks, index, currentTime, volume, muted, shuffle, repeat };
 
-    const session: PlayerSession = {
-      tracks,
-      index,
-      currentTime,
-      volume,
-      muted,
-      shuffle,
-      repeat,
+  useEffect(() => {
+    const flush = () => {
+      if (!sessionHydratedRef.current) return;
+      try {
+        localStorage.setItem(LS_SESSION, JSON.stringify(latestSessionRef.current));
+      } catch {}
     };
 
-    try {
-      localStorage.setItem(LS_SESSION, JSON.stringify(session));
-    } catch {}
-  }, [tracks, index, currentTime, volume, muted, shuffle, repeat]);
+    const intervalId = setInterval(flush, 4000);
+    document.addEventListener("visibilitychange", flush);
+    window.addEventListener("pagehide", flush);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", flush);
+      window.removeEventListener("pagehide", flush);
+      flush();
+    };
+  }, []);
 
   // when selected track source changes => load track
   useEffect(() => {

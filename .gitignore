@@ -46,6 +46,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# migration artifacts (generated, run-specific)
+/r2-migration-map.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

@@ -129,6 +129,11 @@ async function copyObjectToR2(supabase, supabaseBucket, s3, r2Config, key, { ski
     return "skip";
   }
 
+  if (!execute) {
+    // Dry-run: ne telecharge pas le contenu (evite de consommer l'egress Supabase pour rien).
+    return "copied";
+  }
+
   const { data, error } = await supabase.storage.from(supabaseBucket).download(key);
   if (error) {
     if (isMissingError(error)) return "missing";
@@ -137,17 +142,15 @@ async function copyObjectToR2(supabase, supabaseBucket, s3, r2Config, key, { ski
 
   const buffer = Buffer.from(await data.arrayBuffer());
 
-  if (execute) {
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: r2Config.bucket,
-        Key: key,
-        Body: buffer,
-        ContentType: getContentType(key),
-        CacheControl: "max-age=31536000",
-      })
-    );
-  }
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: r2Config.bucket,
+      Key: key,
+      Body: buffer,
+      ContentType: getContentType(key),
+      CacheControl: "max-age=31536000",
+    })
+  );
 
   return "copied";
 }

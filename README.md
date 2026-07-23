@@ -106,7 +106,28 @@ R2 est S3-compatible, propose 10 Go gratuits et surtout **l'egress gratuit** (im
 2. Cree un bucket (ex. `mp3-web-media`).
 3. Active l'acces public: Bucket > Settings > Public Access > active le sous-domaine `r2.dev`. Tu obtiens une URL du type `https://pub-xxxxxxxxxxxxxxxxxxxx.r2.dev` (un domaine personnalise peut etre branche plus tard sans changement de code).
 4. Cree un token API R2 (R2 > Manage R2 API Tokens > Create API Token, permission "Object Read & Write", restreint si possible a ce bucket) - recupere l'Access Key ID, le Secret Access Key et l'Account ID.
-5. Renseigne dans `.env.local`:
+5. **Configure le CORS du bucket** (indispensable pour que la lecture audio fonctionne - le lecteur charge les pistes en `crossOrigin="anonymous"` pour l'egaliseur, et R2 ne renvoie aucun header CORS par defaut, contrairement a Supabase). Bucket > Settings > CORS Policy > Add CORS policy:
+
+```json
+[
+  {
+    "AllowedOrigins": [
+      "https://your-app.vercel.app",
+      "https://*.vercel.app",
+      "http://localhost:3000",
+      "http://127.0.0.1:3000"
+    ],
+    "AllowedMethods": ["GET", "HEAD"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag", "Content-Length", "Content-Range", "Accept-Ranges"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+Adapte `your-app.vercel.app` a ton domaine reel. Sans cette etape, les morceaux/covers listent bien mais la lecture audio echoue silencieusement (erreur CORS visible seulement dans la console navigateur).
+
+6. Renseigne dans `.env.local`:
 
 ```env
 R2_ACCOUNT_ID=your-cloudflare-account-id

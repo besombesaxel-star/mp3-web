@@ -61,6 +61,8 @@ type CachedCover = {
   el: HTMLElement;
   top: number;
   bottom: number;
+  lastProgress: number;
+  lastSide: EdgeSide;
 };
 
 export function useCoverScrollEffect(rootRef: RefObject<HTMLElement | null>) {
@@ -103,7 +105,7 @@ export function useCoverScrollEffect(rootRef: RefObject<HTMLElement | null>) {
       cacheScrollY = readScrollTop();
       cachedCovers = Array.from(covers, (el) => {
         const rect = el.getBoundingClientRect();
-        return { el, top: rect.top, bottom: rect.bottom };
+        return { el, top: rect.top, bottom: rect.bottom, lastProgress: -1, lastSide: "none" as EdgeSide };
       });
     };
 
@@ -120,21 +122,31 @@ export function useCoverScrollEffect(rootRef: RefObject<HTMLElement | null>) {
       const { top: viewportTop, bottom: viewportBottom } = getViewportBounds(scrollTarget);
       const scrollDelta = readScrollTop() - cacheScrollY;
 
-      for (const { el, top, bottom } of cachedCovers) {
+      // Only the row(s) near the top/bottom edge ever have a non-zero progress - the
+      // rest of the (potentially 80+) covers resolve to the same "at rest" values
+      // every frame. Writing 3 custom properties + a dataset attribute to all of them
+      // regardless was pure style-recalc cost for no visual change; skip covers whose
+      // rounded progress/side didn't move since last frame.
+      for (const cover of cachedCovers) {
         const { progress: edgeProgress, side } = getEdgeBlurState(
-          { top: top - scrollDelta, bottom: bottom - scrollDelta },
+          { top: cover.top - scrollDelta, bottom: cover.bottom - scrollDelta },
           viewportTop,
           viewportBottom
         );
+
+        const roundedProgress = Math.round(edgeProgress * 1000) / 1000;
+        if (roundedProgress === cover.lastProgress && side === cover.lastSide) continue;
+        cover.lastProgress = roundedProgress;
+        cover.lastSide = side;
+
         const blurPx = edgeProgress * 4.2;
         const globalBlurPx = edgeProgress * 0.8;
         const edgeOpacity = edgeProgress > 0.01 ? Math.min(1, 0.18 + edgeProgress * 0.82) : 0;
 
-        el.style.transform = transform;
-        el.style.setProperty("--cover-edge-blur", `${blurPx.toFixed(2)}px`);
-        el.style.setProperty("--cover-edge-opacity", edgeOpacity.toFixed(3));
-        el.style.setProperty("--cover-global-blur", `${globalBlurPx.toFixed(2)}px`);
-        el.dataset.edgeSide = side;
+        cover.el.style.setProperty("--cover-edge-blur", `${blurPx.toFixed(2)}px`);
+        cover.el.style.setProperty("--cover-edge-opacity", edgeOpacity.toFixed(3));
+        cover.el.style.setProperty("--cover-global-blur", `${globalBlurPx.toFixed(2)}px`);
+        cover.el.dataset.edgeSide = side;
       }
     };
 

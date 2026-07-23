@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { saveAccountProfile } from "@/lib/accountData";
 import { getR2Admin, putR2Object, getR2PublicUrl } from "@/lib/r2Storage";
+import { getSupabaseAdmin, ensureSupabaseBucketReady } from "@/lib/supabaseAdmin";
 import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
 import { unexpectedErrorResponse } from "@/lib/apiError";
 
@@ -13,8 +14,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
 
-  const admin = getR2Admin();
-  if (!admin) {
+  const r2Admin = getR2Admin();
+  const supabaseAdmin = r2Admin ? null : getSupabaseAdmin();
+  if (!r2Admin && !supabaseAdmin) {
     return NextResponse.json({ ok: false, error: "Storage non configuré." }, { status: 503 });
   }
 
@@ -42,15 +44,30 @@ export async function POST(req: Request) {
   const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
   const avatarPath = `avatars/${auth.user.id}.${ext}`;
 
-  try {
-    await putR2Object(admin, avatarPath, Buffer.from(await file.arrayBuffer()), file.type, {
-      cacheControl: "max-age=3600",
-    });
-  } catch {
-    return NextResponse.json({ ok: false, error: "Erreur lors de l'upload." }, { status: 500 });
-  }
+  let avatarUrl: string;
 
-  const avatarUrl = `${getR2PublicUrl(admin, avatarPath)}?t=${Date.now()}`;
+  if (r2Admin) {
+    try {
+      await putR2Object(r2Admin, avatarPath, Buffer.from(await file.arrayBuffer()), file.type, {
+        cacheControl: "max-age=3600",
+      });
+    } catch {
+      return NextResponse.json({ ok: false, error: "Erreur lors de l'upload." }, { status: 500 });
+    }
+    avatarUrl = `${getR2PublicUrl(r2Admin, avatarPath)}?t=${Date.now()}`;
+  } else {
+    await ensureSupabaseBucketReady(supabaseAdmin!.client, supabaseAdmin!.bucket);
+    const { error: uploadError } = await supabaseAdmin!.client.storage
+      .from(supabaseAdmin!.bucket)
+      .upload(avatarPath, await file.arrayBuffer(), { contentType: file.type, cacheControl: "3600", upsert: true });
+
+    if (uploadError) {
+      return NextResponse.json({ ok: false, error: "Erreur lors de l'upload." }, { status: 500 });
+    }
+
+    const { data } = supabaseAdmin!.client.storage.from(supabaseAdmin!.bucket).getPublicUrl(avatarPath);
+    avatarUrl = data.publicUrl ? `${data.publicUrl}?t=${Date.now()}` : "";
+  }
 
   await saveAccountProfile(auth.user.id, { avatarUrl });
 

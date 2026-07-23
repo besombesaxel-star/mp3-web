@@ -37,7 +37,7 @@ function getViewportBounds(scrollTarget: ScrollTarget) {
   return { top: rect.top, bottom: rect.bottom };
 }
 
-function getEdgeBlurState(coverRect: DOMRect, viewportTop: number, viewportBottom: number) {
+function getEdgeBlurState(coverRect: { top: number; bottom: number }, viewportTop: number, viewportBottom: number) {
   const viewportHeight = viewportBottom - viewportTop;
   if (viewportHeight <= 0) return { progress: 0, side: "none" as EdgeSide };
 
@@ -56,6 +56,12 @@ function getEdgeBlurState(coverRect: DOMRect, viewportTop: number, viewportBotto
   const progress = Math.pow(Math.max(topInfluence, bottomInfluence), 1.22);
   return { progress, side };
 }
+
+type CachedCover = {
+  el: HTMLElement;
+  top: number;
+  bottom: number;
+};
 
 export function useCoverScrollEffect(rootRef: RefObject<HTMLElement | null>) {
   useEffect(() => {
@@ -84,6 +90,23 @@ export function useCoverScrollEffect(rootRef: RefObject<HTMLElement | null>) {
     const scrollTarget = findScrollTarget();
     const readScrollTop = () => (isWindowTarget(scrollTarget) ? window.scrollY : scrollTarget.scrollTop);
 
+    // Cache each cover's rect once per scroll gesture (getBoundingClientRect forces a
+    // synchronous layout - calling it for every cover on every animation frame while
+    // scrolling is what tanked fps, especially with many covers on a large/fullscreen
+    // viewport). Between refreshes, positions are derived from the cached rect plus
+    // how far the scroll position has moved since - pure arithmetic, no layout read.
+    let cachedCovers: CachedCover[] = [];
+    let cacheScrollY = readScrollTop();
+
+    const refreshRectsCache = () => {
+      const covers = root.querySelectorAll<HTMLElement>('[data-scroll-cover="1"]');
+      cacheScrollY = readScrollTop();
+      cachedCovers = Array.from(covers, (el) => {
+        const rect = el.getBoundingClientRect();
+        return { el, top: rect.top, bottom: rect.bottom };
+      });
+    };
+
     let rafId = 0;
     let lastY = readScrollTop();
     let lastTime = performance.now();
@@ -94,12 +117,12 @@ export function useCoverScrollEffect(rootRef: RefObject<HTMLElement | null>) {
       const transform = buildCoverScrollTransform(value);
       root.style.setProperty("--cover-scroll-transform", transform);
 
-      const covers = root.querySelectorAll<HTMLElement>('[data-scroll-cover="1"]');
       const { top: viewportTop, bottom: viewportBottom } = getViewportBounds(scrollTarget);
+      const scrollDelta = readScrollTop() - cacheScrollY;
 
-      for (const cover of covers) {
+      for (const { el, top, bottom } of cachedCovers) {
         const { progress: edgeProgress, side } = getEdgeBlurState(
-          cover.getBoundingClientRect(),
+          { top: top - scrollDelta, bottom: bottom - scrollDelta },
           viewportTop,
           viewportBottom
         );
@@ -107,11 +130,11 @@ export function useCoverScrollEffect(rootRef: RefObject<HTMLElement | null>) {
         const globalBlurPx = edgeProgress * 0.8;
         const edgeOpacity = edgeProgress > 0.01 ? Math.min(1, 0.18 + edgeProgress * 0.82) : 0;
 
-        cover.style.transform = transform;
-        cover.style.setProperty("--cover-edge-blur", `${blurPx.toFixed(2)}px`);
-        cover.style.setProperty("--cover-edge-opacity", edgeOpacity.toFixed(3));
-        cover.style.setProperty("--cover-global-blur", `${globalBlurPx.toFixed(2)}px`);
-        cover.dataset.edgeSide = side;
+        el.style.transform = transform;
+        el.style.setProperty("--cover-edge-blur", `${blurPx.toFixed(2)}px`);
+        el.style.setProperty("--cover-edge-opacity", edgeOpacity.toFixed(3));
+        el.style.setProperty("--cover-global-blur", `${globalBlurPx.toFixed(2)}px`);
+        el.dataset.edgeSide = side;
       }
     };
 
@@ -144,6 +167,7 @@ export function useCoverScrollEffect(rootRef: RefObject<HTMLElement | null>) {
       target = Math.max(-1, Math.min(1, velocity * 9));
 
       if (!rafId) {
+        refreshRectsCache();
         rafId = window.requestAnimationFrame(animate);
       }
     };
@@ -152,14 +176,17 @@ export function useCoverScrollEffect(rootRef: RefObject<HTMLElement | null>) {
       const normalized = event.deltaY / 42;
       target = Math.max(-1, Math.min(1, normalized * 0.2));
       if (!rafId) {
+        refreshRectsCache();
         rafId = window.requestAnimationFrame(animate);
       }
     };
 
     const onResize = () => {
+      refreshRectsCache();
       applyTransform(current);
     };
 
+    refreshRectsCache();
     applyTransform(0);
     scrollTarget.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("wheel", onWheel, { passive: true });

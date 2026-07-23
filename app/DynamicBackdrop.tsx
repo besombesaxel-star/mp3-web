@@ -109,42 +109,55 @@ export default function DynamicBackdrop() {
   return (
     <>
       <style jsx global>{`
+        /* Scale stays constant across steps (only the translate varies) so the
+           compositor can keep reusing the same blurred bitmap for this layer
+           instead of re-rasterizing blur(64px) at a new size every frame - see
+           the .mp3-dynamic-blob comment below. */
         @keyframes mp3DynamicFloatA {
           0% {
-            transform: translate3d(0, 0, 0) scale(1);
+            transform: translate3d(0, 0, 0) scale(1.06);
           }
           50% {
             transform: translate3d(2%, -3%, 0) scale(1.06);
           }
           100% {
-            transform: translate3d(0, 0, 0) scale(1);
+            transform: translate3d(0, 0, 0) scale(1.06);
           }
         }
 
         @keyframes mp3DynamicFloatB {
           0% {
-            transform: translate3d(0, 0, 0) scale(1);
+            transform: translate3d(0, 0, 0) scale(1.08);
           }
           50% {
             transform: translate3d(-3%, 2%, 0) scale(1.08);
           }
           100% {
-            transform: translate3d(0, 0, 0) scale(1);
+            transform: translate3d(0, 0, 0) scale(1.08);
           }
         }
 
         @keyframes mp3DynamicFloatC {
           0% {
-            transform: translate3d(0, 0, 0) scale(1);
+            transform: translate3d(0, 0, 0) scale(1.04);
           }
           50% {
             transform: translate3d(1%, 3%, 0) scale(1.04);
           }
           100% {
-            transform: translate3d(0, 0, 0) scale(1);
+            transform: translate3d(0, 0, 0) scale(1.04);
           }
         }
 
+        .mp3-dynamic-blob {
+          /* Without will-change, browsers are conservative about promoting this to its
+             own GPU layer - the blur(64px) then gets re-rasterized on the main thread
+             every frame the transform changes, which is brutal at fixed-inset-0 size
+             and gets worse the larger the viewport (more surface to reblur). Hinting
+             the layer up front lets the compositor cache the blurred bitmap once and
+             just translate/scale the GPU texture instead. */
+          will-change: transform;
+        }
         .mp3-dynamic-blob-a {
           animation: mp3DynamicFloatA 20s ease-in-out infinite;
         }

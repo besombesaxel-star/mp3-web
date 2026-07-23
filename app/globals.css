@@ -245,9 +245,14 @@ body {
   to   { opacity: 0; transform: translateY(30px) scale(0.97); }
 }
 @keyframes mp3BgDrift {
-  0%   { transform: scale(1.06) translateY(0);    opacity: 0.92; }
-  50%  { transform: scale(1.1)  translateY(-6px); opacity: 1;    }
-  100% { transform: scale(1.06) translateY(0);    opacity: 0.92; }
+  /* Scale stays constant across steps (only translateY/opacity vary) so the
+     compositor can reuse the same rasterized+blurred bitmap every frame
+     instead of re-blurring at a new size - blur() is expensive enough at
+     full-viewport size that animating its effective scale tanks fps,
+     especially in true browser fullscreen where the surface is largest. */
+  0%   { transform: scale(1.08) translateY(0);    opacity: 0.92; }
+  50%  { transform: scale(1.08) translateY(-6px); opacity: 1;    }
+  100% { transform: scale(1.08) translateY(0);    opacity: 0.92; }
 }
 @keyframes mp3CoverPop {
   from { opacity: 0; transform: translateY(16px) scale(0.98); }

@@ -8,7 +8,6 @@ import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { fetchTracksShared } from "../tracksCache";
 import { dispatchTracksUpdated, subscribeTracksUpdated } from "../tracksSync";
 import { toast } from "../Toast";
-import { getSupabaseBrowserAuthClient } from "@/lib/supabaseAuth";
 import { pictureToFile, readId3Tags } from "@/lib/id3";
 import { compressAudioFile, shouldSuggestCompression } from "@/lib/audioCompress";
 import { trimAudioSilence } from "@/lib/audioTrim";
@@ -19,9 +18,19 @@ type SignUploadResponse = {
   ok?: boolean;
   error?: string;
   bucket?: string;
-  audio?: { path: string; token: string };
-  cover?: { path: string; token: string } | null;
+  audio?: { path: string; url: string; contentType: string };
+  cover?: { path: string; url: string; contentType: string } | null;
 };
+
+async function putToPresignedUrl(url: string, contentType: string, file: File): Promise<string | null> {
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": contentType },
+    body: file,
+  });
+  if (!res.ok) return `Upload direct impossible (HTTP ${res.status})`;
+  return null;
+}
 
 type CompleteUploadResponse = {
   ok?: boolean;
@@ -143,19 +152,12 @@ async function uploadTrackFile(
     const signJson: SignUploadResponse = await signRes.json().catch(() => ({}));
 
     if (signRes.ok && signJson.ok && signJson.audio) {
-      const supabase = getSupabaseBrowserAuthClient();
-      if (!supabase) return { ok: false, error: "Client de stockage indisponible." };
-
-      const { error: uploadError } = await supabase.storage
-        .from(signJson.bucket!)
-        .uploadToSignedUrl(signJson.audio.path, signJson.audio.token, audio);
-      if (uploadError) return { ok: false, error: uploadError.message };
+      const uploadError = await putToPresignedUrl(signJson.audio.url, signJson.audio.contentType, audio);
+      if (uploadError) return { ok: false, error: uploadError };
 
       let coverPath: string | null = null;
       if (cover && signJson.cover) {
-        const { error: coverUploadError } = await supabase.storage
-          .from(signJson.bucket!)
-          .uploadToSignedUrl(signJson.cover.path, signJson.cover.token, cover);
+        const coverUploadError = await putToPresignedUrl(signJson.cover.url, signJson.cover.contentType, cover);
         if (!coverUploadError) coverPath = signJson.cover.path;
       }
 
@@ -455,20 +457,11 @@ export default function UploadPage() {
       return false;
     }
 
-    const supabase = getSupabaseBrowserAuthClient();
-    if (!supabase) {
-      setMessage("Erreur: client de stockage indisponible.");
-      setStep(4);
-      return true;
-    }
-
     setProgress(0.15);
-    const { error: audioUploadError } = await supabase.storage
-      .from(signJson.bucket!)
-      .uploadToSignedUrl(signJson.audio.path, signJson.audio.token, fileToUpload);
+    const audioUploadError = await putToPresignedUrl(signJson.audio.url, signJson.audio.contentType, fileToUpload);
 
     if (audioUploadError) {
-      setMessage(`Erreur: ${audioUploadError.message}`);
+      setMessage(`Erreur: ${audioUploadError}`);
       setStep(4);
       return true;
     }
@@ -477,12 +470,10 @@ export default function UploadPage() {
 
     let coverPath: string | null = null;
     if (cover && signJson.cover) {
-      const { error: coverUploadError } = await supabase.storage
-        .from(signJson.bucket!)
-        .uploadToSignedUrl(signJson.cover.path, signJson.cover.token, cover);
+      const coverUploadError = await putToPresignedUrl(signJson.cover.url, signJson.cover.contentType, cover);
 
       if (coverUploadError) {
-        setMessage(`Erreur: ${coverUploadError.message}`);
+        setMessage(`Erreur: ${coverUploadError}`);
         setStep(4);
         return true;
       }

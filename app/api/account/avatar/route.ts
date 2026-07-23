@@ -1,17 +1,10 @@
 import { NextResponse } from "next/server";
 import { saveAccountProfile } from "@/lib/accountData";
-import { getSupabaseAdmin, ensureSupabaseBucketReady } from "@/lib/supabaseAdmin";
+import { getR2Admin, putR2Object, getR2PublicUrl } from "@/lib/r2Storage";
 import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
 import { unexpectedErrorResponse } from "@/lib/apiError";
 
 export const runtime = "nodejs";
-
-function extractPublicUrl(data: unknown) {
-  if (!data || typeof data !== "object") return "";
-  if ("publicUrl" in data && typeof data.publicUrl === "string") return data.publicUrl;
-  if ("publicURL" in data && typeof data.publicURL === "string") return data.publicURL;
-  return "";
-}
 
 export async function POST(req: Request) {
   try {
@@ -20,7 +13,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
 
-  const admin = getSupabaseAdmin();
+  const admin = getR2Admin();
   if (!admin) {
     return NextResponse.json({ ok: false, error: "Storage non configuré." }, { status: 503 });
   }
@@ -46,27 +39,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Image trop lourde (max 5 MB)." }, { status: 400 });
   }
 
-  await ensureSupabaseBucketReady(admin.client, admin.bucket);
-
   const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
   const avatarPath = `avatars/${auth.user.id}.${ext}`;
 
-  const { error: uploadError } = await admin.client.storage
-    .from(admin.bucket)
-    .upload(avatarPath, await file.arrayBuffer(), {
-      contentType: file.type,
-      cacheControl: "3600",
-      upsert: true,
+  try {
+    await putR2Object(admin, avatarPath, Buffer.from(await file.arrayBuffer()), file.type, {
+      cacheControl: "max-age=3600",
     });
-
-  if (uploadError) {
+  } catch {
     return NextResponse.json({ ok: false, error: "Erreur lors de l'upload." }, { status: 500 });
   }
 
-  const rawUrl = extractPublicUrl(
-    admin.client.storage.from(admin.bucket).getPublicUrl(avatarPath).data
-  );
-  const avatarUrl = rawUrl ? `${rawUrl}?t=${Date.now()}` : "";
+  const avatarUrl = `${getR2PublicUrl(admin, avatarPath)}?t=${Date.now()}`;
 
   await saveAccountProfile(auth.user.id, { avatarUrl });
 

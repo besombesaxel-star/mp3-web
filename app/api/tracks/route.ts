@@ -21,7 +21,7 @@ export async function GET(req: Request) {
         artist: track.artist,
         src: track.src,
         cover: track.cover,
-        isLegacyShared: track.backend === "supabase" && !track.ownerId,
+        isLegacyShared: (track.backend === "supabase" || track.backend === "r2") && !track.ownerId,
         isOwnedByViewer: Boolean(viewerId && track.ownerId && track.ownerId === viewerId),
         ownerDisplayName: track.ownerDisplayName ?? null,
         ownerId: track.ownerId ?? null,

@@ -38,15 +38,19 @@ npm run app:package  # prepare les raccourcis/launchers
 
 ## Stockage
 
-L'app sait fonctionner de 2 facons:
+L'app sait fonctionner de 3 facons pour les fichiers media (mp3/covers/avatars/bannieres):
 
 - mode local: les nouveaux fichiers vont dans `public/audio` et `public/cover`
-- mode Supabase: les nouveaux fichiers vont dans un bucket Storage partage
+- mode Supabase (legacy): les nouveaux fichiers vont dans un bucket Storage Supabase
+- mode R2 (recommande): les nouveaux fichiers vont dans un bucket Cloudflare R2
 
 Priorite actuelle:
 
-1. Supabase si configure
-2. sinon local
+1. R2 si configure
+2. sinon Supabase si configure
+3. sinon local
+
+Les donnees de compte (playlists, favoris, badges, messages, activite...) restent toujours sur Supabase Storage (bucket prive `account-data`), quel que soit le backend media choisi.
 
 Si aucun backend cloud n'est configure, l'app continue de fonctionner en local.
 
@@ -93,6 +97,48 @@ Pour re-uploader des fichiers deja presents:
 ```bash
 npm run supabase:migrate -- --force
 ```
+
+## Configuration Cloudflare R2 (recommande si le quota Supabase Storage est atteint)
+
+R2 est S3-compatible, propose 10 Go gratuits et surtout **l'egress gratuit** (important pour du streaming audio). Supabase reste utilise pour l'auth et les donnees de compte (`account-data`) - seuls les mp3/covers/avatars/bannieres basculent sur R2.
+
+1. Cree/utilise un compte Cloudflare et active R2 (une carte bancaire est generalement demandee meme pour le palier gratuit).
+2. Cree un bucket (ex. `mp3-web-media`).
+3. Active l'acces public: Bucket > Settings > Public Access > active le sous-domaine `r2.dev`. Tu obtiens une URL du type `https://pub-xxxxxxxxxxxxxxxxxxxx.r2.dev` (un domaine personnalise peut etre branche plus tard sans changement de code).
+4. Cree un token API R2 (R2 > Manage R2 API Tokens > Create API Token, permission "Object Read & Write", restreint si possible a ce bucket) - recupere l'Access Key ID, le Secret Access Key et l'Account ID.
+5. Renseigne dans `.env.local`:
+
+```env
+R2_ACCOUNT_ID=your-cloudflare-account-id
+R2_ACCESS_KEY_ID=your-r2-access-key-id
+R2_SECRET_ACCESS_KEY=your-r2-secret-access-key
+R2_BUCKET=media
+R2_PUBLIC_BASE_URL=https://pub-xxxxxxxxxxxxxxxxxxxx.r2.dev
+```
+
+Une fois ces variables presentes, les nouveaux uploads (morceaux, avatars, bannieres) passent automatiquement sur R2.
+
+### Migrer les fichiers existants de Supabase vers R2
+
+Si tu as deja des morceaux/avatars/bannieres sur Supabase Storage:
+
+```bash
+npm run r2:migrate            # dry-run: affiche ce qui serait copie, n'ecrit rien
+npm run r2:migrate -- --execute   # copie reellement les fichiers vers R2 et reecrit le catalogue
+```
+
+Ce script ne supprime jamais rien cote Supabase. Il ecrit aussi `r2-migration-map.json` a la racine du projet, qui sert d'entree au script suivant.
+
+Les URLs des morceaux servant aussi de cle d'identite pour les favoris/playlists/epingles/anthem/commentaires/paroles/compteurs d'ecoute (stockes cote `account-data`), lance ensuite:
+
+```bash
+npm run r2:migrate-refs            # dry-run
+npm run r2:migrate-refs -- --execute   # reecrit ces references pour pointer vers les nouvelles URLs R2
+```
+
+Sans cette 2e etape, les morceaux migres restent lisibles mais perdent leurs favoris/playlists/commentaires/paroles/compteurs existants.
+
+Une fois la migration validee (morceaux, covers, avatars, bannieres, references account-data tous verifies en conditions reelles), le nettoyage des fichiers Supabase devenus inutiles reste une action **manuelle**, a faire depuis le dashboard Supabase - aucun script de ce projet ne supprime automatiquement quoi que ce soit cote Supabase.
 
 ## Notifications push (optionnel)
 

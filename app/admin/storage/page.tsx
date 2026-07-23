@@ -25,6 +25,12 @@ type StorageResponse = {
     coverBytes: number;
     coverCount: number;
   };
+  legacyMedia?: {
+    audioBytes: number;
+    audioCount: number;
+    coverBytes: number;
+    coverCount: number;
+  };
   accountData?: {
     bytes: number;
     count: number;
@@ -153,6 +159,16 @@ export default function AdminStoragePage() {
               delay={120}
             />
           </div>
+
+          {((data?.legacyMedia?.audioCount ?? 0) > 0 || (data?.legacyMedia?.coverCount ?? 0) > 0) && (
+            <div className="mb-6 rounded-3xl border border-amber-400/20 bg-amber-400/8 p-5 mp3-fade-up" style={{ animationDelay: "150ms" }}>
+              <p className="text-sm text-amber-200/90">
+                Encore {formatBytes((data?.legacyMedia?.audioBytes ?? 0) + (data?.legacyMedia?.coverBytes ?? 0))} sur Supabase Storage
+                ({(data?.legacyMedia?.audioCount ?? 0) + (data?.legacyMedia?.coverCount ?? 0)} fichier(s) non migres vers R2).
+              </p>
+              <p className="text-xs text-amber-200/50 mt-1">A nettoyer manuellement une fois la migration validee.</p>
+            </div>
+          )}
 
           <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 mp3-fade-up" style={{ animationDelay: "160ms" }}>
             <p className="text-xs uppercase tracking-[0.22em] text-white/25 mb-4">Utilisateurs par espace utilise (audio)</p>

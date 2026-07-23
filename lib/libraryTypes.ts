@@ -1,4 +1,4 @@
-export type LibraryBackend = "local" | "supabase";
+export type LibraryBackend = "local" | "r2" | "supabase";
 
 export type LibraryMutationResult = "forbidden" | "not_found" | "ok" | "unsupported";
 

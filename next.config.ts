@@ -11,6 +11,17 @@ const supabaseHostname = (() => {
   }
 })();
 
+const r2Hostname = (() => {
+  const url = process.env.R2_PUBLIC_BASE_URL?.trim();
+  if (!url) return null;
+
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
+})();
+
 const nextConfig: NextConfig = {
   // 127.0.0.1: acces direct/tests locaux. *.loca.lt: tunnel public du script share:4g (scripts/share-4g.mjs).
   allowedDevOrigins: ["127.0.0.1", "localhost", "*.loca.lt"],
@@ -27,6 +38,15 @@ const nextConfig: NextConfig = {
               protocol: "https" as const,
               hostname: supabaseHostname,
               pathname: "/storage/v1/object/public/**",
+            },
+          ]
+        : []),
+      ...(r2Hostname
+        ? [
+            {
+              protocol: "https" as const,
+              hostname: r2Hostname,
+              pathname: "/**",
             },
           ]
         : []),

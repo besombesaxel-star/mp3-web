@@ -69,3 +69,9 @@ export function getCoverExtension(name: string) {
   if (lowered.endsWith(".webp")) return ".webp";
   return ".jpg";
 }
+
+export function getCoverContentType(extension: string): string {
+  if (extension === ".png") return "image/png";
+  if (extension === ".webp") return "image/webp";
+  return "image/jpeg";
+}

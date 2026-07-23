@@ -2,6 +2,7 @@ import { isAcceptedAudioFileName, isAcceptedAudioUpload, isAcceptedCoverUpload }
 import { listLocalTracks, saveLocalTrackMeta, uploadLocalTrack } from "@/lib/localLibrary";
 import { isValidLibraryAudioSrc } from "@/lib/libraryStorage";
 import { isSupabaseConfigured } from "@/lib/supabaseAdmin";
+import { isR2Configured } from "@/lib/r2Storage";
 import {
   createSupabaseUploadTargets,
   deleteSupabaseTrack,
@@ -12,6 +13,16 @@ import {
   saveSupabaseTrackMeta,
   uploadSupabaseTrack,
 } from "@/lib/supabaseLibrary";
+import {
+  createR2UploadTargets,
+  deleteR2Track,
+  finalizeR2TrackUpload,
+  isR2TrackSrc,
+  listR2Tracks,
+  saveR2TrackCover,
+  saveR2TrackMeta,
+  uploadR2Track,
+} from "@/lib/r2Library";
 import type { LibraryBackend, LibraryMutationResult, LibraryTrack } from "@/lib/libraryTypes";
 
 type TrackOwnerInput = {
@@ -25,11 +36,13 @@ function dedupeTrackKey(track: LibraryTrack) {
 }
 
 export function getLibraryBackendMode(): LibraryBackend {
-  return isSupabaseConfigured() ? "supabase" : "local";
+  if (isR2Configured()) return "r2";
+  if (isSupabaseConfigured()) return "supabase";
+  return "local";
 }
 
 export function isValidTrackSrc(src: string) {
-  return isValidLibraryAudioSrc(src) || isSupabaseTrackSrc(src);
+  return isValidLibraryAudioSrc(src) || isR2TrackSrc(src) || isSupabaseTrackSrc(src);
 }
 
 export function isValidAudioUpload(audio: File) {
@@ -45,17 +58,28 @@ export function isValidCoverUpload(cover: File) {
 }
 
 export async function listTracksForApi() {
-  if (!isSupabaseConfigured()) {
+  const r2Configured = isR2Configured();
+  const supabaseConfigured = isSupabaseConfigured();
+
+  if (!r2Configured && !supabaseConfigured) {
     return listLocalTracks();
   }
 
-  const [supabaseTracks, localTracks] = await Promise.all([listSupabaseTracks(), listLocalTracks()]);
-  if (supabaseTracks.length === 0) {
-    return localTracks;
-  }
+  const [r2Tracks, supabaseTracks, localTracks] = await Promise.all([
+    r2Configured ? listR2Tracks() : Promise.resolve([]),
+    supabaseConfigured ? listSupabaseTracks() : Promise.resolve([]),
+    listLocalTracks(),
+  ]);
 
-  const merged = [...supabaseTracks];
-  const knownKeys = new Set(supabaseTracks.map((track) => dedupeTrackKey(track)));
+  const merged = [...r2Tracks];
+  const knownKeys = new Set(r2Tracks.map((track) => dedupeTrackKey(track)));
+
+  for (const supabaseTrack of supabaseTracks) {
+    const key = dedupeTrackKey(supabaseTrack);
+    if (knownKeys.has(key)) continue;
+    knownKeys.add(key);
+    merged.push(supabaseTrack);
+  }
 
   for (const localTrack of localTracks) {
     const key = dedupeTrackKey(localTrack);
@@ -72,6 +96,14 @@ export async function uploadTrackForApi(
   cover: File | null,
   owner?: TrackOwnerInput | null
 ): Promise<LibraryTrack> {
+  if (isR2Configured()) {
+    if (!owner?.id) {
+      throw new Error("Compte requis pour l'upload.");
+    }
+
+    return uploadR2Track(audio, cover, owner);
+  }
+
   if (isSupabaseConfigured()) {
     if (!owner?.id) {
       throw new Error("Compte requis pour l'upload Supabase.");
@@ -84,8 +116,12 @@ export async function uploadTrackForApi(
 }
 
 export async function createUploadTargetsForApi(audioName: string, coverName: string | null) {
+  if (isR2Configured()) {
+    return createR2UploadTargets(audioName, coverName);
+  }
+
   if (!isSupabaseConfigured()) {
-    throw new Error("Upload direct non disponible sans Supabase.");
+    throw new Error("Upload direct non disponible sans backend cloud configure.");
   }
 
   return createSupabaseUploadTargets(audioName, coverName);
@@ -96,12 +132,16 @@ export async function finalizeUploadForApi(
   coverPath: string | null,
   owner: TrackOwnerInput
 ): Promise<LibraryTrack> {
-  if (!isSupabaseConfigured()) {
-    throw new Error("Upload direct non disponible sans Supabase.");
+  if (!owner?.id) {
+    throw new Error("Compte requis pour l'upload.");
   }
 
-  if (!owner?.id) {
-    throw new Error("Compte requis pour l'upload Supabase.");
+  if (isR2Configured()) {
+    return finalizeR2TrackUpload({ audioPath, coverPath, owner });
+  }
+
+  if (!isSupabaseConfigured()) {
+    throw new Error("Upload direct non disponible sans backend cloud configure.");
   }
 
   return finalizeSupabaseTrackUpload({ audioPath, coverPath, owner });
@@ -114,6 +154,10 @@ export async function saveTrackMetaForApi(
   actorUserId?: string | null,
   credits?: string | null
 ): Promise<LibraryMutationResult> {
+  if (isR2TrackSrc(src)) {
+    return saveR2TrackMeta(src, title, artist, actorUserId, credits);
+  }
+
   if (isSupabaseTrackSrc(src)) {
     return saveSupabaseTrackMeta(src, title, artist, actorUserId, credits);
   }
@@ -121,6 +165,10 @@ export async function saveTrackMetaForApi(
   if (isValidLibraryAudioSrc(src)) {
     await saveLocalTrackMeta(src, title, artist, credits);
     return "ok";
+  }
+
+  if (isR2Configured()) {
+    return saveR2TrackMeta(src, title, artist, actorUserId, credits);
   }
 
   if (isSupabaseConfigured()) {
@@ -135,6 +183,10 @@ export async function saveTrackCoverForApi(
   cover: File,
   actorUserId?: string | null
 ): Promise<LibraryMutationResult> {
+  if (isR2TrackSrc(src) || isR2Configured()) {
+    return saveR2TrackCover(src, cover, actorUserId);
+  }
+
   if (isSupabaseTrackSrc(src) || isSupabaseConfigured()) {
     return saveSupabaseTrackCover(src, cover, actorUserId);
   }
@@ -143,6 +195,10 @@ export async function saveTrackCoverForApi(
 }
 
 export async function deleteTrackForApi(src: string, actorUserId?: string | null): Promise<LibraryMutationResult> {
+  if (isR2TrackSrc(src)) {
+    return deleteR2Track(src, actorUserId);
+  }
+
   if (isSupabaseTrackSrc(src)) {
     return deleteSupabaseTrack(src, actorUserId);
   }

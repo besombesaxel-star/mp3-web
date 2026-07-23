@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isAdminUser } from "@/lib/adminAccess";
 import { readAuthenticatedUser } from "@/lib/supabaseAuthServer";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { getR2Admin, listR2Objects } from "@/lib/r2Storage";
 import { listTracksForApi } from "@/lib/libraryRepository";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -54,21 +55,30 @@ export async function GET(req: Request) {
   }
 
   const admin = getSupabaseAdmin();
-  if (!admin) {
+  const r2Admin = getR2Admin();
+  if (!admin && !r2Admin) {
     return NextResponse.json({ ok: true, configured: false });
   }
 
   try {
-    const [audioFiles, coverFiles, tracks, accountDataCounts] = await Promise.all([
-      listAllFiles(admin.client, admin.bucket, "audio"),
-      listAllFiles(admin.client, admin.bucket, "cover"),
-      listTracksForApi(),
-      Promise.all(
-        ACCOUNT_DATA_PREFIXES.map((prefix) =>
-          listAllFiles(admin.client, admin.accountBucket, prefix).catch(() => [] as FileObjectLike[])
-        )
-      ),
-    ]);
+    const [r2AudioFiles, r2CoverFiles, legacyAudioFiles, legacyCoverFiles, tracks, accountDataCounts] =
+      await Promise.all([
+        r2Admin ? listR2Objects(r2Admin, "audio") : Promise.resolve([] as FileObjectLike[]),
+        r2Admin ? listR2Objects(r2Admin, "cover") : Promise.resolve([] as FileObjectLike[]),
+        admin ? listAllFiles(admin.client, admin.bucket, "audio") : Promise.resolve([] as FileObjectLike[]),
+        admin ? listAllFiles(admin.client, admin.bucket, "cover") : Promise.resolve([] as FileObjectLike[]),
+        listTracksForApi(),
+        admin
+          ? Promise.all(
+              ACCOUNT_DATA_PREFIXES.map((prefix) =>
+                listAllFiles(admin.client, admin.accountBucket, prefix).catch(() => [] as FileObjectLike[])
+              )
+            )
+          : Promise.resolve([] as FileObjectLike[][]),
+      ]);
+
+    const audioFiles = [...r2AudioFiles, ...legacyAudioFiles];
+    const coverFiles = [...r2CoverFiles, ...legacyCoverFiles];
 
     const ownerByFileName = new Map<string, { ownerId: string; displayName: string }>();
     for (const track of tracks) {
@@ -108,6 +118,12 @@ export async function GET(req: Request) {
         audioCount: audioFiles.length,
         coverBytes: sumSize(coverFiles),
         coverCount: coverFiles.length,
+      },
+      legacyMedia: {
+        audioBytes: sumSize(legacyAudioFiles),
+        audioCount: legacyAudioFiles.length,
+        coverBytes: sumSize(legacyCoverFiles),
+        coverCount: legacyCoverFiles.length,
       },
       accountData: {
         bytes: sumSize(accountDataFiles),

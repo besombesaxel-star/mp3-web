@@ -55,7 +55,6 @@ export default function FallingPetals() {
           border-radius: 100% 0 100% 0;
           background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.5));
           animation: mp3PetalFall linear infinite;
-          will-change: transform;
         }
       `}</style>
       {petals.map((petal) => (

@@ -244,16 +244,6 @@ body {
   from { opacity: 1; transform: translateY(0)    scale(1);    }
   to   { opacity: 0; transform: translateY(30px) scale(0.97); }
 }
-@keyframes mp3BgDrift {
-  /* Scale stays constant across steps (only translateY/opacity vary) so the
-     compositor can reuse the same rasterized+blurred bitmap every frame
-     instead of re-blurring at a new size - blur() is expensive enough at
-     full-viewport size that animating its effective scale tanks fps,
-     especially in true browser fullscreen where the surface is largest. */
-  0%   { transform: scale(1.08) translateY(0);    opacity: 0.92; }
-  50%  { transform: scale(1.08) translateY(-6px); opacity: 1;    }
-  100% { transform: scale(1.08) translateY(0);    opacity: 0.92; }
-}
 @keyframes mp3CoverPop {
   from { opacity: 0; transform: translateY(16px) scale(0.98); }
   to   { opacity: 1; transform: translateY(0)    scale(1);    }
@@ -338,8 +328,12 @@ body {
 
 .mp3-ov-enter    { animation: mp3OvEnter      280ms ease                          both; }
 .mp3-ov-exit     { animation: mp3OvExit       240ms cubic-bezier(0.4, 0, 1, 1)   both; }
-.mp3-ov-bg       { animation: mp3BgDrift      9s   ease-in-out infinite;
-                   will-change: transform, opacity; }
+/* Static (not animated) - a continuously animated transform on a full-viewport
+   blur(44-52px) layer forces a repaint every frame regardless of whether the
+   scale itself changes, which tanks fps especially in true browser fullscreen.
+   scale(1.08) stays as a fixed value to push blur edge artifacts past the
+   visible edge (clipped by the parent's overflow-hidden). */
+.mp3-ov-bg       { transform: scale(1.08); opacity: 0.96; }
 .mp3-ov-cover    { animation: mp3CoverPop     820ms cubic-bezier(0.22, 1, 0.36, 1) both;
                    animation-delay: 40ms; }
 .mp3-ov-panel    { animation: mp3PanelSlide   720ms cubic-bezier(0.22, 1, 0.36, 1) both;

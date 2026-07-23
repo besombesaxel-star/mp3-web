@@ -107,86 +107,26 @@ export default function DynamicBackdrop() {
   );
 
   return (
-    <>
-      <style jsx global>{`
-        /* Scale stays constant across steps (only the translate varies) so the
-           compositor can keep reusing the same blurred bitmap for this layer
-           instead of re-rasterizing blur(64px) at a new size every frame - see
-           the .mp3-dynamic-blob comment below. */
-        @keyframes mp3DynamicFloatA {
-          0% {
-            transform: translate3d(0, 0, 0) scale(1.06);
-          }
-          50% {
-            transform: translate3d(2%, -3%, 0) scale(1.06);
-          }
-          100% {
-            transform: translate3d(0, 0, 0) scale(1.06);
-          }
-        }
+    <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+      <div className="absolute inset-0" style={backgroundStyle} />
 
-        @keyframes mp3DynamicFloatB {
-          0% {
-            transform: translate3d(0, 0, 0) scale(1.08);
-          }
-          50% {
-            transform: translate3d(-3%, 2%, 0) scale(1.08);
-          }
-          100% {
-            transform: translate3d(0, 0, 0) scale(1.08);
-          }
-        }
+      {/* Static (not animated) - a continuously animated transform on a blur-3xl
+          layer this large forced a repaint of the full viewport every frame,
+          tanking fps especially at larger/fullscreen viewport sizes. */}
+      <div
+        className="absolute left-[-18rem] top-[-12rem] h-[44rem] w-[44rem] rounded-full blur-3xl"
+        style={primaryBlobStyle}
+      />
+      <div
+        className="absolute right-[-16rem] top-[2rem] h-[40rem] w-[40rem] rounded-full blur-3xl"
+        style={secondaryBlobStyle}
+      />
+      <div
+        className="absolute bottom-[-20rem] left-[24%] h-[38rem] w-[38rem] rounded-full blur-3xl"
+        style={tertiaryBlobStyle}
+      />
 
-        @keyframes mp3DynamicFloatC {
-          0% {
-            transform: translate3d(0, 0, 0) scale(1.04);
-          }
-          50% {
-            transform: translate3d(1%, 3%, 0) scale(1.04);
-          }
-          100% {
-            transform: translate3d(0, 0, 0) scale(1.04);
-          }
-        }
-
-        .mp3-dynamic-blob {
-          /* Without will-change, browsers are conservative about promoting this to its
-             own GPU layer - the blur(64px) then gets re-rasterized on the main thread
-             every frame the transform changes, which is brutal at fixed-inset-0 size
-             and gets worse the larger the viewport (more surface to reblur). Hinting
-             the layer up front lets the compositor cache the blurred bitmap once and
-             just translate/scale the GPU texture instead. */
-          will-change: transform;
-        }
-        .mp3-dynamic-blob-a {
-          animation: mp3DynamicFloatA 20s ease-in-out infinite;
-        }
-        .mp3-dynamic-blob-b {
-          animation: mp3DynamicFloatB 24s ease-in-out infinite;
-        }
-        .mp3-dynamic-blob-c {
-          animation: mp3DynamicFloatC 22s ease-in-out infinite;
-        }
-      `}</style>
-
-      <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute inset-0" style={backgroundStyle} />
-
-        <div
-          className="mp3-dynamic-blob mp3-dynamic-blob-a absolute left-[-18rem] top-[-12rem] h-[44rem] w-[44rem] rounded-full blur-3xl"
-          style={primaryBlobStyle}
-        />
-        <div
-          className="mp3-dynamic-blob mp3-dynamic-blob-b absolute right-[-16rem] top-[2rem] h-[40rem] w-[40rem] rounded-full blur-3xl"
-          style={secondaryBlobStyle}
-        />
-        <div
-          className="mp3-dynamic-blob mp3-dynamic-blob-c absolute bottom-[-20rem] left-[24%] h-[38rem] w-[38rem] rounded-full blur-3xl"
-          style={tertiaryBlobStyle}
-        />
-
-        <div className="absolute inset-0" style={vignetteStyle} />
-      </div>
-    </>
+      <div className="absolute inset-0" style={vignetteStyle} />
+    </div>
   );
 }

@@ -358,7 +358,8 @@ export default function Home() {
           <span className="text-sm text-white/35">{todayMomentLabel(currentTodayMoment)}</span>
         </div>
 
-        <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-1 -mx-4 px-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:mx-0 md:px-0 md:pb-0 md:snap-none">
+        <div className="relative -mx-4 px-4 md:mx-0 md:px-0">
+        <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:pb-0 md:snap-none">
           {todayMomentCards.map((momentItem, momentIndex) => {
             const count = momentItem.tracks.length;
             const featuredTrack = momentItem.featuredTrack;
@@ -414,6 +415,12 @@ export default function Home() {
               </button>
             );
           })}
+        </div>
+        <div
+          className="pointer-events-none absolute right-0 top-0 bottom-1 w-10 z-10 md:hidden"
+          style={{ background: "linear-gradient(to left, rgba(0,0,0,0.7), transparent)" }}
+          aria-hidden="true"
+        />
         </div>
       </section>
 

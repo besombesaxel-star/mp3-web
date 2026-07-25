@@ -102,7 +102,7 @@ export default function PwaInstaller() {
       <button
         type="button"
         onClick={install}
-        className="fixed left-4 bottom-[calc(11rem+env(safe-area-inset-bottom)+12px)] sm:bottom-[84px] z-[90] h-10 px-4 rounded-full border border-white/20 bg-black/85 text-white/90 text-xs backdrop-blur hover:bg-black transition"
+        className="fixed left-4 bottom-[calc(env(safe-area-inset-bottom)+150px)] sm:bottom-[84px] z-[90] h-10 px-4 rounded-full border border-white/20 bg-black/85 text-white/90 text-xs backdrop-blur hover:bg-black transition"
         aria-label="Installer l'application"
         title="Installer l'application"
       >
@@ -113,7 +113,7 @@ export default function PwaInstaller() {
 
   if (showIosHint) {
     return (
-      <div className="fixed left-4 bottom-[calc(11rem+env(safe-area-inset-bottom)+12px)] sm:bottom-[84px] z-[90] flex flex-col items-start gap-2">
+      <div className="fixed left-4 bottom-[calc(env(safe-area-inset-bottom)+150px)] sm:bottom-[84px] z-[90] flex flex-col items-start gap-2">
         {iosHintOpen && (
           <div className="max-w-[240px] rounded-2xl border border-white/15 bg-black/90 backdrop-blur px-4 py-3 text-xs leading-relaxed text-white/80 shadow-lg">
             <p className="mb-1 font-medium text-white/90">Installer .mp3</p>

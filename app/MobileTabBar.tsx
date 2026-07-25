@@ -38,7 +38,7 @@ export default function MobileTabBar() {
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-black/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-black pb-[env(safe-area-inset-bottom)]"
       aria-label="Navigation principale"
     >
       <div className="h-[60px] flex items-stretch">
@@ -50,24 +50,17 @@ export default function MobileTabBar() {
               href={href}
               aria-current={active ? "page" : undefined}
               className={[
-                "relative flex-1 flex flex-col items-center justify-center gap-1 transition active:scale-90",
+                "relative flex-1 flex flex-col items-center justify-center gap-1",
                 active ? "text-[var(--mp3-accent-strong)]" : "text-white/45",
               ].join(" ")}
             >
-              <span
-                className={[
-                  "absolute top-0 h-[3px] w-8 rounded-full bg-[var(--mp3-accent-strong)] transition-all duration-200",
-                  active ? "opacity-100 scale-x-100" : "opacity-0 scale-x-0",
-                ].join(" ")}
-                aria-hidden="true"
-              />
-              <TabIcon
-                href={href}
-                className={[
-                  "shrink-0 w-5 h-5 transition-transform duration-200",
-                  active ? "opacity-100 scale-110" : "opacity-80 scale-100",
-                ].join(" ")}
-              />
+              {active ? (
+                <span
+                  className="absolute top-0 h-[3px] w-8 rounded-full bg-[var(--mp3-accent-strong)]"
+                  aria-hidden="true"
+                />
+              ) : null}
+              <TabIcon href={href} className="w-5 h-5" />
               <span className="text-[10px]">{label}</span>
             </Link>
           );

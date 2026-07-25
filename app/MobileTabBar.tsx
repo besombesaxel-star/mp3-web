@@ -5,15 +5,32 @@ import { usePathname } from "next/navigation";
 import { Heart, Home, LibraryBig, Search as SearchIcon, UserRound } from "lucide-react";
 
 const tabs = [
-  { href: "/", label: "Accueil", Icon: Home },
-  { href: "/library", label: "Bibliotheque", Icon: LibraryBig },
-  { href: "/search", label: "Recherche", Icon: SearchIcon },
-  { href: "/favorites", label: "Favoris", Icon: Heart },
-  { href: "/account", label: "Compte", Icon: UserRound },
-];
+  { href: "/", label: "Accueil" },
+  { href: "/library", label: "Bibliotheque" },
+  { href: "/search", label: "Recherche" },
+  { href: "/favorites", label: "Favoris" },
+  { href: "/account", label: "Compte" },
+] as const;
 
 function isActivePath(pathname: string | null, href: string) {
   return pathname === href || (href !== "/" && pathname?.startsWith(href + "/"));
+}
+
+function TabIcon({ href, className }: { href: (typeof tabs)[number]["href"]; className: string }) {
+  switch (href) {
+    case "/":
+      return <Home size={20} className={className} />;
+    case "/library":
+      return <LibraryBig size={20} className={className} />;
+    case "/search":
+      return <SearchIcon size={20} className={className} />;
+    case "/favorites":
+      return <Heart size={20} className={className} />;
+    case "/account":
+      return <UserRound size={20} className={className} />;
+    default:
+      return null;
+  }
 }
 
 export default function MobileTabBar() {
@@ -25,7 +42,7 @@ export default function MobileTabBar() {
       aria-label="Navigation principale"
     >
       <div className="h-[60px] flex items-stretch">
-        {tabs.map(({ href, label, Icon }) => {
+        {tabs.map(({ href, label }) => {
           const active = isActivePath(pathname, href);
           return (
             <Link
@@ -44,10 +61,10 @@ export default function MobileTabBar() {
                 ].join(" ")}
                 aria-hidden="true"
               />
-              <Icon
-                size={20}
+              <TabIcon
+                href={href}
                 className={[
-                  "shrink-0 w-5 h-5 transition-transform duration-200 will-change-transform",
+                  "shrink-0 w-5 h-5 transition-transform duration-200",
                   active ? "opacity-100 scale-110" : "opacity-80 scale-100",
                 ].join(" ")}
               />

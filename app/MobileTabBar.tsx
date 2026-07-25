@@ -47,7 +47,7 @@ export default function MobileTabBar() {
               <Icon
                 size={20}
                 className={[
-                  "transition-transform duration-200",
+                  "shrink-0 w-5 h-5 transition-transform duration-200",
                   active ? "opacity-100 scale-110" : "opacity-80 scale-100",
                 ].join(" ")}
               />

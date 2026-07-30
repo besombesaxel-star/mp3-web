@@ -4,6 +4,7 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 import MobileTabBar from "./MobileTabBar";
+import MobileDebugOverlay from "./MobileDebugOverlay";
 import LandscapeGuard from "./LandscapeGuard";
 import OfflineBanner from "./OfflineBanner";
 import PageTransition from "./PageTransition";
@@ -53,6 +54,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <LauncherHeartbeat />
       <LandscapeGuard />
       <MobileTabBar />
+      <MobileDebugOverlay />
       <MiniPlayer />
       <PlayerOverlay />
       <div

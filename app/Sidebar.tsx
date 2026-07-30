@@ -309,27 +309,16 @@ export default function Sidebar() {
       </aside>
 
       <div className="md:hidden">
-        <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black pt-[env(safe-area-inset-top)]">
-          <div className="h-12 px-4 flex items-center justify-between">
-            <Link
-              href="/"
-              className="text-lg font-light tracking-widest text-white"
-              onClick={closeMobileMenu}
-            >
-              .mp3
-            </Link>
-            <button
-              type="button"
-              className="h-9 w-9 rounded-full border border-white/15 bg-white/5 text-white/90 flex items-center justify-center"
-              aria-label={mobileOpen ? "Fermer le menu" : "Ouvrir le menu"}
-              aria-expanded={mobileOpen}
-              aria-controls="mobile-sidebar-drawer"
-              onClick={() => setMobileOpen((v) => !v)}
-            >
-              {mobileOpen ? <X size={16} /> : <Menu size={16} />}
-            </button>
-          </div>
-        </header>
+        <button
+          type="button"
+          className="fixed top-[calc(env(safe-area-inset-top)+10px)] left-4 z-[55] h-9 w-9 rounded-full border border-white/15 bg-black/80 text-white/90 flex items-center justify-center shadow-lg shadow-black/30"
+          aria-label={mobileOpen ? "Fermer le menu" : "Ouvrir le menu"}
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-sidebar-drawer"
+          onClick={() => setMobileOpen((v) => !v)}
+        >
+          {mobileOpen ? <X size={16} /> : <Menu size={16} />}
+        </button>
 
         <div
           className={[

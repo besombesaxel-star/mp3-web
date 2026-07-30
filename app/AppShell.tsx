@@ -42,7 +42,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="relative z-10 flex h-screen">
         <Sidebar />
-        <main id="main-content" className="flex-1 overflow-y-auto p-4 pt-[calc(4rem+env(safe-area-inset-top))] md:p-8" tabIndex={-1}>
+        <main id="main-content" className="flex-1 overflow-y-auto p-4 pt-[calc(3.25rem+env(safe-area-inset-top))] md:p-8" tabIndex={-1}>
           <PageTransition>{children}</PageTransition>
         </main>
       </div>

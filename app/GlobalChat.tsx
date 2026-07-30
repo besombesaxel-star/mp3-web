@@ -510,10 +510,10 @@ export default function GlobalChat() {
         onClick={() => setOpen((v) => !v)}
         aria-label="Chat et messages"
         className={[
-          "flex items-center justify-center rounded-full border transition-all active:scale-90 shadow-lg shadow-black/30 h-10 w-10",
+          "flex items-center justify-center rounded-full border transition-all sm:active:scale-90 shadow-lg shadow-black/30 h-10 w-10",
           open
             ? "bg-white border-white text-black"
-            : "border-white/20 bg-black/75 backdrop-blur text-white/75 hover:text-white hover:border-white/35 hover:bg-white/12",
+            : "border-white/20 bg-black sm:bg-black/75 sm:backdrop-blur text-white/75 hover:text-white hover:border-white/35 hover:bg-white/12",
         ].join(" ")}
       >
         {open ? <X size={16} /> : <MessageSquare size={16} />}
@@ -543,7 +543,7 @@ export default function GlobalChat() {
           "inset-x-0 bottom-0 top-[calc(3rem+env(safe-area-inset-top))] rounded-t-3xl",
           "md:inset-x-auto md:right-0 md:top-0 md:bottom-0 md:w-[360px] md:rounded-none md:rounded-l-3xl",
           "border-t border-white/10 md:border-t-0 md:border-l",
-          "bg-[#080809]/95 backdrop-blur-xl",
+          "bg-[#080809]/95 sm:backdrop-blur-xl",
           panelDragY ? "" : "transition-transform duration-300 ease-in-out",
           open ? "translate-y-0 md:translate-x-0" : "translate-y-full md:translate-y-0 md:translate-x-full",
         ].join(" ")}

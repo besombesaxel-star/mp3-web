@@ -241,7 +241,7 @@ export default function NotificationBell() {
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Notifications"
-        className="relative w-10 h-10 flex items-center justify-center rounded-full border border-white/20 bg-black/75 backdrop-blur text-white/75 hover:text-white hover:border-white/35 hover:bg-white/12 transition active:scale-90 shadow-lg shadow-black/30"
+        className="relative w-10 h-10 flex items-center justify-center rounded-full border border-white/20 bg-black sm:bg-black/75 sm:backdrop-blur text-white/75 hover:text-white hover:border-white/35 hover:bg-white/12 transition sm:active:scale-90 shadow-lg shadow-black/30"
       >
         <Bell size={16} className={unread > 0 ? "mp3-bell-ring" : undefined} />
         {unread > 0 && (

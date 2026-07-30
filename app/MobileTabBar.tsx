@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { Heart, Home, LibraryBig, Search as SearchIcon, UserRound } from "lucide-react";
 
 const tabs = [
@@ -35,9 +36,46 @@ function TabIcon({ href, className }: { href: (typeof tabs)[number]["href"]; cla
 
 export default function MobileTabBar() {
   const pathname = usePathname();
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+
+    // Some iOS PWA launches leave the tab icons unpainted (a WebKit
+    // compositing glitch). Forcing a reflow via a display toggle nudges the
+    // compositor to repaint them - do it once after the first real paint,
+    // and again whenever the app comes back to the foreground.
+    const kick = () => {
+      if (!nav.isConnected) return;
+      const prevDisplay = nav.style.display;
+      nav.style.display = "none";
+      void nav.offsetHeight;
+      nav.style.display = prevDisplay;
+    };
+
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(kick);
+    });
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") kick();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pageshow", kick);
+
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pageshow", kick);
+    };
+  }, []);
 
   return (
     <nav
+      ref={navRef}
       className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-black pb-[env(safe-area-inset-bottom)]"
       aria-label="Navigation principale"
     >

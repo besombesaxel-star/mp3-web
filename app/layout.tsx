@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 
 import AppShell from "../app/AppShell";
+import SkipLink from "../app/SkipLink";
 import { AuthProvider } from "../app/AuthProvider";
 import { PlayerProvider } from "../app/PlayerContext";
 import Toast from "../app/Toast";
@@ -54,9 +55,7 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <a href="#main-content" className="skip-link">
-          Aller au contenu principal
-        </a>
+        <SkipLink />
 
         <AuthProvider>
           <PlayerProvider>

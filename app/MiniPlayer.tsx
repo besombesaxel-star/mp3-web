@@ -373,7 +373,7 @@ export default function MiniPlayer() {
           role="status"
           aria-live="polite"
         >
-          <div className="mp3-toast-in rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
+          <div className="mp3-toast-in rounded-2xl border border-white/10 bg-black/95 sm:backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
             <div className="flex items-start gap-3 p-4">
               <div className="mp3-achievement-glow h-10 w-10 rounded-2xl bg-white/8 border border-white/10 flex items-center justify-center shrink-0 text-lg">
                 {achievementToast.icon || <Trophy size={18} className="text-white/85" />}
@@ -404,7 +404,7 @@ export default function MiniPlayer() {
           role="status"
           aria-live="polite"
         >
-          <div className="mp3-toast-in rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
+          <div className="mp3-toast-in rounded-2xl border border-white/10 bg-black/95 sm:backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
             <div className="flex items-center justify-between gap-3 p-4">
               <p className="text-sm text-white/85 truncate">{undoToast.message}</p>
               <div className="flex items-center gap-2 shrink-0">
@@ -435,7 +435,7 @@ export default function MiniPlayer() {
           role="status"
           aria-live="polite"
         >
-          <div className="mp3-toast-in rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
+          <div className="mp3-toast-in rounded-2xl border border-white/10 bg-black/95 sm:backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
             <div className="flex items-center gap-3 p-4">
               <div className="h-10 w-10 rounded-2xl bg-white/8 border border-white/10 flex items-center justify-center shrink-0">
                 <ListMusic size={18} className="text-white/85" />
@@ -474,7 +474,7 @@ export default function MiniPlayer() {
           role="status"
           aria-live="polite"
         >
-          <div className="mp3-toast-in rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
+          <div className="mp3-toast-in rounded-2xl border border-white/10 bg-black/95 sm:backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
             <div className="flex items-center gap-3 p-4">
               <div className="h-10 w-10 rounded-2xl bg-white/8 border border-white/10 flex items-center justify-center shrink-0">
                 <Smartphone size={18} className="text-white/85" />
@@ -513,7 +513,7 @@ export default function MiniPlayer() {
           role="status"
           aria-live="polite"
         >
-          <div className="mp3-toast-in rounded-2xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
+          <div className="mp3-toast-in rounded-2xl border border-white/10 bg-black/95 sm:backdrop-blur-xl shadow-[0_18px_60px_rgba(0,0,0,0.55)] overflow-hidden">
             <div className="flex items-center gap-3 p-4">
               <div className="h-10 w-10 rounded-2xl bg-white/8 border border-white/10 flex items-center justify-center shrink-0">
                 <Bell size={18} className="text-white/85" />
@@ -537,7 +537,7 @@ export default function MiniPlayer() {
       ) : null}
 
       <div
-        className="fixed bottom-[60px] sm:bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-black/90 backdrop-blur"
+        className="fixed bottom-[60px] sm:bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-black sm:bg-black/90 sm:backdrop-blur"
         role="region"
         aria-label="Mini lecteur"
       >
@@ -548,7 +548,7 @@ export default function MiniPlayer() {
               id="queue-drawer"
               role="dialog"
               aria-label="File d'attente"
-              className="mp3-drawer-in mx-auto w-full max-w-4xl rounded-3xl border border-white/10 bg-black/95 backdrop-blur-xl shadow-[0_20px_70px_rgba(0,0,0,0.55)] overflow-hidden"
+              className="mp3-drawer-in mx-auto w-full max-w-4xl rounded-3xl border border-white/10 bg-black/95 sm:backdrop-blur-xl shadow-[0_20px_70px_rgba(0,0,0,0.55)] overflow-hidden"
             >
               <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-white/10">
                 <div className="min-w-0">
@@ -711,7 +711,7 @@ export default function MiniPlayer() {
           <div
             onTouchStart={onMobileBarTouchStart}
             onTouchEnd={onMobileBarTouchEnd}
-            className="relative overflow-hidden rounded-2xl border border-white/10 shadow-[0_14px_36px_rgba(0,0,0,0.4)] backdrop-blur-2xl"
+            className="relative overflow-hidden rounded-2xl border border-white/10 shadow-[0_14px_36px_rgba(0,0,0,0.4)]"
             style={mobileCardStyle}
           >
             <div className="absolute inset-x-0 top-0 h-[3px] bg-white/10">
@@ -789,7 +789,7 @@ export default function MiniPlayer() {
                 }}
                 disabled={!track}
                 title={playing ? "Pause" : "Lecture"}
-                className="h-10 w-10 shrink-0 rounded-full text-sm font-semibold disabled:opacity-60 transition-transform duration-150 active:scale-95 flex items-center justify-center bg-white text-black"
+                className="h-10 w-10 shrink-0 rounded-full text-sm font-semibold disabled:opacity-60 flex items-center justify-center bg-white text-black"
                 type="button"
               >
                 {playing ? <Pause size={17} /> : <Play size={17} />}

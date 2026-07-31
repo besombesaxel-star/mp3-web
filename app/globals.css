@@ -119,6 +119,7 @@ html.mp3-custom-cursor [contenteditable="true"] {
 
 html,
 body {
+  height: 100%;
   min-height: 100%;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;

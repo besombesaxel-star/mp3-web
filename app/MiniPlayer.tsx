@@ -537,7 +537,7 @@ export default function MiniPlayer() {
       ) : null}
 
       <div
-        className="fixed bottom-[60px] sm:bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-black sm:bg-black/90 sm:backdrop-blur"
+        className="fixed bottom-[calc(60px+env(safe-area-inset-bottom))] sm:bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-black sm:bg-black/90 sm:backdrop-blur"
         role="region"
         aria-label="Mini lecteur"
       >

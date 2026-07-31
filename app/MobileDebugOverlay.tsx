@@ -48,29 +48,21 @@ export default function MobileDebugOverlay() {
         setInfo(`no-tabbar-nav | skip=${skipTransform} standalone=${standalone} sw=${swController}`);
         return;
       }
-      const svg = nav.querySelector("svg");
-      if (!svg) {
-        setInfo(`tabbar-found no-svg | skip=${skipTransform} standalone=${standalone} sw=${swController}`);
+      const icon = nav.querySelector<HTMLElement>('span[style*="mask-image"]');
+      if (!icon) {
+        setInfo(`tabbar-found no-mask-icon | skip=${skipTransform} standalone=${standalone} sw=${swController}`);
         return;
       }
-      const rect = svg.getBoundingClientRect();
-      const cs = getComputedStyle(svg);
+      const rect = icon.getBoundingClientRect();
+      const cs = getComputedStyle(icon);
+      const maskImg = cs.getPropertyValue("-webkit-mask-image") || cs.getPropertyValue("mask-image");
       const navRect = nav.getBoundingClientRect();
-
-      const shapeChildren = svg.querySelectorAll("path, circle, line, polyline, rect, polygon");
-      const firstShape = shapeChildren[0] as SVGElement | undefined;
-      const shapeCs = firstShape ? getComputedStyle(firstShape) : null;
-
-      const link = svg.closest("a");
-      const linkRect = link ? link.getBoundingClientRect() : null;
-      const linkCs = link ? getComputedStyle(link) : null;
 
       setInfo(
         [
-          `svg ${rect.width.toFixed(0)}x${rect.height.toFixed(0)} disp=${cs.display} vis=${cs.visibility} op=${cs.opacity} color=${cs.color}`,
-          `shapes=${shapeChildren.length} shapeStroke=${shapeCs?.stroke ?? "n/a"} shapeFill=${shapeCs?.fill ?? "n/a"} shapeOp=${shapeCs?.opacity ?? "n/a"}`,
-          `svgInnerLen=${svg.innerHTML.length} navH=${navRect.height.toFixed(0)}`,
-          `linkOp=${linkCs?.opacity ?? "n/a"} linkVis=${linkCs?.visibility ?? "n/a"} linkRect=${linkRect ? `${linkRect.width.toFixed(0)}x${linkRect.height.toFixed(0)}` : "n/a"}`,
+          `icon ${rect.width.toFixed(0)}x${rect.height.toFixed(0)} disp=${cs.display} vis=${cs.visibility} op=${cs.opacity}`,
+          `bg=${cs.backgroundColor} mask=${maskImg.slice(0, 40)}`,
+          `navH=${navRect.height.toFixed(0)}`,
           `skip=${skipTransform} standalone=${standalone} sw=${swController}`,
         ].join(" | ")
       );

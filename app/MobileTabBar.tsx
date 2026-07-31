@@ -2,85 +2,53 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef } from "react";
-import { Heart, Home, LibraryBig, Search as SearchIcon, UserRound } from "lucide-react";
 
 const tabs = [
-  { href: "/", label: "Accueil" },
-  { href: "/library", label: "Bibliotheque" },
-  { href: "/search", label: "Recherche" },
-  { href: "/favorites", label: "Favoris" },
-  { href: "/account", label: "Compte" },
+  { href: "/", label: "Accueil", icon: "/icons/tab-home.svg" },
+  { href: "/library", label: "Bibliotheque", icon: "/icons/tab-library.svg" },
+  { href: "/search", label: "Recherche", icon: "/icons/tab-search.svg" },
+  { href: "/favorites", label: "Favoris", icon: "/icons/tab-heart.svg" },
+  { href: "/account", label: "Compte", icon: "/icons/tab-account.svg" },
 ] as const;
 
 function isActivePath(pathname: string | null, href: string) {
   return pathname === href || (href !== "/" && pathname?.startsWith(href + "/"));
 }
 
-function TabIcon({ href, className }: { href: (typeof tabs)[number]["href"]; className: string }) {
-  switch (href) {
-    case "/":
-      return <Home size={20} className={className} />;
-    case "/library":
-      return <LibraryBig size={20} className={className} />;
-    case "/search":
-      return <SearchIcon size={20} className={className} />;
-    case "/favorites":
-      return <Heart size={20} className={className} />;
-    case "/account":
-      return <UserRound size={20} className={className} />;
-    default:
-      return null;
-  }
+// Mask-based icons instead of inline lucide SVGs: on iOS, an installed PWA
+// can leave inline SVGs inside this fixed bottom bar unpainted after launch
+// (a WebKit compositing bug). A CSS mask-image composites as a plain
+// background paint rather than a separate animated SVG subtree, which
+// sidesteps that bug entirely.
+function TabIcon({ icon }: { icon: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="block h-5 w-5 bg-current"
+      style={{
+        WebkitMaskImage: `url(${icon})`,
+        maskImage: `url(${icon})`,
+        WebkitMaskSize: "contain",
+        maskSize: "contain",
+        WebkitMaskRepeat: "no-repeat",
+        maskRepeat: "no-repeat",
+        WebkitMaskPosition: "center",
+        maskPosition: "center",
+      }}
+    />
+  );
 }
 
 export default function MobileTabBar() {
   const pathname = usePathname();
-  const navRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const nav = navRef.current;
-    if (!nav) return;
-
-    // Some iOS PWA launches leave the tab icons unpainted (a WebKit
-    // compositing glitch). Forcing a reflow via a display toggle nudges the
-    // compositor to repaint them - do it once after the first real paint,
-    // and again whenever the app comes back to the foreground.
-    const kick = () => {
-      if (!nav.isConnected) return;
-      const prevDisplay = nav.style.display;
-      nav.style.display = "none";
-      void nav.offsetHeight;
-      nav.style.display = prevDisplay;
-    };
-
-    let raf2 = 0;
-    const raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(kick);
-    });
-
-    const onVisibilityChange = () => {
-      if (document.visibilityState === "visible") kick();
-    };
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    window.addEventListener("pageshow", kick);
-
-    return () => {
-      cancelAnimationFrame(raf1);
-      cancelAnimationFrame(raf2);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-      window.removeEventListener("pageshow", kick);
-    };
-  }, []);
 
   return (
     <nav
-      ref={navRef}
       className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-black pb-[env(safe-area-inset-bottom)]"
       aria-label="Navigation principale"
     >
       <div className="h-[60px] flex items-stretch">
-        {tabs.map(({ href, label }) => {
+        {tabs.map(({ href, label, icon }) => {
           const active = isActivePath(pathname, href);
           return (
             <Link
@@ -98,7 +66,7 @@ export default function MobileTabBar() {
                   aria-hidden="true"
                 />
               ) : null}
-              <TabIcon href={href} className="w-5 h-5" />
+              <TabIcon icon={icon} />
               <span className="text-[10px]">{label}</span>
             </Link>
           );

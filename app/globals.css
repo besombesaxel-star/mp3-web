@@ -121,6 +121,7 @@ html,
 body {
   min-height: 100%;
   -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
 }
 
 body {

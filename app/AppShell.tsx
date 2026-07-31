@@ -73,7 +73,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         <Sidebar mobileOpen={mobileOpen} onMobileOpenChange={setMobileOpen} />
 
-        <main id="main-content" className="flex-1 overflow-y-auto p-4 md:p-8" tabIndex={-1}>
+        <main id="main-content" className="flex-1 overflow-y-auto overscroll-y-contain p-4 md:p-8" tabIndex={-1}>
           <PageTransition>{children}</PageTransition>
         </main>
 

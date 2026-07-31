@@ -53,11 +53,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         scrolling region). Desktop layout (flex-row, Sidebar + main) is
         unchanged.
       */}
-      <div className="relative z-50 flex h-[100dvh] flex-col md:h-screen md:flex-row">
-        <div className="relative z-[60] flex items-center justify-between px-4 pt-[calc(env(safe-area-inset-top)+10px)] pb-2 md:contents">
+      <div className="relative z-10 flex h-[100dvh] flex-col md:h-screen md:flex-row">
+        <div className="relative z-[55] flex items-center px-4 pt-[calc(env(safe-area-inset-top)+10px)] pb-2 md:hidden">
           <button
             type="button"
-            className="h-9 w-9 rounded-full border border-white/15 bg-white/5 text-white/90 flex items-center justify-center md:hidden"
+            className="h-9 w-9 rounded-full border border-white/15 bg-white/5 text-white/90 flex items-center justify-center"
             aria-label={mobileOpen ? "Fermer le menu" : "Ouvrir le menu"}
             aria-expanded={mobileOpen}
             aria-controls="mobile-sidebar-drawer"
@@ -65,10 +65,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           >
             {mobileOpen ? <X size={16} /> : <Menu size={16} />}
           </button>
-          <div className="flex items-center gap-[8px] md:fixed md:top-3 md:right-4 md:z-[55]">
-            <NotificationBell />
-            <GlobalChat />
-          </div>
         </div>
 
         <Sidebar mobileOpen={mobileOpen} onMobileOpenChange={setMobileOpen} />
@@ -113,6 +109,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           className="h-full w-full object-contain object-left-bottom"
           priority={false}
         />
+      </div>
+
+      <div className="fixed top-0 right-16 z-[55] flex items-center gap-[8px] md:top-3 md:right-4">
+        <NotificationBell />
+        <GlobalChat />
       </div>
     </>
   );

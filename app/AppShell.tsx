@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
+import { Menu, X } from "lucide-react";
 import Sidebar from "./Sidebar";
 import MobileTabBar from "./MobileTabBar";
-import MobileDebugOverlay from "./MobileDebugOverlay";
 import LandscapeGuard from "./LandscapeGuard";
 import OfflineBanner from "./OfflineBanner";
 import PageTransition from "./PageTransition";
@@ -25,6 +26,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isEmbed = pathname?.startsWith("/embed");
   const { fallingPetals } = usePlayer();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   if (isEmbed) {
     return (
@@ -41,11 +43,41 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <CustomCursor />
       <OfflineBanner />
 
-      <div className="relative z-10 flex h-screen">
-        <Sidebar />
-        <main id="main-content" className="flex-1 overflow-y-auto p-4 pt-[calc(3.25rem+env(safe-area-inset-top))] md:p-8" tabIndex={-1}>
+      {/*
+        Mobile chrome (header row, tab bar) lives in normal document flow as
+        flex children instead of position:fixed. iOS can leave fixed-position
+        chrome mispainted/mispositioned right after a standalone PWA launch
+        (env(safe-area-inset-*) resolving late relative to first paint) - an
+        in-flow flex column sidesteps that class of bug entirely while still
+        keeping the header and tab bar always on screen (main is the only
+        scrolling region). Desktop layout (flex-row, Sidebar + main) is
+        unchanged.
+      */}
+      <div className="relative z-10 flex h-[100dvh] flex-col md:h-screen md:flex-row">
+        <div className="relative z-[60] flex items-center justify-between px-4 pt-[calc(env(safe-area-inset-top)+10px)] pb-2 md:contents">
+          <button
+            type="button"
+            className="h-9 w-9 rounded-full border border-white/15 bg-white/5 text-white/90 flex items-center justify-center md:hidden"
+            aria-label={mobileOpen ? "Fermer le menu" : "Ouvrir le menu"}
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-sidebar-drawer"
+            onClick={() => setMobileOpen((v) => !v)}
+          >
+            {mobileOpen ? <X size={16} /> : <Menu size={16} />}
+          </button>
+          <div className="flex items-center gap-[8px] md:fixed md:top-3 md:right-4 md:z-[55]">
+            <NotificationBell />
+            <GlobalChat />
+          </div>
+        </div>
+
+        <Sidebar mobileOpen={mobileOpen} onMobileOpenChange={setMobileOpen} />
+
+        <main id="main-content" className="flex-1 overflow-y-auto p-4 md:p-8" tabIndex={-1}>
           <PageTransition>{children}</PageTransition>
         </main>
+
+        <MobileTabBar />
       </div>
 
       <KeyboardShortcuts />
@@ -53,8 +85,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <PwaInstaller />
       <LauncherHeartbeat />
       <LandscapeGuard />
-      <MobileTabBar />
-      <MobileDebugOverlay />
       <MiniPlayer />
       <PlayerOverlay />
       <div
@@ -83,11 +113,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           className="h-full w-full object-contain object-left-bottom"
           priority={false}
         />
-      </div>
-
-      <div className="fixed top-0 right-16 z-[55] flex items-center gap-[8px] md:top-3 md:right-4">
-        <NotificationBell />
-        <GlobalChat />
       </div>
     </>
   );

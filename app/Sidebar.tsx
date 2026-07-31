@@ -11,14 +11,12 @@ import {
   LibraryBig,
   ListMusic,
   LogOut,
-  Menu,
   Radio,
   Repeat,
   Search as SearchIcon,
   TrendingUp,
   Upload,
   UserRound,
-  X,
 } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { usePlayer } from "./PlayerContext";
@@ -101,7 +99,13 @@ function isActivePath(pathname: string | null, href: string) {
   return pathname === href || (href !== "/" && pathname?.startsWith(href + "/"));
 }
 
-export default function Sidebar() {
+export default function Sidebar({
+  mobileOpen,
+  onMobileOpenChange,
+}: {
+  mobileOpen: boolean;
+  onMobileOpenChange: (open: boolean) => void;
+}) {
   const pathname = usePathname();
   const isHydrated = useSyncExternalStore(
     () => () => {},
@@ -110,7 +114,6 @@ export default function Sidebar() {
   );
   const { favorites, playing, focusMode } = usePlayer();
   const { isAuthenticated, loading, primaryLabel, signOut, user } = useAuth();
-  const [mobileOpen, setMobileOpen] = useState(false);
   const drawerRef = useRef<HTMLElement | null>(null);
   useFocusTrap(mobileOpen, drawerRef);
 
@@ -118,7 +121,7 @@ export default function Sidebar() {
   const compact = focusMode && playing;
 
   function closeMobileMenu() {
-    setMobileOpen(false);
+    onMobileOpenChange(false);
   }
 
   async function handleSignOut() {
@@ -133,12 +136,12 @@ export default function Sidebar() {
     if (!mobileOpen) return;
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMobileOpen(false);
+      if (e.key === "Escape") onMobileOpenChange(false);
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [mobileOpen]);
+  }, [mobileOpen, onMobileOpenChange]);
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -309,17 +312,6 @@ export default function Sidebar() {
       </aside>
 
       <div className="md:hidden">
-        <button
-          type="button"
-          className="fixed top-[calc(env(safe-area-inset-top)+10px)] left-4 z-[55] h-9 w-9 rounded-full border border-white/15 bg-black/80 text-white/90 flex items-center justify-center shadow-lg shadow-black/30"
-          aria-label={mobileOpen ? "Fermer le menu" : "Ouvrir le menu"}
-          aria-expanded={mobileOpen}
-          aria-controls="mobile-sidebar-drawer"
-          onClick={() => setMobileOpen((v) => !v)}
-        >
-          {mobileOpen ? <X size={16} /> : <Menu size={16} />}
-        </button>
-
         <div
           className={[
             "fixed inset-0 z-50 transition-opacity duration-200",
@@ -330,7 +322,7 @@ export default function Sidebar() {
             type="button"
             className="absolute inset-0 bg-black/65"
             aria-label="Fermer le menu"
-            onClick={() => setMobileOpen(false)}
+            onClick={() => onMobileOpenChange(false)}
           />
 
           <aside

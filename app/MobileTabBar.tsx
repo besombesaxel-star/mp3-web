@@ -44,7 +44,7 @@ export default function MobileTabBar() {
 
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-black pb-[env(safe-area-inset-bottom)]"
+      className="md:hidden border-t border-white/10 bg-black pb-[env(safe-area-inset-bottom)]"
       aria-label="Navigation principale"
     >
       <div className="h-[60px] flex items-stretch">

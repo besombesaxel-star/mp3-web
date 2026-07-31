@@ -53,7 +53,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         scrolling region). Desktop layout (flex-row, Sidebar + main) is
         unchanged.
       */}
-      <div className="fixed inset-0 z-10 flex flex-col md:static md:flex md:h-screen md:flex-row">
+      <div className="relative z-10 flex h-[100dvh] flex-col md:h-screen md:flex-row">
         <div className="relative z-[60] flex items-center justify-between px-4 pt-[calc(env(safe-area-inset-top)+10px)] pb-2 md:contents">
           <button
             type="button"

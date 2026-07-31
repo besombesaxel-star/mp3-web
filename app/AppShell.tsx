@@ -111,7 +111,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         />
       </div>
 
-      <div className="fixed top-0 right-16 z-[55] flex items-center gap-[8px] md:top-3 md:right-4">
+      <div className="fixed top-[calc(env(safe-area-inset-top)+8px)] right-16 z-[55] flex items-center gap-[8px] md:top-3 md:right-4">
         <NotificationBell />
         <GlobalChat />
       </div>

@@ -44,10 +44,10 @@ export default function MobileTabBar() {
 
   return (
     <nav
-      className="md:hidden border-t border-white/10 bg-black pb-[env(safe-area-inset-bottom)]"
+      className="md:hidden flex items-center border-t border-white/10 bg-black min-h-[calc(60px+env(safe-area-inset-bottom))]"
       aria-label="Navigation principale"
     >
-      <div className="h-[60px] flex items-stretch">
+      <div className="h-[60px] w-full flex items-stretch">
         {tabs.map(({ href, label, icon }) => {
           const active = isActivePath(pathname, href);
           return (

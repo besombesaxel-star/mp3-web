@@ -552,6 +552,10 @@ export default function GlobalChat() {
           transform: panelDragY ? `translateY(${panelDragY}px)` : undefined,
         }}
         aria-hidden={!open}
+        // Without this, the panel's buttons/textarea/links stay in the tab
+        // order while translated off-screen and aria-hidden - a keyboard or
+        // screen-reader user can still tab into an invisible panel.
+        inert={!open}
       >
         {/* Header */}
         <div

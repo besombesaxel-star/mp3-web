@@ -57,7 +57,7 @@ export default function MobileTabBar() {
               aria-current={active ? "page" : undefined}
               className={[
                 "relative flex-1 flex flex-col items-center justify-center gap-1",
-                active ? "text-[var(--mp3-accent-strong)]" : "text-white/45",
+                active ? "text-[var(--mp3-accent-strong)]" : "text-white/50",
               ].join(" ")}
             >
               {active ? (

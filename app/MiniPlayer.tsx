@@ -805,7 +805,7 @@ export default function MiniPlayer() {
               className="min-w-0 flex items-center gap-4 cursor-pointer text-left disabled:cursor-default disabled:opacity-85 shrink-0"
               onClick={() => track && setExpanded(true)}
               title={track ? "Ouvrir le player" : "Choisis un morceau"}
-              aria-label={track ? "Ouvrir le lecteur plein ecran" : "Aucun morceau en lecture"}
+              aria-label={track ? `Ouvrir le lecteur plein ecran : ${track.title}` : "Aucune lecture"}
               disabled={!track}
             >
               <div className="group relative isolate h-12 w-12 ml-3">

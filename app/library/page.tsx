@@ -173,10 +173,7 @@ export default function LibraryPage() {
   const [editCoverPreview, setEditCoverPreview] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  // Starts "list": the grid/list toggle is desktop-only (hidden sm:flex below),
-  // so a "grid" default would trap mobile visitors who've never opened the
-  // desktop layout in grid view with no on-screen way to switch.
-  const [view, setView] = useState<"grid" | "list">("list");
+  const [view, setView] = useState<"grid" | "list">("grid");
   const [sort, setSort] = useState<"default" | "title" | "artist">("default");
   const [menuTrack, setMenuTrack] = useState<Track | null>(null);
   const [selectMode, setSelectMode] = useState(false);
@@ -510,9 +507,9 @@ export default function LibraryPage() {
         refreshing={pullToRefresh.refreshing}
         triggerDistance={pullToRefresh.triggerDistance}
       />
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-white">Bibliotheque</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {tracks.length > 0 ? (
             <select
               value={sort}
@@ -549,7 +546,7 @@ export default function LibraryPage() {
               {selectMode ? "Annuler" : "Selectionner"}
             </button>
           ) : null}
-          <div className="hidden sm:flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
+          <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1">
             <button
               type="button"
               onClick={() => changeView("grid")}

@@ -16,6 +16,10 @@ import { useFocusTrap } from "../useFocusTrap";
 import { useLongPress } from "../useLongPress";
 import { getArtistHref, getPublicProfileHref } from "@/lib/publicLinks";
 import TrackContextMenu from "../TrackContextMenu";
+import { SwipeableRow, swipeRowStyle, useSwipeActions } from "../SwipeableRow";
+import { toast } from "../Toast";
+import { usePullToRefresh } from "../usePullToRefresh";
+import PullToRefreshIndicator from "../PullToRefreshIndicator";
 
 type MetaSaveResponse = {
   ok?: boolean;
@@ -61,23 +65,49 @@ function LibraryListRow({
   selected?: boolean;
   onToggleSelect?: () => void;
 }) {
-  const { playTrack } = usePlayer();
+  const { playTrack, toggleFavorite, isFavorite, addToQueueEnd, hapticsEnabled } = usePlayer();
   const longPress = useLongPress({ onLongPress: () => onOpenMenu(toTrack(track)) });
+  const favored = isFavorite(track.src);
+  const swipe = useSwipeActions({
+    disabled: selectMode,
+    hapticsEnabled,
+    onSwipeRight: () => {
+      toggleFavorite(toTrack(track));
+      toast(favored ? "Retire des favoris" : "Ajoute aux favoris", "heart");
+    },
+    onSwipeLeft: () => {
+      addToQueueEnd(toTrack(track));
+      toast("Ajoute a la file", "music");
+    },
+  });
 
   return (
-    <div
-      className="group flex items-center gap-3 rounded-2xl px-2 py-2 transition hover:bg-white/5 mp3-fade-up"
-      style={{ animationDelay: `${Math.min(index, 15) * 30}ms` }}
-      onTouchStart={longPress.onTouchStart}
-      onTouchMove={longPress.onTouchMove}
-      onTouchEnd={longPress.onTouchEnd}
-      onTouchCancel={longPress.onTouchCancel}
-      onContextMenu={longPress.onContextMenu}
-    >
+    <SwipeableRow swipe={swipe} favored={favored}>
+      <div
+        className="group flex items-center gap-3 rounded-2xl px-2 py-2 transition hover:bg-white/5 mp3-fade-up"
+        style={swipeRowStyle(swipe, { animationDelay: `${Math.min(index, 15) * 30}ms` })}
+        onTouchStart={(e) => {
+          longPress.onTouchStart(e);
+          swipe.onTouchStart(e);
+        }}
+        onTouchMove={(e) => {
+          longPress.onTouchMove(e);
+          swipe.onTouchMove(e);
+        }}
+        onTouchEnd={(e) => {
+          longPress.onTouchEnd();
+          swipe.onTouchEnd(e);
+        }}
+        onTouchCancel={(e) => {
+          longPress.onTouchCancel();
+          swipe.onTouchCancel(e);
+        }}
+        onContextMenu={longPress.onContextMenu}
+      >
       <button
         type="button"
         onClick={() => {
-          if (longPress.didLongPress()) return;
+          if (longPress.didLongPress() || swipe.didSwipe()) return;
           if (selectMode) {
             onToggleSelect?.();
             return;
@@ -124,7 +154,8 @@ function LibraryListRow({
           <Pencil size={14} />
         </button>
       ) : null}
-    </div>
+      </div>
+    </SwipeableRow>
   );
 }
 
@@ -142,7 +173,10 @@ export default function LibraryPage() {
   const [editCoverPreview, setEditCoverPreview] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [view, setView] = useState<"grid" | "list">("grid");
+  // Starts "list": the grid/list toggle is desktop-only (hidden sm:flex below),
+  // so a "grid" default would trap mobile visitors who've never opened the
+  // desktop layout in grid view with no on-screen way to switch.
+  const [view, setView] = useState<"grid" | "list">("list");
   const [sort, setSort] = useState<"default" | "title" | "artist">("default");
   const [menuTrack, setMenuTrack] = useState<Track | null>(null);
   const [selectMode, setSelectMode] = useState(false);
@@ -299,6 +333,8 @@ export default function LibraryPage() {
       void loadTracks();
     });
   }, [loadTracks]);
+
+  const pullToRefresh = usePullToRefresh(loadTracks);
 
   useEffect(() => {
     if (!editing) return;
@@ -464,7 +500,16 @@ export default function LibraryPage() {
   }, [tracks, sort]);
 
   return (
-    <div ref={pageRef} className="px-2 pt-6 sm:px-6 pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
+    <div
+      ref={pageRef}
+      className="px-2 pt-6 sm:px-6 pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28"
+      {...pullToRefresh.containerProps}
+    >
+      <PullToRefreshIndicator
+        pullDistance={pullToRefresh.pullDistance}
+        refreshing={pullToRefresh.refreshing}
+        triggerDistance={pullToRefresh.triggerDistance}
+      />
       <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-white">Bibliotheque</h1>
         <div className="flex items-center gap-3">

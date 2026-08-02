@@ -12,6 +12,10 @@ import { getInitials, hashStringToHue } from "@/lib/publicLinks";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { useLongPress } from "../useLongPress";
 import TrackContextMenu from "../TrackContextMenu";
+import { SwipeableRow, swipeRowStyle, useSwipeActions } from "../SwipeableRow";
+import { toast } from "../Toast";
+import { usePullToRefresh } from "../usePullToRefresh";
+import PullToRefreshIndicator from "../PullToRefreshIndicator";
 
 type TrackWithCover = Track & { cover?: string };
 
@@ -129,15 +133,29 @@ function TrackRow({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const longPress = useLongPress({ onLongPress: () => setMenuOpen(true) });
+  const { toggleFavorite, addToQueueEnd, hapticsEnabled } = usePlayer();
+  const swipe = useSwipeActions({
+    disabled: selectMode,
+    hapticsEnabled,
+    onSwipeRight: () => {
+      toggleFavorite(track);
+      toast(isFav ? "Retire des favoris" : "Ajoute aux favoris", "heart");
+    },
+    onSwipeLeft: () => {
+      addToQueueEnd(track);
+      toast("Ajoute a la file", "music");
+    },
+  });
 
   return (
     <>
+      <SwipeableRow swipe={swipe} favored={isFav}>
       <button
         type="button"
         role="option"
         aria-selected={active}
         onClick={() => {
-          if (longPress.didLongPress()) return;
+          if (longPress.didLongPress() || swipe.didSwipe()) return;
           if (selectMode) {
             onToggleSelect?.();
             return;
@@ -145,16 +163,28 @@ function TrackRow({
           onPlay(queue, idx);
         }}
         onMouseEnter={() => onHover(idx)}
-        onTouchStart={longPress.onTouchStart}
-        onTouchMove={longPress.onTouchMove}
-        onTouchEnd={longPress.onTouchEnd}
-        onTouchCancel={longPress.onTouchCancel}
+        onTouchStart={(e) => {
+          longPress.onTouchStart(e);
+          swipe.onTouchStart(e);
+        }}
+        onTouchMove={(e) => {
+          longPress.onTouchMove(e);
+          swipe.onTouchMove(e);
+        }}
+        onTouchEnd={(e) => {
+          longPress.onTouchEnd();
+          swipe.onTouchEnd(e);
+        }}
+        onTouchCancel={(e) => {
+          longPress.onTouchCancel();
+          swipe.onTouchCancel(e);
+        }}
         onContextMenu={longPress.onContextMenu}
         className={[
           "group flex items-center gap-3 rounded-2xl px-3 py-3 sm:py-2.5 transition w-full text-left mp3-fade-up",
           active ? "bg-white/10" : "hover:bg-white/5",
         ].join(" ")}
-        style={{ animationDelay: `${Math.min(idx, 14) * 25}ms` }}
+        style={swipeRowStyle(swipe, { animationDelay: `${Math.min(idx, 14) * 25}ms` })}
       >
         {selectMode ? (
           <span
@@ -195,6 +225,7 @@ function TrackRow({
           </span>
         )}
       </button>
+      </SwipeableRow>
 
       {menuOpen ? <TrackContextMenu track={track} onClose={() => setMenuOpen(false)} /> : null}
     </>
@@ -433,6 +464,8 @@ export default function SearchPage() {
 
   useEffect(() => { void loadTracks(); }, [loadTracks]);
   useEffect(() => subscribeTracksUpdated(() => { void loadTracks(); }), [loadTracks]);
+
+  const pullToRefresh = usePullToRefresh(loadTracks);
 
   const hasQuery = query.trim().length > 0;
   const needle = useMemo(() => normalizeText(query), [query]);
@@ -723,7 +756,12 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
+    <div className="pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28" {...pullToRefresh.containerProps}>
+      <PullToRefreshIndicator
+        pullDistance={pullToRefresh.pullDistance}
+        refreshing={pullToRefresh.refreshing}
+        triggerDistance={pullToRefresh.triggerDistance}
+      />
       {/* Header */}
       <div className="mb-6 flex items-end justify-between mp3-fade-up">
         <h2 className="text-3xl font-light">Recherche</h2>

@@ -10,6 +10,7 @@ import { useLongPress } from "../useLongPress";
 import TrackContextMenu from "../TrackContextMenu";
 import { cacheTracksForOffline } from "@/lib/offlineCache";
 import { toast } from "../Toast";
+import { SwipeableRow, swipeRowStyle, useSwipeActions } from "../SwipeableRow";
 
 const FAVORITES_VIEW_KEY = "mp3_favorites_view";
 
@@ -20,10 +21,22 @@ function FavoriteRow({
   isActive: boolean; playing: boolean;
   onOpenMenu: (t: Track) => void;
 }) {
-  const { setQueueAndPlay, toggleFavorite } = usePlayer();
+  const { setQueueAndPlay, toggleFavorite, addToQueueEnd, hapticsEnabled } = usePlayer();
   const longPress = useLongPress({ onLongPress: () => onOpenMenu(track) });
+  const swipe = useSwipeActions({
+    hapticsEnabled,
+    onSwipeRight: () => {
+      toggleFavorite(track);
+      toast("Retire des favoris", "heart");
+    },
+    onSwipeLeft: () => {
+      addToQueueEnd(track);
+      toast("Ajoute a la file", "music");
+    },
+  });
 
   return (
+    <SwipeableRow swipe={swipe} favored>
     <div
       className={[
         "group flex items-center gap-4 rounded-2xl border px-4 py-3 transition-colors duration-200 mp3-fade-up",
@@ -31,11 +44,23 @@ function FavoriteRow({
           ? "bg-white/8 border-white/10"
           : "bg-white/[0.03] border-white/5 hover:bg-white/6 hover:border-white/8",
       ].join(" ")}
-      style={{ animationDelay: `${Math.min(index, 15) * 30}ms` }}
-      onTouchStart={longPress.onTouchStart}
-      onTouchMove={longPress.onTouchMove}
-      onTouchEnd={longPress.onTouchEnd}
-      onTouchCancel={longPress.onTouchCancel}
+      style={swipeRowStyle(swipe, { animationDelay: `${Math.min(index, 15) * 30}ms` })}
+      onTouchStart={(e) => {
+        longPress.onTouchStart(e);
+        swipe.onTouchStart(e);
+      }}
+      onTouchMove={(e) => {
+        longPress.onTouchMove(e);
+        swipe.onTouchMove(e);
+      }}
+      onTouchEnd={(e) => {
+        longPress.onTouchEnd();
+        swipe.onTouchEnd(e);
+      }}
+      onTouchCancel={(e) => {
+        longPress.onTouchCancel();
+        swipe.onTouchCancel(e);
+      }}
       onContextMenu={longPress.onContextMenu}
     >
       {/* Cover */}
@@ -71,7 +96,10 @@ function FavoriteRow({
       {/* Actions */}
       <div className="flex items-center gap-2 shrink-0">
         <button
-          onClick={() => toggleFavorite(track)}
+          onClick={() => {
+            if (swipe.didSwipe()) return;
+            toggleFavorite(track);
+          }}
           className="h-8 w-8 rounded-full flex items-center justify-center text-red-400 opacity-0 group-hover:opacity-100 hover:bg-white/8 transition"
           title="Retirer des favoris"
           type="button"
@@ -80,7 +108,10 @@ function FavoriteRow({
         </button>
 
         <button
-          onClick={() => setQueueAndPlay(sorted, index)}
+          onClick={() => {
+            if (swipe.didSwipe()) return;
+            setQueueAndPlay(sorted, index);
+          }}
           className={[
             "h-8 w-8 rounded-full flex items-center justify-center transition",
             isActive
@@ -94,6 +125,7 @@ function FavoriteRow({
         </button>
       </div>
     </div>
+    </SwipeableRow>
   );
 }
 

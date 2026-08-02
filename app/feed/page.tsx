@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { LayoutGrid, List as ListIcon, Music, Play, Rss } from "lucide-react";
 import AlbumCard from "@/app/AlbumCard";
 import { useAuth } from "@/app/AuthProvider";
@@ -12,6 +12,10 @@ import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { getPublicProfileHref } from "@/lib/publicLinks";
 import { useLongPress } from "@/app/useLongPress";
 import TrackContextMenu from "@/app/TrackContextMenu";
+import { SwipeableRow, swipeRowStyle, useSwipeActions } from "@/app/SwipeableRow";
+import { toast } from "@/app/Toast";
+import { usePullToRefresh } from "@/app/usePullToRefresh";
+import PullToRefreshIndicator from "@/app/PullToRefreshIndicator";
 
 type FeedTrack = {
   artist: string;
@@ -35,19 +39,45 @@ function FeedRow({
   onOpenMenu: (t: Track) => void;
 }) {
   const longPress = useLongPress({ onLongPress: () => onOpenMenu(playerTrack) });
+  const { toggleFavorite, isFavorite, addToQueueEnd, hapticsEnabled } = usePlayer();
+  const favored = isFavorite(playerTrack.src);
+  const swipe = useSwipeActions({
+    hapticsEnabled,
+    onSwipeRight: () => {
+      toggleFavorite(playerTrack);
+      toast(favored ? "Retire des favoris" : "Ajoute aux favoris", "heart");
+    },
+    onSwipeLeft: () => {
+      addToQueueEnd(playerTrack);
+      toast("Ajoute a la file", "music");
+    },
+  });
 
   return (
+    <SwipeableRow swipe={swipe} favored={favored}>
     <div
       className="group flex items-center gap-3 rounded-2xl px-3 py-3 sm:py-2.5 hover:bg-white/5 transition cursor-pointer mp3-fade-up"
-      style={{ animationDelay: `${Math.min(idx, 14) * 25}ms` }}
+      style={swipeRowStyle(swipe, { animationDelay: `${Math.min(idx, 14) * 25}ms` })}
       onClick={() => {
-        if (longPress.didLongPress()) return;
+        if (longPress.didLongPress() || swipe.didSwipe()) return;
         onPlay(queue, idx);
       }}
-      onTouchStart={longPress.onTouchStart}
-      onTouchMove={longPress.onTouchMove}
-      onTouchEnd={longPress.onTouchEnd}
-      onTouchCancel={longPress.onTouchCancel}
+      onTouchStart={(e) => {
+        longPress.onTouchStart(e);
+        swipe.onTouchStart(e);
+      }}
+      onTouchMove={(e) => {
+        longPress.onTouchMove(e);
+        swipe.onTouchMove(e);
+      }}
+      onTouchEnd={(e) => {
+        longPress.onTouchEnd();
+        swipe.onTouchEnd(e);
+      }}
+      onTouchCancel={(e) => {
+        longPress.onTouchCancel();
+        swipe.onTouchCancel(e);
+      }}
       onContextMenu={longPress.onContextMenu}
     >
       <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-white/5">
@@ -78,6 +108,7 @@ function FeedRow({
         </Link>
       )}
     </div>
+    </SwipeableRow>
   );
 }
 
@@ -105,34 +136,34 @@ export default function FeedPage() {
     } catch {}
   }
 
-  useEffect(() => {
-    if (!isAuthenticated || !accessToken) { setLoading(false); return; }
-    let cancelled = false;
-
-    async function load() {
-      setLoading(true);
-      try {
-        const [accountRes, allTracks] = await Promise.all([
-          fetch("/api/account", { cache: "no-store", headers: createAuthorizedHeaders(accessToken!) }),
-          fetchTracksShared(accessToken),
-        ]);
-
-        const accountJson = await accountRes.json().catch(() => ({}));
-
-        if (cancelled) return;
-
-        const followingList: string[] = Array.isArray(accountJson.following) ? accountJson.following : [];
-
-        setFollowing(followingList);
-        setTracks(allTracks.filter((t) => t.ownerId && followingList.includes(t.ownerId)));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+  const loadFeed = useCallback(async () => {
+    if (!isAuthenticated || !accessToken) {
+      setLoading(false);
+      return;
     }
 
-    void load();
-    return () => { cancelled = true; };
+    setLoading(true);
+    try {
+      const [accountRes, allTracks] = await Promise.all([
+        fetch("/api/account", { cache: "no-store", headers: createAuthorizedHeaders(accessToken) }),
+        fetchTracksShared(accessToken),
+      ]);
+
+      const accountJson = await accountRes.json().catch(() => ({}));
+      const followingList: string[] = Array.isArray(accountJson.following) ? accountJson.following : [];
+
+      setFollowing(followingList);
+      setTracks(allTracks.filter((t) => t.ownerId && followingList.includes(t.ownerId)));
+    } finally {
+      setLoading(false);
+    }
   }, [isAuthenticated, accessToken]);
+
+  useEffect(() => {
+    void loadFeed();
+  }, [loadFeed]);
+
+  const pullToRefresh = usePullToRefresh(loadFeed);
 
   const queue = useMemo<PlayerTrack[]>(
     () => tracks.map((t) => ({ artist: t.artist, cover: t.cover ?? undefined, src: t.src, title: t.title })),
@@ -151,7 +182,15 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
+    <div
+      className="max-w-2xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28"
+      {...pullToRefresh.containerProps}
+    >
+      <PullToRefreshIndicator
+        pullDistance={pullToRefresh.pullDistance}
+        refreshing={pullToRefresh.refreshing}
+        triggerDistance={pullToRefresh.triggerDistance}
+      />
       <div className="flex items-center justify-between mb-8 mp3-fade-up">
         <h2 className="text-3xl font-light">Feed</h2>
         <div className="flex items-center gap-2">

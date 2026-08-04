@@ -214,8 +214,15 @@ export default function PlayerOverlay() {
 
   const [showLyrics, setShowLyrics] = useState(false);
   const lyrics = useLyrics(track, duration);
+  // Desktop and mobile each render their own lyrics DOM subtree (hidden via
+  // CSS breakpoint, not unmounted - matches how this file/MiniPlayer split
+  // mobile vs desktop elsewhere), so each needs its own container/active-line
+  // ref; scrollTo on a display:none container is a harmless no-op (clientHeight
+  // is 0), so both effects below can just run against whichever pair is real.
   const lyricsContainerRef = useRef<HTMLDivElement | null>(null);
   const activeLyricRef = useRef<HTMLDivElement | null>(null);
+  const mobileLyricsContainerRef = useRef<HTMLDivElement | null>(null);
+  const mobileActiveLyricRef = useRef<HTMLDivElement | null>(null);
 
   const currentLineIdx = useMemo(() => {
     if (!lyrics.lines.length || !currentTime) return -1;
@@ -229,23 +236,27 @@ export default function PlayerOverlay() {
 
   useEffect(() => {
     if (!showLyrics || currentLineIdx < 0) return;
-    const container = lyricsContainerRef.current;
-    const el = activeLyricRef.current;
-    if (!container || !el) return;
-    const targetTop = el.offsetTop - container.clientHeight / 2 + el.clientHeight / 2;
-    container.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+    for (const [container, el] of [
+      [lyricsContainerRef.current, activeLyricRef.current],
+      [mobileLyricsContainerRef.current, mobileActiveLyricRef.current],
+    ] as const) {
+      if (!container || !el) continue;
+      const targetTop = el.offsetTop - container.clientHeight / 2 + el.clientHeight / 2;
+      container.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+    }
   }, [currentLineIdx, showLyrics]);
 
   // Unsynced (plain-text) lyrics have no per-line timestamps, so lrclib gives us
   // no cue to highlight/scroll to - approximate it by following playback progress.
   useEffect(() => {
     if (!showLyrics || lyrics.lines.length > 0 || !lyrics.plain || !duration) return;
-    const container = lyricsContainerRef.current;
-    if (!container) return;
-    const maxScroll = container.scrollHeight - container.clientHeight;
-    if (maxScroll <= 0) return;
-    const ratio = Math.min(1, Math.max(0, currentTime / duration));
-    container.scrollTo({ top: maxScroll * ratio, behavior: "auto" });
+    for (const container of [lyricsContainerRef.current, mobileLyricsContainerRef.current]) {
+      if (!container) continue;
+      const maxScroll = container.scrollHeight - container.clientHeight;
+      if (maxScroll <= 0) continue;
+      const ratio = Math.min(1, Math.max(0, currentTime / duration));
+      container.scrollTo({ top: maxScroll * ratio, behavior: "auto" });
+    }
   }, [currentTime, showLyrics, lyrics.lines.length, lyrics.plain, duration]);
 
   function onCoverTap() {
@@ -464,6 +475,19 @@ export default function PlayerOverlay() {
 
             <div className="flex items-center gap-2">
               <button
+                onClick={() => setShowLyrics((v) => !v)}
+                aria-pressed={showLyrics}
+                className={[
+                  "h-10 w-10 rounded-full transition active:scale-[0.98]",
+                  showLyrics ? "bg-white/12 ring-1 ring-white/15" : "bg-white/8 hover:bg-white/12",
+                ].join(" ")}
+                title="Paroles"
+                type="button"
+              >
+                <Mic size={18} className="mx-auto opacity-90 text-white/85" />
+              </button>
+
+              <button
                 onClick={closeOverlay}
                 className="h-10 w-10 rounded-full bg-white/8 hover:bg-white/12 transition active:scale-[0.98]"
                 title="Fermer"
@@ -556,11 +580,13 @@ export default function PlayerOverlay() {
               focusMode ? "grid-cols-1 max-w-5xl" : showLyrics ? "grid-cols-1 lg:grid-cols-[minmax(0,0.62fr)_minmax(0,1fr)] lg:items-center" : "grid-cols-1 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)]",
             ].join(" ")}
           >
-            {/* Cover */}
+            {/* Cover - hidden on mobile while lyrics are shown (mobile swaps to the
+                lyrics view below instead of showing both at once); desktop still
+                shows cover + lyrics side by side. */}
             <div
               className={[
                 showLyrics && !focusMode ? "ml-0 mr-auto w-full" : "mx-auto w-full",
-                "flex flex-col gap-5",
+                showLyrics && !focusMode ? "hidden md:flex flex-col gap-5" : "flex flex-col gap-5",
                 focusMode
                   ? "max-w-[360px] sm:max-w-[420px] md:max-w-[760px]"
                   : showLyrics
@@ -708,6 +734,62 @@ export default function PlayerOverlay() {
               </div>
               ) : null}
             </div>
+
+            {/* Mobile lyrics - replaces the cover (hidden above) while active */}
+            {showLyrics && !focusMode ? (
+              <div className="md:hidden w-full mp3-ov-panel">
+                <div
+                  ref={mobileLyricsContainerRef}
+                  className="h-[52vh] overflow-x-hidden overflow-y-auto scrollbar-none select-none"
+                  style={{
+                    maskImage: "linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%)",
+                    WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%)",
+                  }}
+                >
+                  {lyrics.loading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-base text-white/30">Recherche des paroles…</p>
+                    </div>
+                  ) : !lyrics.hasLyrics ? (
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-base text-white/25">Paroles non trouvées</p>
+                    </div>
+                  ) : lyrics.lines.length > 0 ? (
+                    <>
+                      <div style={{ height: "18vh" }} />
+                      {lyrics.lines.map((line, idx) => {
+                        const isActive = idx === currentLineIdx;
+                        const distance = Math.abs(idx - currentLineIdx);
+                        return (
+                          <div
+                            key={idx}
+                            ref={isActive ? (el) => { mobileActiveLyricRef.current = el; } : undefined}
+                            className="py-1.5 cursor-pointer leading-snug"
+                            style={{
+                              opacity: distance === 0 ? 1 : distance === 1 ? 0.45 : distance === 2 ? 0.22 : distance === 3 ? 0.1 : 0.04,
+                              fontSize: distance === 0 ? "1.6rem" : "1.15rem",
+                              fontWeight: isActive ? 700 : 400,
+                              color: "rgba(255,255,255,0.95)",
+                              textShadow: isActive ? `0 0 20px ${glowStrong}, 0 0 46px ${glow}` : undefined,
+                              transition: "opacity 350ms ease, text-shadow 350ms ease",
+                              animation: isActive ? "lyricsActivePop 260ms ease" : undefined,
+                            }}
+                            onClick={() => { if (duration > 0) seekTo(line.time / duration); }}
+                          >
+                            {line.text}
+                          </div>
+                        );
+                      })}
+                      <div style={{ height: "18vh" }} />
+                    </>
+                  ) : lyrics.plain ? (
+                    <div style={{ paddingTop: "8vh", paddingBottom: "30vh" }}>
+                      <p className="text-base text-white/50 leading-relaxed whitespace-pre-wrap">{lyrics.plain}</p>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
 
             {/* Right */}
             <div className="w-full md:hidden mp3-ov-panel">

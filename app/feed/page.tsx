@@ -7,7 +7,6 @@ import { LayoutGrid, List as ListIcon, Music, Play, Rss } from "lucide-react";
 import AlbumCard from "@/app/AlbumCard";
 import { useAuth } from "@/app/AuthProvider";
 import { usePlayer, type Track } from "@/app/PlayerContext";
-import { fetchTracksShared } from "@/app/tracksCache";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { getPublicProfileHref } from "@/lib/publicLinks";
 import { useLongPress } from "@/app/useLongPress";
@@ -16,6 +15,8 @@ import { SwipeableRow, swipeRowStyle, useSwipeActions } from "@/app/SwipeableRow
 import { toast } from "@/app/Toast";
 import { usePullToRefresh } from "@/app/usePullToRefresh";
 import PullToRefreshIndicator from "@/app/PullToRefreshIndicator";
+import { useInfiniteTracks } from "@/app/useInfiniteTracks";
+import InfiniteScrollSentinel from "@/app/InfiniteScrollSentinel";
 
 type FeedTrack = {
   artist: string;
@@ -116,9 +117,7 @@ export default function FeedPage() {
   const { accessToken, isAuthenticated } = useAuth();
   const { setQueueAndPlay } = usePlayer();
 
-  const [following, setFollowing] = useState<string[]>([]);
-  const [tracks, setTracks] = useState<FeedTrack[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [following, setFollowing] = useState<string[] | null>(null);
   const [menuTrack, setMenuTrack] = useState<Track | null>(null);
   const [view, setView] = useState<"grid" | "list">("list");
 
@@ -136,34 +135,38 @@ export default function FeedPage() {
     } catch {}
   }
 
-  const loadFeed = useCallback(async () => {
+  const loadFollowing = useCallback(async () => {
     if (!isAuthenticated || !accessToken) {
-      setLoading(false);
+      setFollowing([]);
       return;
     }
 
-    setLoading(true);
-    try {
-      const [accountRes, allTracks] = await Promise.all([
-        fetch("/api/account", { cache: "no-store", headers: createAuthorizedHeaders(accessToken) }),
-        fetchTracksShared(accessToken),
-      ]);
-
-      const accountJson = await accountRes.json().catch(() => ({}));
-      const followingList: string[] = Array.isArray(accountJson.following) ? accountJson.following : [];
-
-      setFollowing(followingList);
-      setTracks(allTracks.filter((t) => t.ownerId && followingList.includes(t.ownerId)));
-    } finally {
-      setLoading(false);
-    }
+    const res = await fetch("/api/account", { cache: "no-store", headers: createAuthorizedHeaders(accessToken) });
+    const json = await res.json().catch(() => ({}));
+    setFollowing(Array.isArray(json.following) ? json.following : []);
   }, [isAuthenticated, accessToken]);
 
   useEffect(() => {
-    void loadFeed();
-  }, [loadFeed]);
+    void loadFollowing();
+  }, [loadFollowing]);
 
-  const pullToRefresh = usePullToRefresh(loadFeed);
+  const infinite = useInfiniteTracks({
+    ownerIds: following ?? [],
+    enabled: Boolean(following && following.length > 0),
+  });
+  const loading = following === null || (following.length > 0 && infinite.loading && infinite.tracks.length === 0);
+  const tracks: FeedTrack[] = useMemo(
+    () => (following && following.length > 0 ? infinite.tracks : []),
+    [following, infinite.tracks]
+  );
+
+  const pullToRefresh = usePullToRefresh(
+    useCallback(async () => {
+      await loadFollowing();
+      await infinite.refresh();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [loadFollowing, infinite.refresh])
+  );
 
   const queue = useMemo<PlayerTrack[]>(
     () => tracks.map((t) => ({ artist: t.artist, cover: t.cover ?? undefined, src: t.src, title: t.title })),
@@ -249,7 +252,7 @@ export default function FeedPage() {
             </div>
           ))}
         </div>
-      ) : following.length === 0 ? (
+      ) : !following || following.length === 0 ? (
         <div className="py-20 text-center">
           <Rss size={32} className="mx-auto mb-4 text-white/10" />
           <p className="text-white/35 text-sm mb-2">Tu ne suis personne encore.</p>
@@ -296,6 +299,10 @@ export default function FeedPage() {
           ))}
         </div>
       )}
+
+      {following && following.length > 0 ? (
+        <InfiniteScrollSentinel onLoadMore={infinite.fetchNextPage} hasMore={infinite.hasMore} loading={infinite.loading} />
+      ) : null}
 
       <TrackContextMenu track={menuTrack} onClose={() => setMenuTrack(null)} />
     </div>

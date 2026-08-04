@@ -2,21 +2,53 @@ import { NextResponse } from "next/server";
 import { deleteTrackForApi, getLibraryBackendMode, isValidTrackSrc, listTracksForApi } from "@/lib/libraryRepository";
 import { readAuthenticatedUser, readOptionalAuthenticatedUser } from "@/lib/supabaseAuthServer";
 import { unexpectedErrorResponse } from "@/lib/apiError";
+import { trackMatchesQuery } from "@/lib/trackSearch";
+import type { LibraryTrack } from "@/lib/libraryTypes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const MAX_LIMIT = 200;
+
+/**
+ * limit/offset/q/ownerIds are all optional and additive: a request with
+ * none of them behaves exactly as before (the full catalog, unpaginated) so
+ * every existing caller that needs the whole list for its own aggregation
+ * (artist/user grouping, duplicate detection, upload dedup-check, feed
+ * following-filter) keeps working untouched. Paginated/filtered callers are
+ * new, opt-in call sites.
+ */
 export async function GET(req: Request) {
   try {
-  const tracks = await listTracksForApi();
+  const allTracks = await listTracksForApi();
   const viewer = await readOptionalAuthenticatedUser(req);
   const viewerId = viewer?.id ?? null;
+
+  const url = new URL(req.url);
+  const q = url.searchParams.get("q")?.trim() ?? "";
+  const artist = url.searchParams.get("artist")?.trim() ?? "";
+  const ownerIdsParam = url.searchParams.get("ownerIds")?.trim() ?? "";
+  const ownerIds = ownerIdsParam ? new Set(ownerIdsParam.split(",").filter(Boolean)) : null;
+  const limitParam = url.searchParams.get("limit");
+  const offsetParam = url.searchParams.get("offset");
+  const paginated = limitParam !== null || offsetParam !== null || q || artist || ownerIds;
+
+  let filtered: LibraryTrack[] = allTracks;
+  if (q) filtered = filtered.filter((t) => trackMatchesQuery(t.title, t.artist, q));
+  if (artist) filtered = filtered.filter((t) => t.artist?.trim() === artist);
+  if (ownerIds) filtered = filtered.filter((t) => t.ownerId && ownerIds.has(t.ownerId));
+
+  const offset = Math.max(0, Number(offsetParam) || 0);
+  const limit = Math.min(MAX_LIMIT, Math.max(1, Number(limitParam) || MAX_LIMIT));
+  const page = paginated ? filtered.slice(offset, offset + limit) : filtered;
 
   return NextResponse.json(
     {
       storage: getLibraryBackendMode(),
-      tracks: tracks.map((track) => ({
+      total: filtered.length,
+      hasMore: paginated ? offset + page.length < filtered.length : false,
+      tracks: page.map((track) => ({
         title: track.title,
         artist: track.artist,
         src: track.src,

@@ -16,6 +16,8 @@ import { SwipeableRow, swipeRowStyle, useSwipeActions } from "../SwipeableRow";
 import { toast } from "../Toast";
 import { usePullToRefresh } from "../usePullToRefresh";
 import PullToRefreshIndicator from "../PullToRefreshIndicator";
+import InfiniteScrollSentinel from "../InfiniteScrollSentinel";
+import { normalizeSearchText as normalizeText, fuzzyMatch } from "@/lib/trackSearch";
 
 type TrackWithCover = Track & { cover?: string };
 
@@ -23,50 +25,6 @@ type SearchTab = "all" | "titres" | "artistes" | "utilisateurs";
 
 type ArtistEntry = { name: string; count: number; cover?: string };
 type UserEntry = { id: string; displayName: string; trackCount: number };
-
-function normalizeText(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-zA-Z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .toLowerCase()
-    .trim();
-}
-
-function levenshtein(a: string, b: string) {
-  const dp = Array.from({ length: a.length + 1 }, () =>
-    new Array<number>(b.length + 1).fill(0)
-  );
-  for (let i = 0; i <= a.length; i++) dp[i][0] = i;
-  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
-  for (let i = 1; i <= a.length; i++) {
-    for (let j = 1; j <= b.length; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
-    }
-  }
-  return dp[a.length][b.length];
-}
-
-function fuzzyMatch(haystack: string, needle: string): boolean {
-  if (!needle) return true;
-  const terms = needle.split(" ").filter(Boolean);
-  if (terms.length > 1) return terms.every((t) => fuzzyMatch(haystack, t));
-  if (haystack.includes(needle)) return true;
-  const words = haystack.split(/\s+/).filter(Boolean);
-  for (const word of words) {
-    if (word.includes(needle)) return true;
-    if (needle.length >= 4 && Math.abs(word.length - needle.length) <= 1 && levenshtein(word, needle) <= 1)
-      return true;
-  }
-  let i = 0, j = 0;
-  while (i < haystack.length && j < needle.length) {
-    if (haystack[i] === needle[j]) j++;
-    i++;
-  }
-  return j === needle.length;
-}
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -351,6 +309,7 @@ const TABS: { value: SearchTab; label: string }[] = [
 const ARTIST_VIEW_KEY = "mp3_search_artist_view";
 const SEARCH_HISTORY_KEY = "mp3_search_history";
 const MAX_HISTORY = 8;
+const TITRES_PAGE_SIZE = 60;
 
 export default function SearchPage() {
   const { setQueueAndPlay, isFavorite, addToQueueEnd, toggleFavorite } = usePlayer();
@@ -368,6 +327,14 @@ export default function SearchPage() {
   const [selectedSrcs, setSelectedSrcs] = useState<Set<string>>(new Set());
   const [artistView, setArtistView] = useState<"grid" | "list">("grid");
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  // Titres tab renders a growing window instead of the whole matched list at
+  // once - filtering itself stays synchronous/client-side (see trackSearch),
+  // this just caps how many rows hit the DOM before the user scrolls for more.
+  const [titresVisibleCount, setTitresVisibleCount] = useState(TITRES_PAGE_SIZE);
+
+  useEffect(() => {
+    setTitresVisibleCount(TITRES_PAGE_SIZE);
+  }, [query, onlyFavorites, artistFilter]);
 
   useEffect(() => {
     try {
@@ -605,7 +572,12 @@ export default function SearchPage() {
         return <EmptyState icon={<Music size={20} className="text-white/20" />} text={hasQuery ? `Aucun titre pour "${query}"` : "Aucun son disponible"} />;
       return (
         <div className="rounded-3xl border border-white/8 bg-white/[0.03] p-4">
-          {renderTracks(list)}
+          {renderTracks(list, titresVisibleCount)}
+          <InfiniteScrollSentinel
+            hasMore={titresVisibleCount < list.length}
+            loading={false}
+            onLoadMore={() => setTitresVisibleCount((c) => Math.min(list.length, c + TITRES_PAGE_SIZE))}
+          />
         </div>
       );
     }

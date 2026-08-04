@@ -20,6 +20,8 @@ import { SwipeableRow, swipeRowStyle, useSwipeActions } from "../SwipeableRow";
 import { toast } from "../Toast";
 import { usePullToRefresh } from "../usePullToRefresh";
 import PullToRefreshIndicator from "../PullToRefreshIndicator";
+import { useInfiniteTracks } from "../useInfiniteTracks";
+import InfiniteScrollSentinel from "../InfiniteScrollSentinel";
 
 type MetaSaveResponse = {
   ok?: boolean;
@@ -331,7 +333,19 @@ export default function LibraryPage() {
     });
   }, [loadTracks]);
 
-  const pullToRefresh = usePullToRefresh(loadTracks);
+  // Default (chronological) browsing paginates instead of waiting on the
+  // full-catalog fetch; title/artist sort and duplicate detection still need
+  // every track at once, so they keep using the full `tracks` list from
+  // loadTracks above either way.
+  const browsing = sort === "default";
+  const infinite = useInfiniteTracks({ enabled: browsing });
+
+  const pullToRefresh = usePullToRefresh(
+    useCallback(async () => {
+      await Promise.all([loadTracks(), browsing ? infinite.refresh() : Promise.resolve()]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [loadTracks, browsing, infinite.refresh])
+  );
 
   useEffect(() => {
     if (!editing) return;
@@ -496,6 +510,13 @@ export default function LibraryPage() {
     return tracks;
   }, [tracks, sort]);
 
+  const displayTracks = browsing ? infinite.tracks : sortedTracks;
+  const displayLoading = browsing ? infinite.loading && infinite.tracks.length === 0 : loading;
+  const displayError = browsing ? infinite.error : error;
+  const displayEmpty = browsing
+    ? !infinite.loading && !infinite.error && infinite.total === 0
+    : !loading && !error && tracks.length === 0;
+
   return (
     <div
       ref={pageRef}
@@ -577,25 +598,25 @@ export default function LibraryPage() {
         </div>
       </div>
 
-      {loading ? <p className="text-white/60">Chargement...</p> : null}
+      {displayLoading ? <p className="text-white/60">Chargement...</p> : null}
       {!isAuthenticated ? (
         <p className="mb-4 text-sm text-white/50">
           Edition protegee: connecte-toi dans <Link href="/account" className="text-white/85 underline underline-offset-4">Compte</Link>.
         </p>
       ) : null}
-      {!loading && error ? (
+      {!displayLoading && displayError ? (
         <p className="text-red-400 mb-4" role="alert">
-          {error}
+          {displayError}
         </p>
       ) : null}
 
-      {!loading && !error && tracks.length === 0 ? (
+      {!displayLoading && !displayError && displayEmpty ? (
         <p className="text-white/60">Aucun son pour le moment.</p>
       ) : null}
 
       {view === "grid" ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-6">
-          {sortedTracks.map((track, i) => (
+          {displayTracks.map((track, i) => (
             <AlbumCard
               key={track.src}
               title={track.title}
@@ -613,7 +634,7 @@ export default function LibraryPage() {
         </div>
       ) : (
         <div className="space-y-1">
-          {sortedTracks.map((track, i) => (
+          {displayTracks.map((track, i) => (
             <LibraryListRow
               key={track.src}
               track={track}
@@ -628,6 +649,14 @@ export default function LibraryPage() {
           ))}
         </div>
       )}
+
+      {browsing ? (
+        <InfiniteScrollSentinel
+          onLoadMore={infinite.fetchNextPage}
+          hasMore={infinite.hasMore}
+          loading={infinite.loading}
+        />
+      ) : null}
 
       {editing ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 mp3-backdrop-in">

@@ -98,7 +98,7 @@ export default function TopPage() {
   );
 
   return (
-    <div className="max-w-2xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
+    <div className="max-w-2xl mx-auto pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-28">
       <div className="flex items-start justify-between mb-6 mp3-fade-up">
         <div>
           <h2 className="text-3xl font-light">Top global</h2>

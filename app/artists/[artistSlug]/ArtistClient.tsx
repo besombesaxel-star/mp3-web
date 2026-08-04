@@ -121,7 +121,7 @@ export default function ArtistClient() {
   }, [artistSlug]);
 
   return (
-    <div className="pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
+    <div className="pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-28">
       <div className="mb-8 flex flex-wrap items-end justify-between gap-3 mp3-fade-up">
         <div>
           <p className="text-xs uppercase tracking-[0.28em] text-white/35">Page artiste</p>

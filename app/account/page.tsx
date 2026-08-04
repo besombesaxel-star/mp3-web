@@ -646,7 +646,7 @@ export default function AccountPage() {
   const wideProfileLayout = activeTab === "profile" && isConfigured && !loading && isAuthenticated;
 
   return (
-    <div className="pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
+    <div className="pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-28">
       <div className={["mx-auto max-w-2xl", wideProfileLayout ? "lg:max-w-6xl" : ""].join(" ")}>
         <div className="mb-6 mp3-fade-up">
           <h1 className="text-3xl font-light text-white/95">Compte</h1>

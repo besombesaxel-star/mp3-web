@@ -333,7 +333,7 @@ export default function Sidebar({
             aria-label="Navigation mobile"
             className={[
               "absolute right-0 top-0 h-full w-[84vw] max-w-[340px] bg-[#050506] border-l border-white/10 p-4 pt-[calc(4rem+env(safe-area-inset-top))]",
-              "overflow-y-auto pb-[calc(11rem+env(safe-area-inset-bottom))]",
+              "overflow-y-auto pb-[calc(7rem+env(safe-area-inset-bottom))]",
               "transition-transform duration-200",
               mobileOpen ? "translate-x-0" : "translate-x-full",
             ].join(" ")}

@@ -132,7 +132,7 @@ export default function ConversationPage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-40 pt-20 text-center text-white/35 text-sm">
+      <div className="max-w-2xl mx-auto pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-40 pt-20 text-center text-white/35 text-sm">
         Chargement…
       </div>
     );
@@ -140,14 +140,14 @@ export default function ConversationPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="max-w-2xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-40 pt-20 text-center">
+      <div className="max-w-2xl mx-auto pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-40 pt-20 text-center">
         <p className="text-sm text-white/45">Connecte-toi pour voir tes messages.</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-40 flex flex-col h-[calc(100vh-8rem)]">
+    <div className="max-w-2xl mx-auto pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-40 flex flex-col h-[calc(100vh-8rem)]">
       <div className="flex items-center gap-3 mb-6 mp3-fade-up shrink-0">
         <Link
           href="/messages"

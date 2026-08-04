@@ -278,7 +278,7 @@ export default function ProfileClient() {
 
   return (
     <div
-      className="pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28"
+      className="pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-28"
       style={!profile?.bannerUrl ? { backgroundImage: bgGradient, backgroundAttachment: "local" } : undefined}
     >
       {profile?.bannerUrl && (

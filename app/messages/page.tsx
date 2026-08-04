@@ -79,7 +79,7 @@ export default function MessagesInboxPage() {
 
   if (loading) {
     return (
-      <div className="max-w-2xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-40 pt-20 text-center text-white/35 text-sm">
+      <div className="max-w-2xl mx-auto pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-40 pt-20 text-center text-white/35 text-sm">
         Chargement…
       </div>
     );
@@ -87,7 +87,7 @@ export default function MessagesInboxPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="max-w-2xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-40 pt-20 text-center">
+      <div className="max-w-2xl mx-auto pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-40 pt-20 text-center">
         <p className="text-sm text-white/45">Connecte-toi pour voir tes messages.</p>
         <Link href="/account" className="mt-3 inline-block text-sm text-white/70 underline underline-offset-4">
           Aller au compte
@@ -97,7 +97,7 @@ export default function MessagesInboxPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-40">
+    <div className="max-w-2xl mx-auto pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-40">
       <h2 className="text-3xl font-light mb-8 mp3-fade-up">Messages</h2>
 
       {!fetched ? (

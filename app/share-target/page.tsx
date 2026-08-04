@@ -106,7 +106,7 @@ export default function ShareTargetPage() {
 
   if (loading || status === "loading") {
     return (
-      <div className="max-w-lg mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-40 pt-24 text-center text-white/35 text-sm">
+      <div className="max-w-lg mx-auto pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-40 pt-24 text-center text-white/35 text-sm">
         Chargement…
       </div>
     );
@@ -114,7 +114,7 @@ export default function ShareTargetPage() {
 
   if (status === "none") {
     return (
-      <div className="max-w-lg mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-40 pt-24 text-center px-6">
+      <div className="max-w-lg mx-auto pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-40 pt-24 text-center px-6">
         <Music2 size={28} className="mx-auto text-white/25 mb-4" />
         <p className="text-sm text-white/55">Aucun fichier partagé pour le moment.</p>
         <p className="text-xs text-white/30 mt-1">
@@ -129,7 +129,7 @@ export default function ShareTargetPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="max-w-lg mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-40 pt-24 text-center px-6">
+      <div className="max-w-lg mx-auto pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-40 pt-24 text-center px-6">
         <p className="text-sm text-white/45">Connecte-toi pour terminer cet upload.</p>
         <Link href="/account" className="mt-3 inline-block text-sm text-white/70 underline underline-offset-4">
           Aller au compte
@@ -140,7 +140,7 @@ export default function ShareTargetPage() {
 
   if (status === "done") {
     return (
-      <div className="max-w-lg mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-40 pt-24 text-center px-6">
+      <div className="max-w-lg mx-auto pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-40 pt-24 text-center px-6">
         <Check size={28} className="mx-auto text-emerald-400 mb-4" />
         <p className="text-sm text-white/70">Son ajouté à la bibliothèque.</p>
         <Link href="/library" className="mt-4 inline-block text-sm text-white/70 underline underline-offset-4">
@@ -151,7 +151,7 @@ export default function ShareTargetPage() {
   }
 
   return (
-    <div className="max-w-lg mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-40 pt-16 px-6">
+    <div className="max-w-lg mx-auto pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-40 pt-16 px-6">
       <h2 className="text-2xl font-light mb-6 text-center">Son partagé</h2>
 
       <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 mp3-fade-up">

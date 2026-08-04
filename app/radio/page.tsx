@@ -168,7 +168,7 @@ export default function RadioLivePage() {
     }) ?? [];
 
   return (
-    <div className="max-w-2xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
+    <div className="max-w-2xl mx-auto pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-28">
       <div className="mb-8 mp3-fade-up">
         <div className="flex items-center gap-2">
           <RadioIcon size={18} className="text-white/40" />

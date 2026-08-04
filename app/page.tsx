@@ -294,7 +294,7 @@ export default function Home() {
   }
 
   return (
-    <div ref={homeRef} className="pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28">
+    <div ref={homeRef} className="pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-28">
       <div className="flex items-end justify-between mb-8 mp3-fade-up">
         <h2 className="text-3xl font-light">Accueil</h2>
       </div>

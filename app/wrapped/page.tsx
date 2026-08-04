@@ -126,7 +126,7 @@ export default function WrappedPage() {
 
   if (stats.totalPlays === 0) {
     return (
-      <div className="max-w-lg mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-40 pt-24 text-center px-6">
+      <div className="max-w-lg mx-auto pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-40 pt-24 text-center px-6">
         <Sparkles size={28} className="mx-auto text-white/25 mb-4" />
         <p className="text-white/60 text-sm">
           Écoute quelques morceaux pour débloquer ton bilan personnalisé.

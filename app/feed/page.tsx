@@ -175,7 +175,7 @@ export default function FeedPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="max-w-2xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28 pt-12 text-center">
+      <div className="max-w-2xl mx-auto pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-28 pt-12 text-center">
         <Rss size={32} className="mx-auto mb-4 text-white/15" />
         <p className="text-white/40 text-sm">
           <Link href="/account" className="underline underline-offset-2 hover:text-white/70">Connecte-toi</Link> pour voir le feed de tes abonnements.
@@ -186,7 +186,7 @@ export default function FeedPage() {
 
   return (
     <div
-      className="max-w-2xl mx-auto pb-[calc(11rem+env(safe-area-inset-bottom))] sm:pb-28"
+      className="max-w-2xl mx-auto pb-[calc(7rem+env(safe-area-inset-bottom))] sm:pb-28"
       {...pullToRefresh.containerProps}
     >
       <PullToRefreshIndicator

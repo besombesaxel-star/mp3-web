@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Download, Loader2 } from "lucide-react";
 import { useAuth } from "@/app/AuthProvider";
 import { usePlayer, type ColorTheme, type EqGains } from "@/app/PlayerContext";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 const EQ_BAND_LABELS = ["90 Hz", "250 Hz", "1 kHz", "3.5 kHz", "9 kHz"];
 
@@ -242,6 +243,34 @@ export default function SettingsContent() {
   const [pushBusy, setPushBusy] = useState(false);
   const [pushError, setPushError] = useState("");
 
+  const [exportBusy, setExportBusy] = useState(false);
+  const [exportError, setExportError] = useState("");
+
+  async function exportLibrary() {
+    if (!accessToken || exportBusy) return;
+    setExportBusy(true);
+    setExportError("");
+    try {
+      const res = await fetch("/api/account/export", { headers: createAuthorizedHeaders(accessToken) });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error ?? `Export impossible (HTTP ${res.status})`);
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "ma-bibliotheque.zip";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setExportError(getErrorMessage(e, "Echec de l'export"));
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
   useEffect(() => {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
     setPushSupported(true);
@@ -425,6 +454,29 @@ export default function SettingsContent() {
         )}
         {pushBusy && <p className="text-xs text-white/35">Mise a jour...</p>}
         {pushError && <p className="text-xs text-red-400/80">{pushError}</p>}
+      </SettingsSection>
+
+      <SettingsSection title="Donnees" delay={300}>
+        {!isAuthenticated ? (
+          <p className="text-sm text-white/45">Connecte-toi pour exporter tes sons.</p>
+        ) : (
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm text-white/85">Exporter ma bibliotheque</p>
+              <p className="text-xs text-white/35 mt-0.5">Telecharge tes sons et covers dans un fichier .zip.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void exportLibrary()}
+              disabled={exportBusy}
+              className="shrink-0 flex items-center gap-2 h-9 px-4 rounded-full bg-white/8 border border-white/10 text-sm text-white/80 hover:bg-white/12 transition disabled:opacity-60"
+            >
+              {exportBusy ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+              {exportBusy ? "Export..." : "Exporter"}
+            </button>
+          </div>
+        )}
+        {exportError && <p className="text-xs text-red-400/80">{exportError}</p>}
       </SettingsSection>
     </div>
   );

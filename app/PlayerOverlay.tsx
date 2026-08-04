@@ -777,7 +777,14 @@ export default function PlayerOverlay() {
         </div>
 
         {/* Body */}
-        <div className="relative z-10 h-[calc(100vh-82px)] md:h-[calc(100vh-88px)] flex items-start md:items-center justify-center overflow-y-auto px-4 md:px-8 lg:px-12 pb-[calc(env(safe-area-inset-bottom)+12px)] md:pb-10">
+        {/* dvh, not vh: 100vh on mobile Safari assumes the browser chrome
+            (toolbar) is hidden, so it overshoots the actual visible area
+            whenever it's showing - exactly the gap that made the mobile
+            lyrics fit-to-viewport fix above compute against a taller box
+            than what was really on screen. dvh tracks the real visible
+            viewport instead (already used elsewhere in this app for the
+            same reason - see AppShell's mobile shell). */}
+        <div className="relative z-10 h-[calc(100dvh-82px)] md:h-[calc(100dvh-88px)] flex items-start md:items-center justify-center overflow-y-auto px-4 md:px-8 lg:px-12 pb-[calc(env(safe-area-inset-bottom)+12px)] md:pb-10">
           <div
             className={[
               "w-full max-w-[1680px] grid gap-5 md:gap-10 lg:gap-14 items-start",
@@ -969,7 +976,7 @@ export default function PlayerOverlay() {
                     </div>
                   ) : lyrics.lines.length > 0 ? (
                     <>
-                      <div style={{ height: "18vh" }} />
+                      <div style={{ height: "18dvh" }} />
                       {lyrics.lines.map((line, idx) => {
                         const isActive = idx === currentLineIdx;
                         const distance = Math.abs(idx - currentLineIdx);
@@ -993,10 +1000,10 @@ export default function PlayerOverlay() {
                           </div>
                         );
                       })}
-                      <div style={{ height: "18vh" }} />
+                      <div style={{ height: "18dvh" }} />
                     </>
                   ) : lyrics.plain ? (
-                    <div style={{ paddingTop: "8vh", paddingBottom: "30vh" }}>
+                    <div style={{ paddingTop: "8dvh", paddingBottom: "30dvh" }}>
                       <p className="text-base text-white/50 leading-relaxed whitespace-pre-wrap">{lyrics.plain}</p>
                     </div>
                   ) : null}
@@ -1013,7 +1020,7 @@ export default function PlayerOverlay() {
                 /* Apple Music-style: all lines scroll, opacity-only fading */
                 <div
                   ref={lyricsContainerRef}
-                  className="h-[calc(100vh-160px)] overflow-x-hidden overflow-y-auto scrollbar-none select-none pl-3"
+                  className="h-[calc(100dvh-160px)] overflow-x-hidden overflow-y-auto scrollbar-none select-none pl-3"
                   style={{ maskImage: "linear-gradient(to bottom, transparent 0%, black 28%, black 72%, transparent 100%)", WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 28%, black 72%, transparent 100%)" }}
                 >
                   {lyrics.loading ? (
@@ -1026,7 +1033,7 @@ export default function PlayerOverlay() {
                     </div>
                   ) : lyrics.lines.length > 0 ? (
                     <>
-                      <div style={{ height: "40vh" }} />
+                      <div style={{ height: "40dvh" }} />
                       {lyrics.lines.map((line, idx) => {
                         const isActive = idx === currentLineIdx;
                         const distance = Math.abs(idx - currentLineIdx);
@@ -1050,10 +1057,10 @@ export default function PlayerOverlay() {
                           </div>
                         );
                       })}
-                      <div style={{ height: "40vh" }} />
+                      <div style={{ height: "40dvh" }} />
                     </>
                   ) : lyrics.plain ? (
-                    <div style={{ paddingTop: "25vh", paddingBottom: "50vh" }}>
+                    <div style={{ paddingTop: "25dvh", paddingBottom: "50dvh" }}>
                       <p className="text-xl text-white/50 leading-relaxed whitespace-pre-wrap">{lyrics.plain}</p>
                     </div>
                   ) : null}

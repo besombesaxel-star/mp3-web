@@ -783,8 +783,15 @@ export default function PlayerOverlay() {
             lyrics fit-to-viewport fix above compute against a taller box
             than what was really on screen. dvh tracks the real visible
             viewport instead (already used elsewhere in this app for the
-            same reason - see AppShell's mobile shell). */}
-        <div className="relative z-10 h-[calc(100dvh-82px)] md:h-[calc(100dvh-88px)] flex items-start md:items-center justify-center overflow-y-auto px-4 md:px-8 lg:px-12 pb-[calc(env(safe-area-inset-bottom)+12px)] md:pb-10">
+            same reason - see AppShell's mobile shell).
+            The mobile offset also has to match the mobile top bar's own
+            formula (pt-[max(1rem,env(safe-area-inset-top))] + 6px handle +
+            8px margin + 40px button row + 12px pb-3 = the max(...)+66px
+            below) instead of a flat 82px - that flat number only matched
+            devices with zero safe-area-inset-top; on any notch/Dynamic
+            Island phone the real header is taller, so this box was still
+            oversized even with dvh, leaving the transport row cut off. */}
+        <div className="relative z-10 h-[calc(100dvh-max(1rem,env(safe-area-inset-top))-66px)] md:h-[calc(100dvh-88px)] flex items-start md:items-center justify-center overflow-y-auto px-4 md:px-8 lg:px-12 pb-[calc(env(safe-area-inset-bottom)+12px)] md:pb-10">
           <div
             className={[
               "w-full max-w-[1680px] grid gap-5 md:gap-10 lg:gap-14 items-start",

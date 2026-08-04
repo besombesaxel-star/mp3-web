@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Camera, Check, Code, Heart, Link2, ListEnd, ListPlus, Mic, MessageCircle, Trash2, X } from "lucide-react";
+import { Camera, Check, Code, Flag, Heart, Link2, ListEnd, ListPlus, Mic, MessageCircle, Trash2, X } from "lucide-react";
 import { usePlayer, type Track } from "./PlayerContext";
 import { useAuth } from "./AuthProvider";
 import { vibrate } from "./haptics";
@@ -10,6 +10,8 @@ import TrackLyricsEditorModal from "./TrackLyricsEditorModal";
 import { setCustomLyricsCache } from "./useLyrics";
 import Portal from "./Portal";
 import { generateTrackShareImage, shareOrDownloadImage } from "@/lib/shareCard";
+import { reportContent } from "./reportContent";
+import { toast } from "./Toast";
 
 type Props = {
   track: Track | null;
@@ -19,7 +21,7 @@ type Props = {
 
 export default function TrackContextMenu({ track, onClose, removeFromPlaylist }: Props) {
   const { addToQueueNext, addToQueueEnd, toggleFavorite, isFavorite, hapticsEnabled } = usePlayer();
-  const { user } = useAuth();
+  const { user, accessToken } = useAuth();
   const [copied, setCopied] = useState(false);
   const [embedCopied, setEmbedCopied] = useState(false);
   const [commentsTrack, setCommentsTrack] = useState<Track | null>(null);
@@ -97,6 +99,18 @@ export default function TrackContextMenu({ track, onClose, removeFromPlaylist }:
         }, 1200);
       })
       .catch(() => {});
+  }
+
+  async function reportTrack() {
+    if (!track || !accessToken) return;
+    if (hapticsEnabled) vibrate(12);
+    onClose();
+    const result = await reportContent(accessToken, {
+      type: "track",
+      targetId: track.src,
+      targetLabel: `${track.title} - ${track.artist ?? "?"}`,
+    });
+    toast(result.ok ? "Son signale, merci" : "Echec du signalement", result.ok ? "check" : "music");
   }
 
   function copyEmbed() {
@@ -231,6 +245,17 @@ export default function TrackContextMenu({ track, onClose, removeFromPlaylist }:
           {embedCopied ? <Check size={18} className="text-green-400" /> : <Code size={18} className="opacity-80" />}
           {embedCopied ? "Code copie" : "Copier le code d'integration"}
         </button>
+
+        {accessToken && !isOwner ? (
+          <button
+            type="button"
+            className="w-full flex items-center gap-3 px-2 py-3 rounded-xl hover:bg-white/5 transition text-left text-sm text-white/60"
+            onClick={() => void reportTrack()}
+          >
+            <Flag size={18} className="opacity-80" />
+            Signaler
+          </button>
+        ) : null}
 
         {removeFromPlaylist ? (
           <button

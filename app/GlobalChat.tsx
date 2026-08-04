@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { MessageCircle, MessageSquare, Send, Trash2, X } from "lucide-react";
+import { Flag, MessageCircle, MessageSquare, Send, Trash2, X } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { usePlayer } from "./PlayerContext";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
@@ -12,6 +12,8 @@ import { getInitials, getPublicProfileHref } from "@/lib/publicLinks";
 import { isAdminUser } from "@/lib/adminAccess";
 import { playPopSound } from "./sound";
 import { vibrate } from "./haptics";
+import { reportContent } from "./reportContent";
+import { toast } from "./Toast";
 import type { ChatMessage } from "@/app/api/chat/route";
 
 function formatTime(iso: string) {
@@ -419,6 +421,17 @@ export default function GlobalChat() {
     }
   }
 
+  async function reportMessage(id: string, content: string) {
+    if (!accessToken) return;
+    if (hapticsEnabled) vibrate(12);
+    const result = await reportContent(accessToken, {
+      type: "chat_message",
+      targetId: id,
+      targetLabel: content,
+    });
+    toast(result.ok ? "Message signale, merci" : "Echec du signalement", result.ok ? "check" : "music");
+  }
+
   const knownParticipants: Participant[] = useMemo(() => {
     const map = new Map<string, string>();
     for (const m of messages) {
@@ -683,6 +696,17 @@ export default function GlobalChat() {
                             >
                               {renderMessageContent(msg.content, knownParticipants)}
                             </div>
+                            {!canDelete && isAuthenticated && (
+                              <button
+                                type="button"
+                                onClick={() => void reportMessage(msg.id, msg.content)}
+                                title="Signaler"
+                                aria-label="Signaler ce message"
+                                className="opacity-0 group-hover/msg:opacity-100 transition shrink-0 h-6 w-6 rounded-full flex items-center justify-center text-white/25 hover:text-amber-300 hover:bg-white/8"
+                              >
+                                <Flag size={12} />
+                              </button>
+                            )}
                             {canDelete && (
                               <button
                                 type="button"

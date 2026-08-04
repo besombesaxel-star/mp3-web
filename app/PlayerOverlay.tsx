@@ -791,10 +791,20 @@ export default function PlayerOverlay() {
             devices with zero safe-area-inset-top; on any notch/Dynamic
             Island phone the real header is taller, so this box was still
             oversized even with dvh, leaving the transport row cut off. */}
-        <div className="relative z-10 h-[calc(100dvh-max(1rem,env(safe-area-inset-top))-66px)] md:h-[calc(100dvh-88px)] flex items-start md:items-center justify-center overflow-y-auto px-4 md:px-8 lg:px-12 pb-[calc(env(safe-area-inset-bottom)+12px)] md:pb-10">
+        {/* items-start (not items-center): the actual player content is
+            often shorter than the available body height, especially on
+            taller phones - vertical centering is handled below via my-auto
+            on the content itself instead of align-items here, since
+            align-items:center on a scrollable flex container can make
+            content taller than the container impossible to scroll to the
+            true top in some browsers. my-auto centers when there's slack
+            and cleanly collapses to 0 (falling back to normal top-aligned,
+            fully-scrollable) when content doesn't fit - the safe version of
+            the same idea. */}
+        <div className="relative z-10 h-[calc(100dvh-max(1rem,env(safe-area-inset-top))-66px)] md:h-[calc(100dvh-88px)] flex items-start justify-center overflow-y-auto px-4 md:px-8 lg:px-12 pb-[calc(env(safe-area-inset-bottom)+12px)] md:pb-10">
           <div
             className={[
-              "w-full max-w-[1680px] grid gap-5 md:gap-10 lg:gap-14 items-start",
+              "w-full max-w-[1680px] grid gap-5 md:gap-10 lg:gap-14 items-start my-auto",
               focusMode ? "grid-cols-1 max-w-5xl" : showLyrics ? "grid-cols-1 lg:grid-cols-[minmax(0,0.62fr)_minmax(0,1fr)] lg:items-center" : "grid-cols-1 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)]",
               // Mobile lyrics mode is the one case where content must fit the
               // viewport exactly (lyrics scroll internally, transport controls

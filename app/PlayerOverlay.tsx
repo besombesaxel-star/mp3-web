@@ -382,6 +382,210 @@ export default function PlayerOverlay() {
 
   if (!expanded) return null;
 
+  // Title/progress/transport controls for the mobile layout - shared between
+  // the normal (cover visible) case and the lyrics case, where it's nested
+  // below the lyrics panel inside a height-constrained flex column instead of
+  // being a plain top-level block. Kept as one function so both call sites
+  // can't drift out of sync.
+  function renderMobileTransportPanel() {
+    return (
+      <div className="w-full md:hidden mp3-ov-panel">
+        {!focusMode ? (
+          <>
+            <h1 className="text-2xl font-semibold text-white/95 leading-tight max-h-[4.8rem] overflow-hidden">
+              {track?.title ?? "Aucune lecture"}
+            </h1>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-white/50">
+              {track?.artist ? (
+                <Link href={getArtistHref(track.artist)} className="truncate underline underline-offset-4 hover:text-white/85">
+                  {track.artist}
+                </Link>
+              ) : (
+                <span>-</span>
+              )}
+            </div>
+            {track?.credits ? <p className="mt-1 text-xs text-white/30 truncate">{track.credits}</p> : null}
+          </>
+        ) : null}
+
+        <div
+          className={[
+            focusMode ? "mt-4" : "mt-5",
+            "transition-all duration-300",
+            controlsHidden
+              ? "opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0"
+              : "opacity-100",
+          ].join(" ")}
+        >
+          <div
+            className="relative h-2.5 w-full rounded-full bg-white/10 overflow-hidden cursor-pointer"
+            onClick={(e) => {
+              const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+              const x = e.clientX - rect.left;
+              const ratio = rect.width > 0 ? x / rect.width : 0;
+              seekTo(ratio);
+            }}
+            title="Cliquer pour se deplacer"
+          >
+            <div
+              className="h-full transition-[width] duration-150 ease-out"
+              style={{
+                width: `${(progress || 0) * 100}%`,
+                background: accent,
+                boxShadow: `0 0 26px ${glowStrong}`,
+              }}
+            />
+            <div
+              className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+              style={{ animation: "mp3ProgressSheen 2.4s ease-in-out infinite" }}
+            />
+            <input
+              type="range"
+              min={0}
+              max={1000}
+              value={Math.round((progress || 0) * 1000)}
+              onChange={(e) => seekTo(Number(e.target.value) / 1000)}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              aria-label="Progression de lecture"
+              disabled={!track}
+            />
+          </div>
+          <div className="flex justify-between mt-2 text-xs text-white/45 tabular-nums">
+            <span>{formatTime(currentTime)}</span>
+            <span>{formatTime(duration)}</span>
+          </div>
+        </div>
+
+        <div
+          className={[
+            "mt-4 grid grid-cols-3 items-center gap-3 mp3-ov-controls transition-all duration-300",
+            controlsHidden
+              ? "opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0"
+              : "opacity-100",
+          ].join(" ")}
+        >
+          <button
+            onClick={() => {
+              tapHaptic();
+              prev();
+            }}
+            className="h-[56px] w-full transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center"
+            disabled={!track}
+            title="Precedent"
+            type="button"
+          >
+            <SkipBack size={24} className="opacity-90 text-white/90" />
+          </button>
+
+          <button
+            onClick={() => {
+              tapHaptic();
+              togglePlay();
+            }}
+            className="h-[64px] w-full text-white transition active:scale-[0.98] disabled:opacity-60 flex items-center justify-center"
+            disabled={!track}
+            title={playing ? "Pause" : "Lecture"}
+            type="button"
+          >
+            {playing ? <Pause size={28} /> : <Play size={28} />}
+          </button>
+
+          <button
+            onClick={() => {
+              tapHaptic();
+              next();
+            }}
+            className="h-[56px] w-full transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center"
+            disabled={!track}
+            title="Suivant"
+            type="button"
+          >
+            <SkipForward size={24} className="opacity-90 text-white/90" />
+          </button>
+        </div>
+
+        <div
+          className={[
+            "mt-4 flex items-center justify-between mp3-ov-controls transition-all duration-300",
+            controlsHidden
+              ? "opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0"
+              : "opacity-100",
+          ].join(" ")}
+        >
+          <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] p-1">
+            <button
+              onClick={() => {
+                tapHaptic();
+                toggleShuffle();
+              }}
+              aria-pressed={shuffle}
+              className={[
+                "h-10 w-10 rounded-full transition active:scale-95",
+                shuffle ? "bg-white/12 ring-1 ring-white/20" : "text-white/75",
+              ].join(" ")}
+              title="Lecture aleatoire"
+              type="button"
+            >
+              <Shuffle size={17} className={["mx-auto", shuffle ? "text-white/90" : "opacity-80"].join(" ")} />
+            </button>
+
+            <button
+              onClick={() => {
+                tapHaptic();
+                cycleRepeat();
+              }}
+              aria-pressed={Boolean(repeat)}
+              className={[
+                "h-10 w-10 rounded-full transition active:scale-95",
+                repeat ? "bg-white/12 ring-1 ring-white/20" : "text-white/75",
+              ].join(" ")}
+              title="Repeat"
+              type="button"
+            >
+              {repeat === "one" ? (
+                <Repeat1 size={17} className={["mx-auto", repeat ? "text-white/90" : "opacity-80"].join(" ")} />
+              ) : (
+                <Repeat size={17} className={["mx-auto", repeat ? "text-white/90" : "opacity-80"].join(" ")} />
+              )}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] p-1">
+            <button
+              onClick={() => {
+                tapHaptic();
+                if (track) toggleFavorite(track);
+              }}
+              aria-pressed={liked}
+              disabled={!track}
+              className={[
+                "h-10 w-10 rounded-full transition active:scale-95",
+                liked ? "bg-white/12 ring-1 ring-white/20" : "text-white/75",
+              ].join(" ")}
+              title={liked ? "Retirer des favoris" : "Ajouter aux favoris"}
+              type="button"
+            >
+              <Heart size={17} className={liked ? "mx-auto fill-white/90 text-white/90" : "mx-auto opacity-80"} />
+            </button>
+
+            <button
+              onClick={() => {
+                tapHaptic();
+                closeOverlay();
+                setQueueOpen(true);
+              }}
+              className="h-10 w-10 rounded-full transition active:scale-95 text-white/75"
+              title="File d'attente"
+              type="button"
+            >
+              <ListMusic size={17} className="mx-auto opacity-80" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div
@@ -578,6 +782,11 @@ export default function PlayerOverlay() {
             className={[
               "w-full max-w-[1680px] grid gap-5 md:gap-10 lg:gap-14 items-start",
               focusMode ? "grid-cols-1 max-w-5xl" : showLyrics ? "grid-cols-1 lg:grid-cols-[minmax(0,0.62fr)_minmax(0,1fr)] lg:items-center" : "grid-cols-1 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)]",
+              // Mobile lyrics mode is the one case where content must fit the
+              // viewport exactly (lyrics scroll internally, transport controls
+              // always stay visible below) instead of the page scrolling - see
+              // the mobile-only wrapper below.
+              showLyrics && !focusMode ? "h-full grid-rows-[1fr] md:h-auto md:grid-rows-none" : "",
             ].join(" ")}
           >
             {/* Cover - hidden on mobile while lyrics are shown (mobile swaps to the
@@ -735,12 +944,16 @@ export default function PlayerOverlay() {
               ) : null}
             </div>
 
-            {/* Mobile lyrics - replaces the cover (hidden above) while active */}
+            {/* Mobile lyrics - replaces the cover (hidden above) while active.
+                Wrapped together with the transport panel in a height-constrained
+                flex column (grid-rows-[1fr] on the parent gives this its exact
+                share of the viewport) so lyrics scroll internally instead of the
+                whole page needing to scroll past a half-visible control row. */}
             {showLyrics && !focusMode ? (
-              <div className="md:hidden w-full mp3-ov-panel">
+              <div className="md:hidden w-full h-full min-h-0 flex flex-col mp3-ov-panel">
                 <div
                   ref={mobileLyricsContainerRef}
-                  className="h-[52vh] overflow-x-hidden overflow-y-auto scrollbar-none select-none"
+                  className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto scrollbar-none select-none"
                   style={{
                     maskImage: "linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%)",
                     WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%)",
@@ -788,205 +1001,12 @@ export default function PlayerOverlay() {
                     </div>
                   ) : null}
                 </div>
+
+                <div className="shrink-0">{renderMobileTransportPanel()}</div>
               </div>
-            ) : null}
-
-            {/* Right */}
-            <div className="w-full md:hidden mp3-ov-panel">
-              {!focusMode ? (
-                <>
-                  <h1 className="text-2xl font-semibold text-white/95 leading-tight max-h-[4.8rem] overflow-hidden">
-                    {track?.title ?? "Aucune lecture"}
-                  </h1>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-white/50">
-                    {track?.artist ? (
-                      <Link href={getArtistHref(track.artist)} className="truncate underline underline-offset-4 hover:text-white/85">
-                        {track.artist}
-                      </Link>
-                    ) : (
-                      <span>-</span>
-                    )}
-                  </div>
-                  {track?.credits ? <p className="mt-1 text-xs text-white/30 truncate">{track.credits}</p> : null}
-                </>
-              ) : null}
-
-              <div
-                className={[
-                  focusMode ? "mt-4" : "mt-5",
-                  "transition-all duration-300",
-                  controlsHidden
-                    ? "opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0"
-                    : "opacity-100",
-                ].join(" ")}
-              >
-                <div
-                  className="relative h-2.5 w-full rounded-full bg-white/10 overflow-hidden cursor-pointer"
-                  onClick={(e) => {
-                    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-                    const x = e.clientX - rect.left;
-                    const ratio = rect.width > 0 ? x / rect.width : 0;
-                    seekTo(ratio);
-                  }}
-                  title="Cliquer pour se deplacer"
-                >
-                  <div
-                    className="h-full transition-[width] duration-150 ease-out"
-                    style={{
-                      width: `${(progress || 0) * 100}%`,
-                      background: accent,
-                      boxShadow: `0 0 26px ${glowStrong}`,
-                    }}
-                  />
-                  <div
-                    className="pointer-events-none absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-                    style={{ animation: "mp3ProgressSheen 2.4s ease-in-out infinite" }}
-                  />
-                  <input
-                    type="range"
-                    min={0}
-                    max={1000}
-                    value={Math.round((progress || 0) * 1000)}
-                    onChange={(e) => seekTo(Number(e.target.value) / 1000)}
-                    className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                    aria-label="Progression de lecture"
-                    disabled={!track}
-                  />
-                </div>
-                <div className="flex justify-between mt-2 text-xs text-white/45 tabular-nums">
-                  <span>{formatTime(currentTime)}</span>
-                  <span>{formatTime(duration)}</span>
-                </div>
-              </div>
-
-              <div
-                className={[
-                  "mt-4 grid grid-cols-3 items-center gap-3 mp3-ov-controls transition-all duration-300",
-                  controlsHidden
-                    ? "opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0"
-                    : "opacity-100",
-                ].join(" ")}
-              >
-                <button
-                  onClick={() => {
-                    tapHaptic();
-                    prev();
-                  }}
-                  className="h-[56px] w-full transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center"
-                  disabled={!track}
-                  title="Precedent"
-                  type="button"
-                >
-                  <SkipBack size={24} className="opacity-90 text-white/90" />
-                </button>
-
-                <button
-                  onClick={() => {
-                    tapHaptic();
-                    togglePlay();
-                  }}
-                  className="h-[64px] w-full text-white transition active:scale-[0.98] disabled:opacity-60 flex items-center justify-center"
-                  disabled={!track}
-                  title={playing ? "Pause" : "Lecture"}
-                  type="button"
-                >
-                  {playing ? <Pause size={28} /> : <Play size={28} />}
-                </button>
-
-                <button
-                  onClick={() => {
-                    tapHaptic();
-                    next();
-                  }}
-                  className="h-[56px] w-full transition active:scale-[0.98] disabled:opacity-50 flex items-center justify-center"
-                  disabled={!track}
-                  title="Suivant"
-                  type="button"
-                >
-                  <SkipForward size={24} className="opacity-90 text-white/90" />
-                </button>
-              </div>
-
-              <div
-                className={[
-                  "mt-4 flex items-center justify-between mp3-ov-controls transition-all duration-300",
-                  controlsHidden
-                    ? "opacity-0 pointer-events-none translate-y-2 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-y-0"
-                    : "opacity-100",
-                ].join(" ")}
-              >
-                <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] p-1">
-                  <button
-                    onClick={() => {
-                      tapHaptic();
-                      toggleShuffle();
-                    }}
-                    aria-pressed={shuffle}
-                    className={[
-                      "h-10 w-10 rounded-full transition active:scale-95",
-                      shuffle ? "bg-white/12 ring-1 ring-white/20" : "text-white/75",
-                    ].join(" ")}
-                    title="Lecture aleatoire"
-                    type="button"
-                  >
-                    <Shuffle size={17} className={["mx-auto", shuffle ? "text-white/90" : "opacity-80"].join(" ")} />
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      tapHaptic();
-                      cycleRepeat();
-                    }}
-                    aria-pressed={Boolean(repeat)}
-                    className={[
-                      "h-10 w-10 rounded-full transition active:scale-95",
-                      repeat ? "bg-white/12 ring-1 ring-white/20" : "text-white/75",
-                    ].join(" ")}
-                    title="Repeat"
-                    type="button"
-                  >
-                    {repeat === "one" ? (
-                      <Repeat1 size={17} className={["mx-auto", repeat ? "text-white/90" : "opacity-80"].join(" ")} />
-                    ) : (
-                      <Repeat size={17} className={["mx-auto", repeat ? "text-white/90" : "opacity-80"].join(" ")} />
-                    )}
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] p-1">
-                  <button
-                    onClick={() => {
-                      tapHaptic();
-                      if (track) toggleFavorite(track);
-                    }}
-                    aria-pressed={liked}
-                    disabled={!track}
-                    className={[
-                      "h-10 w-10 rounded-full transition active:scale-95",
-                      liked ? "bg-white/12 ring-1 ring-white/20" : "text-white/75",
-                    ].join(" ")}
-                    title={liked ? "Retirer des favoris" : "Ajouter aux favoris"}
-                    type="button"
-                  >
-                    <Heart size={17} className={liked ? "mx-auto fill-white/90 text-white/90" : "mx-auto opacity-80"} />
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      tapHaptic();
-                      closeOverlay();
-                      setQueueOpen(true);
-                    }}
-                    className="h-10 w-10 rounded-full transition active:scale-95 text-white/75"
-                    title="File d'attente"
-                    type="button"
-                  >
-                    <ListMusic size={17} className="mx-auto opacity-80" />
-                  </button>
-                </div>
-              </div>
-
-            </div>
+            ) : (
+              renderMobileTransportPanel()
+            )}
 
             <div className={["hidden md:block w-full mp3-ov-panel lg:self-center", showLyrics ? "" : "lg:translate-y-8"].join(" ")}>
               {showLyrics && !focusMode ? (

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Pencil } from "lucide-react";
+import { Lock, Pencil } from "lucide-react";
 import { Track, usePlayer } from "./PlayerContext";
 import { useLongPress } from "./useLongPress";
 import TrackContextMenu from "./TrackContextMenu";
@@ -18,6 +18,7 @@ type AlbumCardProps = {
   selectMode?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
+  isPrivate?: boolean;
 };
 
 export default function AlbumCard({
@@ -31,6 +32,7 @@ export default function AlbumCard({
   selectMode = false,
   selected = false,
   onToggleSelect,
+  isPrivate = false,
 }: AlbumCardProps) {
   const { playTrack } = usePlayer();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -56,6 +58,16 @@ export default function AlbumCard({
             <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
+      ) : null}
+
+      {isPrivate && !selectMode ? (
+        <div
+          className="absolute top-3 left-3 z-10 h-7 w-7 rounded-full bg-black/55 border border-white/20 flex items-center justify-center text-white/80"
+          title="Prive - visible seulement par toi"
+          aria-label="Morceau prive"
+        >
+          <Lock size={12} />
+        </div>
       ) : null}
 
       <button

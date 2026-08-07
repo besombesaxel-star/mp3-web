@@ -11,6 +11,7 @@ import {
   listSupabaseTracks,
   saveSupabaseTrackCover,
   saveSupabaseTrackMeta,
+  setSupabaseTrackPrivacy,
   uploadSupabaseTrack,
 } from "@/lib/supabaseLibrary";
 import {
@@ -21,6 +22,7 @@ import {
   listR2Tracks,
   saveR2TrackCover,
   saveR2TrackMeta,
+  setR2TrackPrivacy,
   uploadR2Track,
 } from "@/lib/r2Library";
 import type { LibraryBackend, LibraryMutationResult, LibraryTrack } from "@/lib/libraryTypes";
@@ -94,14 +96,15 @@ export async function listTracksForApi() {
 export async function uploadTrackForApi(
   audio: File,
   cover: File | null,
-  owner?: TrackOwnerInput | null
+  owner?: TrackOwnerInput | null,
+  isPrivate?: boolean
 ): Promise<LibraryTrack> {
   if (isR2Configured()) {
     if (!owner?.id) {
       throw new Error("Compte requis pour l'upload.");
     }
 
-    return uploadR2Track(audio, cover, owner);
+    return uploadR2Track(audio, cover, owner, isPrivate);
   }
 
   if (isSupabaseConfigured()) {
@@ -109,7 +112,7 @@ export async function uploadTrackForApi(
       throw new Error("Compte requis pour l'upload Supabase.");
     }
 
-    return uploadSupabaseTrack(audio, cover, owner);
+    return uploadSupabaseTrack(audio, cover, owner, isPrivate);
   }
 
   return uploadLocalTrack(audio, cover);
@@ -130,21 +133,22 @@ export async function createUploadTargetsForApi(audioName: string, coverName: st
 export async function finalizeUploadForApi(
   audioPath: string,
   coverPath: string | null,
-  owner: TrackOwnerInput
+  owner: TrackOwnerInput,
+  isPrivate?: boolean
 ): Promise<LibraryTrack> {
   if (!owner?.id) {
     throw new Error("Compte requis pour l'upload.");
   }
 
   if (isR2Configured()) {
-    return finalizeR2TrackUpload({ audioPath, coverPath, owner });
+    return finalizeR2TrackUpload({ audioPath, coverPath, owner, private: isPrivate });
   }
 
   if (!isSupabaseConfigured()) {
     throw new Error("Upload direct non disponible sans backend cloud configure.");
   }
 
-  return finalizeSupabaseTrackUpload({ audioPath, coverPath, owner });
+  return finalizeSupabaseTrackUpload({ audioPath, coverPath, owner, private: isPrivate });
 }
 
 export async function saveTrackMetaForApi(
@@ -189,6 +193,22 @@ export async function saveTrackCoverForApi(
 
   if (isSupabaseTrackSrc(src) || isSupabaseConfigured()) {
     return saveSupabaseTrackCover(src, cover, actorUserId);
+  }
+
+  return "unsupported";
+}
+
+export async function setTrackPrivacyForApi(
+  src: string,
+  isPrivate: boolean,
+  actorUserId?: string | null
+): Promise<LibraryMutationResult> {
+  if (isR2TrackSrc(src) || isR2Configured()) {
+    return setR2TrackPrivacy(src, isPrivate, actorUserId);
+  }
+
+  if (isSupabaseTrackSrc(src) || isSupabaseConfigured()) {
+    return setSupabaseTrackPrivacy(src, isPrivate, actorUserId);
   }
 
   return "unsupported";

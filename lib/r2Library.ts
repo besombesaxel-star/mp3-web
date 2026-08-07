@@ -36,6 +36,7 @@ type R2CatalogTrack = {
   audioPath?: string;
   coverPath?: string | null;
   credits?: string | null;
+  private?: boolean;
 };
 
 type R2TrackOwner = {
@@ -71,6 +72,7 @@ function toLibraryTrack(track: R2CatalogTrack): LibraryTrack | null {
     ownerEmail: typeof track.ownerEmail === "string" ? track.ownerEmail : null,
     ownerId: typeof track.ownerId === "string" ? track.ownerId : null,
     credits: typeof track.credits === "string" ? track.credits : null,
+    private: Boolean(track.private),
   };
 }
 
@@ -100,6 +102,7 @@ function normalizeCatalog(raw: unknown): R2Catalog {
       audioPath: typeof track.audioPath === "string" ? track.audioPath : undefined,
       coverPath: typeof track.coverPath === "string" ? track.coverPath : null,
       credits: typeof track.credits === "string" ? track.credits : null,
+      private: Boolean(track.private),
     });
   }
 
@@ -240,7 +243,12 @@ function resolveCoverPath(admin: R2Admin, track: R2CatalogTrack) {
   return getR2KeyFromPublicUrl(admin, track.cover);
 }
 
-export async function uploadR2Track(audio: File, cover: File | null, owner: R2TrackOwner): Promise<LibraryTrack> {
+export async function uploadR2Track(
+  audio: File,
+  cover: File | null,
+  owner: R2TrackOwner,
+  isPrivate?: boolean
+): Promise<LibraryTrack> {
   const admin = getR2Admin();
   if (!admin) {
     throw new Error("R2 n'est pas configure.");
@@ -292,6 +300,7 @@ export async function uploadR2Track(audio: File, cover: File | null, owner: R2Tr
     fileName: audioFilename,
     audioPath,
     coverPath,
+    private: Boolean(isPrivate),
   };
 
   catalog.tracks = dedupeCatalogTracks([nextTrack, ...catalog.tracks]);
@@ -340,6 +349,7 @@ export async function finalizeR2TrackUpload(params: {
   audioPath: string;
   coverPath: string | null;
   owner: R2TrackOwner;
+  private?: boolean;
 }): Promise<LibraryTrack> {
   const admin = getR2Admin();
   if (!admin) {
@@ -371,6 +381,7 @@ export async function finalizeR2TrackUpload(params: {
     fileName,
     audioPath: params.audioPath,
     coverPath: params.coverPath,
+    private: Boolean(params.private),
   };
 
   catalog.tracks = dedupeCatalogTracks([nextTrack, ...catalog.tracks]);
@@ -382,6 +393,30 @@ export async function finalizeR2TrackUpload(params: {
   }
 
   return libraryTrack;
+}
+
+export async function setR2TrackPrivacy(
+  src: string,
+  isPrivate: boolean,
+  actorUserId?: string | null
+): Promise<LibraryMutationResult> {
+  if (!isR2Configured()) return "unsupported";
+  const admin = getR2Admin();
+  if (!admin) return "unsupported";
+
+  const catalog = await readR2Catalog(admin);
+  const target = findCatalogTrackBySrc(catalog, src);
+  if (!target) return "not_found";
+  if (!isTrackOwnedByUser(target, actorUserId)) return "forbidden";
+
+  catalog.tracks = catalog.tracks.map((track) => {
+    if (track.src !== src) return track;
+    return { ...track, private: isPrivate, updatedAt: Date.now() };
+  });
+
+  catalog.tracks = dedupeCatalogTracks(catalog.tracks);
+  await writeR2Catalog(admin, catalog);
+  return "ok";
 }
 
 export async function saveR2TrackMeta(

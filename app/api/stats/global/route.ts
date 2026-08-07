@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { readAccountProfile } from "@/lib/accountData";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { listTracksForApi } from "@/lib/libraryRepository";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -188,8 +189,13 @@ export async function GET(req: Request) {
       )
     ).filter((v): v is StatsFile => v !== null);
 
+    const allTracks = await listTracksForApi();
+    const privateSrcs = new Set(allTracks.filter((t) => t.private).map((t) => t.src));
+
     const cutoff = periodCutoffMs(period);
-    const top = cutoff === null ? computeTopAllTime(parsedFiles) : computeTopForWindow(parsedFiles, cutoff);
+    const top = (cutoff === null ? computeTopAllTime(parsedFiles) : computeTopForWindow(parsedFiles, cutoff)).filter(
+      (entry) => !privateSrcs.has(entry.src)
+    );
     const listenerCounts =
       cutoff === null ? computeListenersAllTime(parsedFiles) : computeListenersForWindow(parsedFiles, cutoff);
 

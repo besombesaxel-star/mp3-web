@@ -30,6 +30,7 @@ export async function POST(req: Request) {
     const form = await req.formData();
     const audio = form.get("audio");
     const cover = form.get("cover");
+    const isPrivate = form.get("private") === "true";
 
     if (!(audio instanceof File)) {
       return NextResponse.json({ ok: false, error: "Tu dois envoyer un fichier audio." }, { status: 400 });
@@ -48,38 +49,45 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "La cover doit etre une image (jpg/png/webp)." }, { status: 400 });
     }
 
-    const track = await uploadTrackForApi(audio, cover instanceof File ? cover : null, {
-      displayName: auth.user.user_metadata?.display_name,
-      email: auth.user.email ?? null,
-      id: auth.user.id,
-    });
+    const track = await uploadTrackForApi(
+      audio,
+      cover instanceof File ? cover : null,
+      {
+        displayName: auth.user.user_metadata?.display_name,
+        email: auth.user.email ?? null,
+        id: auth.user.id,
+      },
+      isPrivate
+    );
 
     const uploaderId = auth.user.id;
     const uploaderName =
       (auth.user.user_metadata?.display_name as string | undefined)?.trim() || "Quelqu'un";
-    void (async () => {
-      try {
-        const profile = await readAccountProfile(uploaderId);
-        await notifyAllUsersOfUpload({
-          uploaderUserId: uploaderId,
-          uploaderDisplayName: uploaderName,
-          uploaderAvatarUrl: profile.avatarUrl ?? "",
-          trackTitle: track.title,
-          trackSrc: track.src,
-          trackCover: track.cover ?? null,
-        });
-        await pushActivityEvent({
-          type: "upload",
-          actorUserId: uploaderId,
-          actorDisplayName: uploaderName,
-          actorAvatarUrl: profile.avatarUrl ?? "",
-          trackTitle: track.title,
-          trackSrc: track.src,
-          trackCover: track.cover ?? null,
-          createdAt: Date.now(),
-        });
-      } catch {}
-    })();
+    if (!isPrivate) {
+      void (async () => {
+        try {
+          const profile = await readAccountProfile(uploaderId);
+          await notifyAllUsersOfUpload({
+            uploaderUserId: uploaderId,
+            uploaderDisplayName: uploaderName,
+            uploaderAvatarUrl: profile.avatarUrl ?? "",
+            trackTitle: track.title,
+            trackSrc: track.src,
+            trackCover: track.cover ?? null,
+          });
+          await pushActivityEvent({
+            type: "upload",
+            actorUserId: uploaderId,
+            actorDisplayName: uploaderName,
+            actorAvatarUrl: profile.avatarUrl ?? "",
+            trackTitle: track.title,
+            trackSrc: track.src,
+            trackCover: track.cover ?? null,
+            createdAt: Date.now(),
+          });
+        } catch {}
+      })();
+    }
 
     return NextResponse.json({
       ok: true,

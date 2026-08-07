@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Image as ImageIcon, LayoutGrid, List as ListIcon, Pencil } from "lucide-react";
+import { Image as ImageIcon, LayoutGrid, List as ListIcon, Lock, Pencil } from "lucide-react";
 import AlbumCard from "../AlbumCard";
 import { useAuth } from "../AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
@@ -138,7 +138,12 @@ function LibraryListRow({
           ) : null}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm text-white/90 truncate">{track.title}</p>
+          <p className="text-sm text-white/90 truncate flex items-center gap-1.5">
+            {track.private ? (
+              <Lock size={11} className="shrink-0 text-white/40" aria-label="Prive" />
+            ) : null}
+            <span className="truncate">{track.title}</span>
+          </p>
           <p className="text-xs text-white/45 truncate">
             {track.ownerLabel ? `${track.artist} - ${track.ownerLabel}` : `${track.artist} - MP3`}
           </p>
@@ -171,6 +176,7 @@ export default function LibraryPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editArtist, setEditArtist] = useState("");
   const [editCredits, setEditCredits] = useState("");
+  const [editPrivate, setEditPrivate] = useState(false);
   const [editCoverFile, setEditCoverFile] = useState<File | null>(null);
   const [editCoverPreview, setEditCoverPreview] = useState("");
   const [saving, setSaving] = useState(false);
@@ -376,6 +382,7 @@ export default function LibraryPage() {
     setEditTitle(track.title);
     setEditArtist(track.artist);
     setEditCredits(track.credits ?? "");
+    setEditPrivate(Boolean(track.private));
     setEditCoverFile(null);
     setEditCoverPreview("");
   }
@@ -386,6 +393,7 @@ export default function LibraryPage() {
     setEditTitle("");
     setEditArtist("");
     setEditCredits("");
+    setEditPrivate(false);
     setEditCoverFile(null);
     setEditCoverPreview("");
   }
@@ -451,6 +459,25 @@ export default function LibraryPage() {
 
         if (!coverRes.ok || !coverJson.ok) {
           throw new Error(coverJson.error ?? `Sauvegarde de la cover impossible (HTTP ${coverRes.status})`);
+        }
+      }
+
+      if (editPrivate !== Boolean(editing.private)) {
+        const privacyRes = await fetch("/api/tracks/privacy", {
+          method: "POST",
+          headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
+          body: JSON.stringify({ src: editing.src, private: editPrivate }),
+        });
+
+        let privacyJson: MetaSaveResponse = {};
+        try {
+          privacyJson = (await privacyRes.json()) as MetaSaveResponse;
+        } catch {
+          privacyJson = {};
+        }
+
+        if (!privacyRes.ok || !privacyJson.ok) {
+          throw new Error(privacyJson.error ?? `Mise a jour de la confidentialite impossible (HTTP ${privacyRes.status})`);
         }
       }
 
@@ -629,6 +656,7 @@ export default function LibraryPage() {
               selectMode={selectMode}
               selected={selectedSrcs.has(track.src)}
               onToggleSelect={() => toggleSelect(track.src)}
+              isPrivate={Boolean(track.private)}
             />
           ))}
         </div>
@@ -789,6 +817,22 @@ export default function LibraryPage() {
                   placeholder="Compositeur, featuring..."
                 />
               </div>
+
+              <label
+                className={[
+                  "flex items-center gap-2 text-xs text-white/60",
+                  editing.isOwnedByViewer ? "cursor-pointer" : "opacity-50 cursor-not-allowed",
+                ].join(" ")}
+              >
+                <input
+                  type="checkbox"
+                  checked={editPrivate}
+                  onChange={(e) => setEditPrivate(e.target.checked)}
+                  disabled={!editing.isOwnedByViewer || saving || deleting}
+                  className="h-3.5 w-3.5 rounded accent-white"
+                />
+                Prive (visible seulement par toi)
+              </label>
             </div>
 
             <div className="mt-6 flex items-center justify-between gap-2">

@@ -24,6 +24,7 @@ type SupabaseCatalogTrack = {
   audioPath?: string;
   coverPath?: string | null;
   credits?: string | null;
+  private?: boolean;
 };
 
 type SupabaseTrackOwner = {
@@ -68,6 +69,7 @@ function toLibraryTrack(track: SupabaseCatalogTrack): LibraryTrack | null {
     ownerEmail: typeof track.ownerEmail === "string" ? track.ownerEmail : null,
     ownerId: typeof track.ownerId === "string" ? track.ownerId : null,
     credits: typeof track.credits === "string" ? track.credits : null,
+    private: Boolean(track.private),
   };
 }
 
@@ -104,6 +106,7 @@ function normalizeCatalog(raw: unknown): SupabaseCatalog {
       fileName: typeof track.fileName === "string" ? track.fileName : undefined,
       audioPath: typeof track.audioPath === "string" ? track.audioPath : undefined,
       coverPath: typeof track.coverPath === "string" ? track.coverPath : null,
+      private: Boolean(track.private),
     });
   }
 
@@ -342,7 +345,12 @@ function resolveCoverPath(track: SupabaseCatalogTrack, bucket: string) {
   return getStoragePathFromPublicUrl(track.cover, bucket);
 }
 
-export async function uploadSupabaseTrack(audio: File, cover: File | null, owner: SupabaseTrackOwner) {
+export async function uploadSupabaseTrack(
+  audio: File,
+  cover: File | null,
+  owner: SupabaseTrackOwner,
+  isPrivate?: boolean
+) {
   const admin = getSupabaseAdmin();
   if (!admin) {
     throw new Error("Supabase n'est pas configure.");
@@ -407,6 +415,7 @@ export async function uploadSupabaseTrack(audio: File, cover: File | null, owner
     fileName: audioFilename,
     audioPath,
     coverPath,
+    private: Boolean(isPrivate),
   };
 
   catalog.tracks = dedupeCatalogTracks([nextTrack, ...catalog.tracks]);
@@ -466,6 +475,7 @@ export async function finalizeSupabaseTrackUpload(params: {
   audioPath: string;
   coverPath: string | null;
   owner: SupabaseTrackOwner;
+  private?: boolean;
 }) {
   const admin = getSupabaseAdmin();
   if (!admin) {
@@ -499,6 +509,7 @@ export async function finalizeSupabaseTrackUpload(params: {
     fileName,
     audioPath: params.audioPath,
     coverPath: params.coverPath,
+    private: Boolean(params.private),
   };
 
   catalog.tracks = dedupeCatalogTracks([nextTrack, ...catalog.tracks]);
@@ -510,6 +521,28 @@ export async function finalizeSupabaseTrackUpload(params: {
   }
 
   return libraryTrack;
+}
+
+export async function setSupabaseTrackPrivacy(
+  src: string,
+  isPrivate: boolean,
+  actorUserId?: string | null
+): Promise<LibraryMutationResult> {
+  if (!isSupabaseConfigured()) return "unsupported";
+
+  const catalog = await readSupabaseCatalog();
+  const target = findCatalogTrackBySrc(catalog, src);
+  if (!target) return "not_found";
+  if (!isTrackOwnedByUser(target, actorUserId)) return "forbidden";
+
+  catalog.tracks = catalog.tracks.map((track) => {
+    if (track.src !== src) return track;
+    return { ...track, private: isPrivate, updatedAt: Date.now() };
+  });
+
+  catalog.tracks = dedupeCatalogTracks(catalog.tracks);
+  await writeSupabaseCatalog(catalog);
+  return "ok";
 }
 
 export async function saveSupabaseTrackMeta(

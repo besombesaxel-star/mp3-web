@@ -25,6 +25,8 @@ export async function GET(req: Request) {
   const viewer = await readOptionalAuthenticatedUser(req);
   const viewerId = viewer?.id ?? null;
 
+  const visibleTracks = allTracks.filter((t) => !t.private || t.ownerId === viewerId);
+
   const url = new URL(req.url);
   const q = url.searchParams.get("q")?.trim() ?? "";
   const artist = url.searchParams.get("artist")?.trim() ?? "";
@@ -34,7 +36,7 @@ export async function GET(req: Request) {
   const offsetParam = url.searchParams.get("offset");
   const paginated = limitParam !== null || offsetParam !== null || q || artist || ownerIds;
 
-  let filtered: LibraryTrack[] = allTracks;
+  let filtered: LibraryTrack[] = visibleTracks;
   if (q) filtered = filtered.filter((t) => trackMatchesQuery(t.title, t.artist, q));
   if (artist) filtered = filtered.filter((t) => t.artist?.trim() === artist);
   if (ownerIds) filtered = filtered.filter((t) => t.ownerId && ownerIds.has(t.ownerId));
@@ -59,6 +61,7 @@ export async function GET(req: Request) {
         ownerId: track.ownerId ?? null,
         ownerLabel: track.ownerDisplayName ?? track.ownerEmail ?? null,
         credits: track.credits ?? null,
+        private: Boolean(track.private),
       })),
     },
     {

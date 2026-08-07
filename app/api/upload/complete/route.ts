@@ -18,43 +18,51 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null);
     const audioPath = typeof body?.audioPath === "string" ? body.audioPath : "";
     const coverPath = typeof body?.coverPath === "string" ? body.coverPath : null;
+    const isPrivate = body?.private === true;
 
     if (!audioPath) {
       return NextResponse.json({ ok: false, error: "Chemin audio manquant." }, { status: 400 });
     }
 
-    const track = await finalizeUploadForApi(audioPath, coverPath, {
-      displayName: auth.user.user_metadata?.display_name,
-      email: auth.user.email ?? null,
-      id: auth.user.id,
-    });
+    const track = await finalizeUploadForApi(
+      audioPath,
+      coverPath,
+      {
+        displayName: auth.user.user_metadata?.display_name,
+        email: auth.user.email ?? null,
+        id: auth.user.id,
+      },
+      isPrivate
+    );
 
     const uploaderId = auth.user.id;
     const uploaderName =
       (auth.user.user_metadata?.display_name as string | undefined)?.trim() || "Quelqu'un";
-    void (async () => {
-      try {
-        const profile = await readAccountProfile(uploaderId);
-        await notifyAllUsersOfUpload({
-          uploaderUserId: uploaderId,
-          uploaderDisplayName: uploaderName,
-          uploaderAvatarUrl: profile.avatarUrl ?? "",
-          trackTitle: track.title,
-          trackSrc: track.src,
-          trackCover: track.cover ?? null,
-        });
-        await pushActivityEvent({
-          type: "upload",
-          actorUserId: uploaderId,
-          actorDisplayName: uploaderName,
-          actorAvatarUrl: profile.avatarUrl ?? "",
-          trackTitle: track.title,
-          trackSrc: track.src,
-          trackCover: track.cover ?? null,
-          createdAt: Date.now(),
-        });
-      } catch {}
-    })();
+    if (!isPrivate) {
+      void (async () => {
+        try {
+          const profile = await readAccountProfile(uploaderId);
+          await notifyAllUsersOfUpload({
+            uploaderUserId: uploaderId,
+            uploaderDisplayName: uploaderName,
+            uploaderAvatarUrl: profile.avatarUrl ?? "",
+            trackTitle: track.title,
+            trackSrc: track.src,
+            trackCover: track.cover ?? null,
+          });
+          await pushActivityEvent({
+            type: "upload",
+            actorUserId: uploaderId,
+            actorDisplayName: uploaderName,
+            actorAvatarUrl: profile.avatarUrl ?? "",
+            trackTitle: track.title,
+            trackSrc: track.src,
+            trackCover: track.cover ?? null,
+            createdAt: Date.now(),
+          });
+        } catch {}
+      })();
+    }
 
     return NextResponse.json({
       ok: true,

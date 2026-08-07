@@ -141,7 +141,8 @@ async function uploadTrackFile(
   cover: File | null,
   title: string,
   artist: string,
-  accessToken: string
+  accessToken: string,
+  isPrivate: boolean
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const signRes = await fetch("/api/upload/sign", {
@@ -164,7 +165,7 @@ async function uploadTrackFile(
       const completeRes = await fetch("/api/upload/complete", {
         method: "POST",
         headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
-        body: JSON.stringify({ audioPath: signJson.audio.path, coverPath }),
+        body: JSON.stringify({ audioPath: signJson.audio.path, coverPath, private: isPrivate }),
       });
       const completeJson: CompleteUploadResponse = await completeRes.json().catch(() => ({}));
       if (!completeRes.ok || !completeJson.ok || !completeJson.track?.src) {
@@ -185,6 +186,7 @@ async function uploadTrackFile(
   const formData = new FormData();
   formData.append("audio", audio);
   if (cover) formData.append("cover", cover);
+  formData.append("private", isPrivate ? "true" : "false");
   const uploadRes = await fetch("/api/upload", {
     method: "POST",
     headers: createAuthorizedHeaders(accessToken),
@@ -217,6 +219,7 @@ export default function UploadPage() {
   const [batchReadingTags, setBatchReadingTags] = useState(false);
   const [compressLarge, setCompressLarge] = useState(true);
   const [trimSilence, setTrimSilence] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
 
   async function handleAudioFiles(files: File[]) {
     const audioFiles = files.filter((f) => isAcceptedAudioFileName(f.name));
@@ -313,7 +316,7 @@ export default function UploadPage() {
       }
 
       setBatchFiles((prev) => prev.map((f) => (f.id === item.id ? { ...f, status: "uploading" } : f)));
-      const result = await uploadTrackFile(fileToUpload, item.cover, item.title, item.artist, accessToken);
+      const result = await uploadTrackFile(fileToUpload, item.cover, item.title, item.artist, accessToken, isPrivate);
       setBatchFiles((prev) =>
         prev.map((f) => (f.id === item.id ? { ...f, status: result.ok ? "done" : "error", error: result.error } : f))
       );
@@ -485,7 +488,7 @@ export default function UploadPage() {
     const completeRes = await fetch("/api/upload/complete", {
       method: "POST",
       headers: createAuthorizedHeaders(accessToken, { "Content-Type": "application/json" }),
-      body: JSON.stringify({ audioPath: signJson.audio.path, coverPath }),
+      body: JSON.stringify({ audioPath: signJson.audio.path, coverPath, private: isPrivate }),
     });
 
     const completeJson: CompleteUploadResponse = await completeRes.json().catch(() => ({}));
@@ -531,6 +534,7 @@ export default function UploadPage() {
       const formData = new FormData();
       formData.append("audio", fileToUpload);
       if (cover) formData.append("cover", cover);
+      formData.append("private", isPrivate ? "true" : "false");
 
       const { status, json } = await uploadWithProgress(formData, setProgress, accessToken);
       if (status < 200 || status >= 300 || !json.ok || !json.track?.src) {
@@ -626,6 +630,17 @@ export default function UploadPage() {
                 Compresser les fichiers volumineux avant l&apos;envoi
               </label>
             ) : null}
+
+            <label className="flex items-center gap-2 text-xs text-white/50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isPrivate}
+                onChange={(e) => setIsPrivate(e.target.checked)}
+                disabled={batchBusy}
+                className="h-3.5 w-3.5 rounded accent-white"
+              />
+              Uploader en prive (visible seulement par toi)
+            </label>
 
             <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
               {batchFiles.map((item, i) => (
@@ -799,6 +814,18 @@ export default function UploadPage() {
                     className="h-3.5 w-3.5 rounded accent-white"
                   />
                   Compresser avant l&apos;envoi (economise de l&apos;espace, legere perte de qualite)
+                </label>
+              ) : null}
+
+              {audio ? (
+                <label className="mt-2 flex items-center gap-2 text-xs text-white/50 cursor-pointer mp3-fade-up">
+                  <input
+                    type="checkbox"
+                    checked={isPrivate}
+                    onChange={(e) => setIsPrivate(e.target.checked)}
+                    className="h-3.5 w-3.5 rounded accent-white"
+                  />
+                  Uploader en prive (visible seulement par toi)
                 </label>
               ) : null}
 

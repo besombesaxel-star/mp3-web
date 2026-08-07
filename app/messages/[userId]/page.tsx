@@ -22,6 +22,10 @@ type PublicProfile = {
   avatarUrl: string;
 };
 
+const BROADCAST_TYPING_EVENT = "typing";
+const TYPING_EXPIRY_MS = 3000;
+const TYPING_BROADCAST_INTERVAL_MS = 2000;
+
 function formatTime(timestamp: number) {
   const d = new Date(timestamp);
   const now = new Date();
@@ -41,7 +45,12 @@ export default function ConversationPage() {
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [otherTyping, setOtherTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const channelRef = useRef<any>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTypingBroadcastRef = useRef(0);
 
   useEffect(() => {
     if (!otherId) return;
@@ -83,11 +92,15 @@ export default function ConversationPage() {
     const supabase = getSupabaseBrowserAuthClient();
     if (!supabase) return;
 
+    setOtherTyping(false);
+
     // The broadcast payload intentionally carries no message content (that channel is reachable
     // by anyone holding the public anon key) - it's just a ping to re-fetch via the authenticated endpoint.
     const channel = supabase
       .channel(`dm:${conversationId}`)
       .on("broadcast", { event: "dm_message" }, () => {
+        setOtherTyping(false);
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         fetch(`/api/messages/${encodeURIComponent(otherId)}`, {
           cache: "no-store",
           headers: createAuthorizedHeaders(accessToken),
@@ -98,16 +111,42 @@ export default function ConversationPage() {
           })
           .catch(() => {});
       })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .on("broadcast" as any, { event: BROADCAST_TYPING_EVENT }, (msg: Record<string, unknown>) => {
+        const data = msg.payload as { userId?: string } | undefined;
+        if (data?.userId !== otherId) return;
+        setOtherTyping(true);
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => setOtherTyping(false), TYPING_EXPIRY_MS);
+      })
       .subscribe();
+
+    channelRef.current = channel;
 
     return () => {
       void supabase.removeChannel(channel);
+      channelRef.current = null;
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
   }, [user?.id, otherId, accessToken]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages]);
+  }, [messages, otherTyping]);
+
+  function handleInputChange(value: string) {
+    setInput(value);
+    if (!value.trim() || !user?.id) return;
+
+    const now = Date.now();
+    if (now - lastTypingBroadcastRef.current < TYPING_BROADCAST_INTERVAL_MS) return;
+    lastTypingBroadcastRef.current = now;
+    void channelRef.current?.send({
+      type: "broadcast",
+      event: BROADCAST_TYPING_EVENT,
+      payload: { userId: user.id },
+    });
+  }
 
   async function sendMessage() {
     const content = input.trim();
@@ -195,12 +234,26 @@ export default function ConversationPage() {
             );
           })
         )}
+        {otherTyping && (
+          <div className="flex items-center gap-2 pt-1 px-1 text-xs text-white/35 mp3-fade-up">
+            <span className="flex gap-[3px] items-end" style={{ height: 8 }}>
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="w-[5px] h-[5px] rounded-full bg-white/40"
+                  style={{ animation: "mp3TypingDot 1.2s ease-in-out infinite", animationDelay: `${i * 0.18}s` }}
+                />
+              ))}
+            </span>
+            <span className="truncate">{profile?.displayName ?? "Cette personne"} écrit…</span>
+          </div>
+        )}
       </div>
 
       <div className="mt-4 flex items-center gap-2 shrink-0">
         <input
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => handleInputChange(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();

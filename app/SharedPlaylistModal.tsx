@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Play, Plus, Trash2, Users, X } from "lucide-react";
+import { Camera, Play, Plus, Trash2, Users, X } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import { createAuthorizedHeaders } from "@/lib/clientAuth";
 import { getErrorMessage } from "@/lib/errorMessage";
@@ -20,6 +20,7 @@ export type SharedPlaylist = {
   collaboratorIds: string[];
   createdAt: number;
   updatedAt: number;
+  coverUrl?: string | null;
 };
 
 type TrackWithCover = Track & { cover?: string };
@@ -45,6 +46,8 @@ export default function SharedPlaylistModal({ playlist, library, onClose, onUpda
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"tracks" | "members">("tracks");
+  const [coverBusy, setCoverBusy] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   const isOwner = user?.id === playlist.ownerId;
   const isMember = isOwner || (user?.id ? playlist.collaboratorIds.includes(user.id) : false);
@@ -100,6 +103,47 @@ export default function SharedPlaylistModal({ playlist, library, onClose, onUpda
     const name = renameValue.trim();
     if (!name || name === playlist.name) return;
     void patchPlaylist({ name });
+  }
+
+  async function uploadCover(file: File) {
+    if (!accessToken || coverBusy) return;
+    setCoverBusy(true);
+    setError("");
+    try {
+      const form = new FormData();
+      form.append("image", file);
+      const res = await fetch(`/api/playlists/shared/${playlist.id}/cover`, {
+        method: "POST",
+        headers: createAuthorizedHeaders(accessToken),
+        body: form,
+      });
+      const json = (await res.json()) as { ok?: boolean; playlist?: SharedPlaylist; error?: string };
+      if (!res.ok || !json.ok || !json.playlist) throw new Error(json.error ?? `Erreur ${res.status}`);
+      onUpdated(json.playlist);
+    } catch (err) {
+      setError(getErrorMessage(err, "Upload de la cover impossible."));
+    } finally {
+      setCoverBusy(false);
+    }
+  }
+
+  async function removeCover() {
+    if (!accessToken || coverBusy) return;
+    setCoverBusy(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/playlists/shared/${playlist.id}/cover`, {
+        method: "DELETE",
+        headers: createAuthorizedHeaders(accessToken),
+      });
+      const json = (await res.json()) as { ok?: boolean; playlist?: SharedPlaylist; error?: string };
+      if (!res.ok || !json.ok || !json.playlist) throw new Error(json.error ?? `Erreur ${res.status}`);
+      onUpdated(json.playlist);
+    } catch (err) {
+      setError(getErrorMessage(err, "Suppression de la cover impossible."));
+    } finally {
+      setCoverBusy(false);
+    }
   }
 
   async function invite() {
@@ -178,12 +222,60 @@ export default function SharedPlaylistModal({ playlist, library, onClose, onUpda
         aria-label={`Playlist partagee ${playlist.name}`}
       >
         <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs text-white/45 flex items-center gap-1.5">
-              <Users size={11} />
-              Playlist partagee - {tracks.length} morceau{tracks.length > 1 ? "x" : ""}
-            </p>
-            <p className="text-lg text-white/90 truncate">{playlist.name}</p>
+          <div className="flex items-start gap-3 min-w-0 flex-1">
+            {isMember ? (
+              <button
+                type="button"
+                onClick={() => coverInputRef.current?.click()}
+                disabled={coverBusy}
+                className="relative shrink-0 h-14 w-14 rounded-2xl overflow-hidden border border-white/10 bg-[#1A1A22] group disabled:opacity-60"
+                title="Changer la cover"
+                aria-label="Changer la cover de la playlist"
+              >
+                {playlist.coverUrl ? (
+                  <Image src={playlist.coverUrl} alt="" fill className="object-cover" sizes="56px" />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center text-white/20">
+                    <Camera size={16} />
+                  </div>
+                )}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition">
+                  <Camera size={14} className="text-white" />
+                </div>
+              </button>
+            ) : playlist.coverUrl ? (
+              <div className="relative shrink-0 h-14 w-14 rounded-2xl overflow-hidden border border-white/10 bg-[#1A1A22]">
+                <Image src={playlist.coverUrl} alt="" fill className="object-cover" sizes="56px" />
+              </div>
+            ) : null}
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = "";
+                if (file) void uploadCover(file);
+              }}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-white/45 flex items-center gap-1.5">
+                <Users size={11} />
+                Playlist partagee - {tracks.length} morceau{tracks.length > 1 ? "x" : ""}
+              </p>
+              <p className="text-lg text-white/90 truncate">{playlist.name}</p>
+              {isMember && playlist.coverUrl ? (
+                <button
+                  type="button"
+                  onClick={() => void removeCover()}
+                  disabled={coverBusy}
+                  className="mt-0.5 text-[11px] text-white/35 hover:text-white/60 transition disabled:opacity-50"
+                >
+                  Retirer la cover
+                </button>
+              ) : null}
+            </div>
           </div>
           <button
             type="button"

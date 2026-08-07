@@ -18,7 +18,15 @@ import SharedPlaylistModal, { type SharedPlaylist } from "../SharedPlaylistModal
 
 type TrackWithCover = Track & { cover?: string };
 
-function PlaylistCover({ tracks, size = 44 }: { tracks: TrackWithCover[]; size?: number }) {
+function PlaylistCover({
+  tracks,
+  size = 44,
+  coverUrl,
+}: {
+  tracks: TrackWithCover[];
+  size?: number;
+  coverUrl?: string | null;
+}) {
   const covers = useMemo(() => {
     const seen = new Set<string>();
     const list: string[] = [];
@@ -36,7 +44,11 @@ function PlaylistCover({ tracks, size = 44 }: { tracks: TrackWithCover[]; size?:
       className="relative shrink-0 grid grid-cols-2 grid-rows-2 overflow-hidden rounded-xl border border-white/5 bg-[#1A1A22]"
       style={{ width: size, height: size }}
     >
-      {covers.length === 0 ? (
+      {coverUrl ? (
+        <div className="col-span-2 row-span-2 relative">
+          <Image src={coverUrl} alt="" fill className="object-cover" sizes={`${size}px`} />
+        </div>
+      ) : covers.length === 0 ? (
         <div className="col-span-2 row-span-2 flex items-center justify-center text-white/15">
           <Music2 size={Math.round(size * 0.42)} />
         </div>
@@ -909,7 +921,7 @@ export default function PlaylistsPage() {
                     style={{ animationDelay: `${80 + index * 30}ms` }}
                   >
                     <div className="flex items-start gap-3">
-                      <PlaylistCover tracks={tracks} size={40} />
+                      <PlaylistCover tracks={tracks} size={40} coverUrl={playlist.coverUrl} />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-white/90 truncate">{playlist.name}</p>
                         <p className="mt-1 text-xs text-white/45 truncate">

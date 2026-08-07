@@ -8,6 +8,7 @@ export type SharedPlaylist = {
   collaboratorIds: string[];
   createdAt: number;
   updatedAt: number;
+  coverUrl?: string | null;
 };
 
 export type SharedPlaylistResult = "ok" | "not_found" | "forbidden" | "full";
@@ -81,6 +82,7 @@ function normalizePlaylist(raw: unknown): SharedPlaylist | null {
       : [],
     createdAt: typeof v.createdAt === "number" ? v.createdAt : Date.now(),
     updatedAt: typeof v.updatedAt === "number" ? v.updatedAt : Date.now(),
+    coverUrl: typeof v.coverUrl === "string" ? v.coverUrl : null,
   };
 }
 
@@ -117,6 +119,7 @@ export async function createSharedPlaylist(ownerId: string, name: string): Promi
     collaboratorIds: [],
     createdAt: Date.now(),
     updatedAt: Date.now(),
+    coverUrl: null,
   };
   await writeSharedPlaylist(playlist);
   await addToIndex(ownerId, playlist.id);
@@ -133,7 +136,7 @@ export async function listSharedPlaylistsForUser(userId: string): Promise<Shared
 
 export async function updateSharedPlaylist(
   id: string,
-  patch: { name?: string; trackSrcs?: string[] },
+  patch: { name?: string; trackSrcs?: string[]; coverUrl?: string | null },
   actorId: string
 ): Promise<SharedPlaylistResult> {
   const playlist = await readSharedPlaylist(id);
@@ -144,6 +147,7 @@ export async function updateSharedPlaylist(
     ...playlist,
     name: patch.name !== undefined ? patch.name.trim().slice(0, MAX_NAME_LENGTH) || playlist.name : playlist.name,
     trackSrcs: patch.trackSrcs !== undefined ? [...new Set(patch.trackSrcs)].slice(0, MAX_TRACKS) : playlist.trackSrcs,
+    coverUrl: patch.coverUrl !== undefined ? patch.coverUrl : playlist.coverUrl,
     updatedAt: Date.now(),
   };
   await writeSharedPlaylist(next);
